@@ -1,0 +1,3 @@
+[submodule "aim_utils"]
+	path = aim_utils
+	url = git@github.com:alexc-dft/aim_utils.git
