@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regular Grid Plotter: regGridPlot [options] [input_file]
+"""Regular Grid Plotter: regGridPlot.py [options] [input_file]
 
 This script plots a regular grid in the required format for the potential job in the AIMPRO code.
 
@@ -23,6 +23,11 @@ Integers are a maximum of 5 wide and floats are in 12.6 format.
 
 import argparse
 import sys
+
+#Module development info
+VERSION = "0.1"
+VERSION_DATE = "11/08/2025"
+AUTHORS = "Alex Christison"
 
 # Filename constants
 DEFAULT_INPUT_FILENAME = "./plot_input/default.in"
@@ -52,7 +57,7 @@ def read_commmand_line() -> str:
 
     parser = argparse.ArgumentParser(
                     prog="regGridPlot",
-                    usage="regGridPlot [options] [input_file]",
+                    usage="regGridPlot.py [options] [input_file]",
                     description="Plot a regular grid for the AIMPRO potential job.",
                     epilog="AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html")
     parser.add_argument("-v", "--verbose", action="store_true", help="verbose output mode")
@@ -61,7 +66,7 @@ def read_commmand_line() -> str:
     args = parser.parse_args()
     verbose_output = args.verbose
 
-    # Set to default input file i
+    # Set input file to default
     if args.input_file is None:
         input_filename = DEFAULT_INPUT_FILENAME
     else:
