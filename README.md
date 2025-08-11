@@ -20,6 +20,8 @@ Requirements: see requirements.txt
 
 Scripts can be made executable all locations in file system via chmod u+x and adding to PATH.
 
+The output pot_file is written to the current working directory
+
 # regGridPlot usage
 
 regGridPlot [options] [input_file]

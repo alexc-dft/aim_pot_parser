@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Regular Grid Plotter: regGridPlot.py [options] [input_file]
+"""Regular Grid Plotter: regGridPlot [options] [input_file]
 
 This script plots a regular grid in the required format for the potential job in the AIMPRO code.
 
 AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html
+
+The output pot_file is written to the current working directory
 
 If no input file is specified the default input file in ./plot_input/default.in will be used. This file is user editable.
 
@@ -23,7 +25,9 @@ Integers are a maximum of 5 wide and floats are in 12.6 format.
 
 import argparse
 import sys
-from pathlib import Path
+from pathlib import Path, PurePath
+import math
+import os
 
 #Module development info
 VERSION = "0.1"
@@ -31,7 +35,7 @@ VERSION_DATE = "11/08/2025"
 AUTHORS = "Alex Christison"
 
 # Filename constants
-DEFAULT_INPUT_FILENAME = "./plot_input/default.in"
+DEFAULT_INPUT_FILENAME = os.path.dirname(__file__) +  "/plot_input/default.in" # Define filepath relative to script location
 OUTPUT_FILENAME = "pot_file"
 
 def read_commmand_line() -> str:
@@ -53,11 +57,19 @@ def read_commmand_line() -> str:
 
     parser = argparse.ArgumentParser(
                     prog="regGridPlot",
-                    usage="regGridPlot.py [options] [input_file]",
+                    usage="regGridPlot [options] [input_file]",
                     description="Plot a regular grid for the AIMPRO potential job.",
                     epilog="AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html")
-    parser.add_argument("-v", "--verbose", action="store_true", help="verbose output mode")
-    parser.add_argument("input_file",nargs="?",default=DEFAULT_INPUT_FILENAME,type=argparse.FileType("r"),help="input file, if none specified default input file is used.")
+
+    parser.add_argument("-v", "--verbose",
+                        action="store_true",
+                        help="verbose output mode")
+
+    parser.add_argument("input_file",
+                        nargs="?",
+                        default=DEFAULT_INPUT_FILENAME,
+                        type=argparse.FileType("r"),
+                        help="input file, if none specified default input file is used.")
 
     args = parser.parse_args()
     verbose_output = args.verbose
@@ -133,7 +145,18 @@ def write_pot_file(repeats: list, vectors: list) -> None:
         None
     """
 
+    # Open an outfile in cwd
+    # (N.B. this is the directory regGridPlot.py was called from, not where it lives)
+    outpath = Path.cwd() / OUTPUT_FILENAME
 
+    if verbose_output:
+        print(f"Writing output to file at: {outpath}\n")
+
+    # Open output file
+    with open(outpath,"w") as outfile:
+
+        # Write out number of grid points as line 1
+        outfile.write(str(math.prod(repeats)))
 
 def main() -> None:
 
