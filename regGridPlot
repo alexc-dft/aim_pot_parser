@@ -25,8 +25,8 @@ Integers are a maximum of 5 wide and floats are in 12.6 format.
 
 import argparse
 import sys
-import math
 import os
+import numpy as np
 
 #Module development info
 VERSION = "0.1"
@@ -35,7 +35,7 @@ AUTHORS = "Alex Christison"
 
 # Filename constants
 DEFAULT_INPUT_FILENAME = os.path.dirname(__file__) +  "/plot_input/default.in" # Define filepath relative to script location
-OUTPUT_FILENAME = "pot_file"
+OUTPUT_FILENAME = "/pot_file"
 
 def read_commmand_line() -> str:
     """Gets input filename.
@@ -83,7 +83,7 @@ def read_commmand_line() -> str:
 
     return input_filename
 
-def read_input_file(input_filename: str) -> list:
+def read_input_file(input_filename: str) -> object:
     """Reads input file.
 
     Args:
@@ -98,8 +98,8 @@ def read_input_file(input_filename: str) -> list:
     """
 
     # Define lists to store vectors & their repeats
-    repeats = []
-    vectors = []
+    repeats = np.zeros([3], dtype=int)
+    vectors = np.zeros([3, 3])
 
     # Read in input file
     with open(input_filename,"r") as infile:
@@ -110,27 +110,34 @@ def read_input_file(input_filename: str) -> list:
         sys.exit(f"Error: incorrect input file format - {input_filename} must have only 3 rows")
 
     for row in raw_input:
+
         # Split in indvidual items
         split_row = row.split()
+
+        index = raw_input.index(row)
 
         if len(split_row) != 4:
             sys.exit(f"Error: incorrect input file format - {input_filename} must have only 4 columns")
 
-        # Add data to lists
-        repeats.append(int(split_row[0]))
-        vectors.append([float(string) for string in split_row[1:4]])
+        # Cast repeats to integer and add to numpy array
+        split_row[0] = int(split_row[0])
+        repeats[index] = np.array(split_row[0])
+
+        # Map vectors to floats and add to numpy array
+        split_row[1:4] = map(float,split_row[1:4])
+        vectors[index, :] = np.array(split_row[1:4])
 
     if verbose_output:
         print("Input data:\n")
         for i in range(len(repeats)):
-            print("{rep:5d}, {vecx:12.6f}, {vecy:12.6f}, {vecz:12.6f}"
-                  .format(rep = repeats[i],vecx = vectors[i][0],
-                          vecy = vectors[i][1], vecz = vectors[i][2]))
+            print("{rep:5d}, {vec_a:12.6f}, {vec_b:12.6f}, {vec_c:12.6f}"
+                  .format(rep = repeats[i],vec_a = vectors[i, 0],
+                          vec_b = vectors[i, 1], vec_c = vectors[i, 2]))
         print("\n")
 
     return repeats, vectors
 
-def write_pot_file(repeats: list, vectors: list) -> None:
+def write_pot_file(repeats: object, vectors: object) -> None:
     """Generates and writes out AIMPRO pot_file.
 
     Args:
@@ -151,7 +158,7 @@ def write_pot_file(repeats: list, vectors: list) -> None:
     if verbose_output:
         print(f"Writing output to file at: {outpath}.\n")
 
-    num_grid_points = str(math.prod(repeats))
+    num_grid_points = str(np.prod(repeats))
 
     # Open output file
     with open(outpath,"w") as outfile:
@@ -165,7 +172,11 @@ def write_pot_file(repeats: list, vectors: list) -> None:
         for ia in range(1, repeats[0]+1):
             for ib in range(1, repeats[1]+1):
                 for ic in range(1, repeats[2]+1):
-                    pass
+
+                    out_vec = ia * vectors[0, :] \
+                        + ib * vectors[1, :] \
+                        + ic * vectors[2, :]
+                    print(out_vec)
 
 def main() -> None:
 
