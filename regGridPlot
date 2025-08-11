@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-'''Regular Grid Plotter: regGridPlot [options] <input_filename.in>
+'''Regular Grid Plotter: regGridPlot [options] [input_file]
 
 This script plots a regular grid in the required format for the potential job in the AIMPRO code.
 
@@ -10,7 +10,7 @@ If no input file is specified the default input file in ./plot_input/default.in 
 [options]
 -d, --debug: Enables debug mode for verbose output.
 
-<gridplot_input_file.in>
+[input_file]
 Specifies the vectors & their repeats defining the grid.
 The file is delimited by whitespace and has the format:
 
@@ -20,8 +20,7 @@ Repeats_C(int) C_x(float) C_y(float) C_z(float)
 
 Integers are a maximum of 5 wide and floats are in 12.6 format.
 '''
-import os
-import sys
+
 import argparse
 
 # Filename constants
@@ -45,13 +44,32 @@ def read_commmand_line() -> str:
         input_filename: Filename of input file
 
     Raises:
-        Sets global debug flag if specified in cmd line args.
+        Sets global verbose output flag if specified in cmd line args.
         Errors & exits with message if incorrect number of args detected.
     '''
-    global debug
+    global verbose_output
+
+    parser = argparse.ArgumentParser(
+                    prog='regGridPlot',
+                    usage='regGridPlot [options] [input_file]',
+                    description='Plot a regular grid for the AIMPRO potential job.',
+                    epilog='AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html')
+    parser.add_argument('-v', '--verbose', action='store_true', help='verbose output mode')
+    parser.add_argument('input_file',nargs='?',help='input file, if none specified default input file is used.')
+
+    args = parser.parse_args()
+    verbose_output = args.verbose
+
+    if args.input_file is None:
+        input_filename = DEFAULT_INPUT_FILENAME
+    else:
+        input_filename = args.input_file[0]
+
+    if args.verbose:
+        print("Verbose output turned on\n")
+        print(f"Input file: {input_filename}\n")
 
     return input_filename
-
 
 def read_input_file(input_filename: str) -> tuple:
     '''Reads input file.

@@ -20,12 +20,15 @@ Requirements: see requirements.txt
 
 # regGridPlot usage
 
-regGridPlot <input_filename.in>
+regGridPlot [options] [input_file]
+
+[options]
+-d, --debug: Enables debug mode for verbose output.
+
+[input_file] specifies the vectors & their repeats defining the grid.
+The file is delimited by whitespace and has the format:
 
 If no input file is specified the default input file in ./plot_input/default.in will be used.
-
-<gridplot_input_file.in> specifies the vectors & their repeats defining the grid.
-The file is delimited by whitespace and has the format:
 
 Repeats_A(int) A_x(float) A_y(float) A_z(float)
 Repeats_B(int) B_x(float) B_y(float) B_z(float)
