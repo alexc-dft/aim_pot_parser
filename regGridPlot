@@ -111,7 +111,7 @@ def read_input_file(input_filename: str) -> object:
 
     for row in raw_input:
 
-        # Split in indvidual items
+        # Split in individual items
         split_row = row.split()
 
         index = raw_input.index(row)
@@ -152,11 +152,11 @@ def write_pot_file(repeats: object, vectors: object) -> None:
     """
 
     # Open an outfile in cwd
-    # (N.B. this is the directory regGridPlot.py was called from, not where it lives)
+    # (N.B. this is the directory regGridPlot was called from, not where it lives)
     outpath = os.getcwd() + OUTPUT_FILENAME
 
     if verbose_output:
-        print(f"Writing output to file at: {outpath}.\n")
+        print(f"Writing output to file: {outpath}.\n")
 
     num_grid_points = str(np.prod(repeats))
 
@@ -173,21 +173,24 @@ def write_pot_file(repeats: object, vectors: object) -> None:
             for ib in range(1, repeats[1]+1):
                 for ic in range(1, repeats[2]+1):
 
-                    # Calulate grid point
+                    # Calculate grid point
                     grid_point = ia * vectors[0, :] \
                                     + ib * vectors[1, :] \
                                     + ic * vectors[2, :]
-
+                    # Write grid point to file with 12.6f formatting
                     outfile.write("{gp_x:12.6f} {gp_y:12.6f} {gp_z:12.6f}\n"
                           .format(gp_x = grid_point[0],
                             gp_y = grid_point[1], gp_z = grid_point[2]))
+
+        if verbose_output:
+            print(f"Finished writing to: {outpath}.\n")
 
 def main() -> None:
 
     # Read cmd line for input file
     filename = read_commmand_line()
 
-    # Get repeats and vectors from input fike
+    # Get repeats and vectors from input file
     rep, vec = read_input_file(filename)
 
     # Write grid using vectors & their repeats
