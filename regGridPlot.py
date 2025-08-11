@@ -75,10 +75,10 @@ def read_input_file(input_filename: str) -> list:
         input_filename: Input filename/path.
 
     Returns:
-        input_data: 2D tuple of grid vectors & number of repeats.
+        repeats: number of repeats of each vector.
+        vectors: grid vectors.
 
     Raises:
-        Errors & exits with message if imput file opening &/ reading fails.
         Errors & exits with message if incorrect input file format detected.
     """
 
@@ -119,13 +119,14 @@ def write_pot_file(repeats: list, vectors: list) -> None:
     """Generates and writes out AIMPRO pot_file.
 
     Args:
-        input_data: 2D tuple of grid vectors & number of repeats.
+        repeats: number of repeats of each vector.
+        vectors: grid vectors.
 
     Returns:
         None
 
     Raises:
-        Errors & exits with message if output file opening &/ writing fails.
+        None
     """
 
 def main() -> None:
