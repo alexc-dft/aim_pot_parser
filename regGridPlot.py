@@ -61,16 +61,11 @@ def read_commmand_line() -> str:
                     description="Plot a regular grid for the AIMPRO potential job.",
                     epilog="AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html")
     parser.add_argument("-v", "--verbose", action="store_true", help="verbose output mode")
-    parser.add_argument("input_file",nargs="?",help="input file, if none specified default input file is used.")
+    parser.add_argument("input_file",nargs="?",default=DEFAULT_INPUT_FILENAME,help="input file, if none specified default input file is used.")
 
     args = parser.parse_args()
     verbose_output = args.verbose
-
-    # Set input file to default
-    if args.input_file is None:
-        input_filename = DEFAULT_INPUT_FILENAME
-    else:
-        input_filename = args.input_file[0]
+    input_filename = args.input_file
 
     if args.verbose:
         print("Verbose output turned on\n")
@@ -96,8 +91,8 @@ def read_input_file(input_filename: str) -> tuple:
     with open(input_filename,"r") as input_vectors:
         raw_vectors = input_vectors.read().splitlines()
 
-    if len(raw_vectors) > 3:
-        sys.exit("Error, incorrect format: ")
+    if len(raw_vectors) != 3:
+        sys.exit(f"Error: incorrect input file format - {input_filename} must have only 3 rows")
 
     print(raw_vectors)
 
