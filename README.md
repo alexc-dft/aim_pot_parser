@@ -1,6 +1,8 @@
 # aimpot2cube
 Scripts for setting up a regular grid for AIMPRO potential calculations and parsing the results to the .cube file format
 
+N.B. recurse submodules must be enabled to properly clone this repo: git clone --recurse-submodules <repo_address>
+
 AIMPRO task documentation 
 - Potential job: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html
 - Mulliken job: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/mull.html
