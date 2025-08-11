@@ -33,11 +33,6 @@ AUTHORS = "Alex Christison"
 DEFAULT_INPUT_FILENAME = "./plot_input/default.in"
 OUTPUT_FILENAME = "pot_file"
 
-def main() -> None:
-    filename = read_commmand_line()
-    data = read_input_file(filename)
-    write_pot_file(data)
-
 def read_commmand_line() -> str:
     """Gets input filename.
 
@@ -67,13 +62,13 @@ def read_commmand_line() -> str:
     verbose_output = args.verbose
     input_filename = args.input_file
 
-    if args.verbose:
-        print("Verbose output turned on\n")
+    if verbose_output:
+        print("Verbose output on\n")
         print(f"Input file: {input_filename}\n")
 
     return input_filename
 
-def read_input_file(input_filename: str) -> tuple:
+def read_input_file(input_filename: str) -> list:
     """Reads input file.
 
     Args:
@@ -87,18 +82,40 @@ def read_input_file(input_filename: str) -> tuple:
         Errors & exits with message if incorrect input file format detected.
     """
 
-    # Read in input file
-    with open(input_filename,"r") as input_vectors:
-        raw_vectors = input_vectors.read().splitlines()
+    # Define lists to store vectors & their repeats
+    repeats = []
+    vectors = []
 
-    if len(raw_vectors) != 3:
+    # Read in input file
+    with open(input_filename,"r") as infile:
+        # Split into rows
+        raw_input = infile.read().splitlines()
+
+    if len(raw_input) != 3:
         sys.exit(f"Error: incorrect input file format - {input_filename} must have only 3 rows")
 
-    print(raw_vectors)
+    for row in raw_input:
+        # Split in indvidual items
+        split_row = row.split()
 
-    return input_data
+        if len(split_row) != 4:
+            sys.exit(f"Error: incorrect input file format - {input_filename} must have only 4 columns")
 
-def write_pot_file(input_data: tuple) -> None:
+        # Add data to lists
+        repeats.append(int(split_row[0]))
+        vectors.append([float(string) for string in split_row[1:4]])
+
+    if verbose_output:
+        print("Input data:\n")
+        for i in range(len(repeats)):
+            print("{rep:5d}, {vecx:12.6f}, {vecy:12.6f}, {vecz:12.6f}"
+                  .format(rep = repeats[i],vecx = vectors[i][0],
+                          vecy = vectors[i][1], vecz = vectors[i][2]))
+        print("\n")
+
+    return repeats, vectors
+
+def write_pot_file(repeats: list, vectors: list) -> None:
     """Generates and writes out AIMPRO pot_file.
 
     Args:
@@ -110,6 +127,17 @@ def write_pot_file(input_data: tuple) -> None:
     Raises:
         Errors & exits with message if output file opening &/ writing fails.
     """
+
+def main() -> None:
+
+    # Read cmd line for input file
+    filename = read_commmand_line()
+
+    # Get repeats and vectors from input fike
+    rep, vec = read_input_file(filename)
+
+    # Write grid using vectors & their repeats
+    write_pot_file(rep, vec)
 
 if __name__ == "__main__":
     main()
