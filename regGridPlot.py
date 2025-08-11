@@ -23,6 +23,7 @@ Integers are a maximum of 5 wide and floats are in 12.6 format.
 
 import argparse
 import sys
+from pathlib import Path
 
 #Module development info
 VERSION = "0.1"
@@ -56,11 +57,14 @@ def read_commmand_line() -> str:
                     description="Plot a regular grid for the AIMPRO potential job.",
                     epilog="AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html")
     parser.add_argument("-v", "--verbose", action="store_true", help="verbose output mode")
-    parser.add_argument("input_file",nargs="?",default=DEFAULT_INPUT_FILENAME,help="input file, if none specified default input file is used.")
+    parser.add_argument("input_file",nargs="?",default=DEFAULT_INPUT_FILENAME,type=argparse.FileType("r"),help="input file, if none specified default input file is used.")
 
     args = parser.parse_args()
     verbose_output = args.verbose
-    input_filename = args.input_file
+
+    # File was opened by argpass to check it exists, close and get name
+    args.input_file.close()
+    input_filename = args.input_file.name
 
     if verbose_output:
         print("Verbose output on\n")
@@ -128,6 +132,8 @@ def write_pot_file(repeats: list, vectors: list) -> None:
     Raises:
         None
     """
+
+
 
 def main() -> None:
 
