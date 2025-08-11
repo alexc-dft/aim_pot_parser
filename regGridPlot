@@ -130,7 +130,7 @@ def read_input_file(input_filename: str) -> object:
     if verbose_output:
         print("Input data:\n")
         for i in range(len(repeats)):
-            print("{rep:5d}, {vec_a:12.6f}, {vec_b:12.6f}, {vec_c:12.6f}"
+            print("{rep:5d} {vec_a:12.6f} {vec_b:12.6f} {vec_c:12.6f}"
                   .format(rep = repeats[i],vec_a = vectors[i, 0],
                           vec_b = vectors[i, 1], vec_c = vectors[i, 2]))
         print("\n")
@@ -156,7 +156,7 @@ def write_pot_file(repeats: object, vectors: object) -> None:
     outpath = os.getcwd() + OUTPUT_FILENAME
 
     if verbose_output:
-        print(f"Writing output to file: {outpath}.\n")
+        print(f"Writing output to file: {outpath}\n")
 
     num_grid_points = str(np.prod(repeats))
 
@@ -183,7 +183,7 @@ def write_pot_file(repeats: object, vectors: object) -> None:
                             gp_y = grid_point[1], gp_z = grid_point[2]))
 
         if verbose_output:
-            print(f"Finished writing to: {outpath}.\n")
+            print(f"Finished writing to: {outpath}\n")
 
 def main() -> None:
 
