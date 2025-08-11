@@ -60,6 +60,7 @@ def read_commmand_line() -> str:
     args = parser.parse_args()
     verbose_output = args.verbose
 
+    # Set to default input file i
     if args.input_file is None:
         input_filename = DEFAULT_INPUT_FILENAME
     else:

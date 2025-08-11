@@ -18,6 +18,8 @@ To install all python package requirements in your python virtual environment do
 Python version: python 3.11
 Requirements: see requirements.txt
 
+Scripts can be made executable all locations in file system via chmod u+x and adding to PATH.
+
 # regGridPlot usage
 
 regGridPlot [options] [input_file]
