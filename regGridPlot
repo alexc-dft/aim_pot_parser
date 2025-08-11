@@ -164,7 +164,7 @@ def write_pot_file(repeats: object, vectors: object) -> None:
     with open(outpath,"w") as outfile:
 
         # Write out number of grid points as line 1
-        outfile.write(num_grid_points)
+        outfile.write(num_grid_points+"\n")
 
         if verbose_output:
             print(f"Writing {num_grid_points} grid points.\n")
@@ -173,10 +173,14 @@ def write_pot_file(repeats: object, vectors: object) -> None:
             for ib in range(1, repeats[1]+1):
                 for ic in range(1, repeats[2]+1):
 
-                    out_vec = ia * vectors[0, :] \
-                        + ib * vectors[1, :] \
-                        + ic * vectors[2, :]
-                    print(out_vec)
+                    # Calulate grid point
+                    grid_point = ia * vectors[0, :] \
+                                    + ib * vectors[1, :] \
+                                    + ic * vectors[2, :]
+
+                    outfile.write("{gp_x:12.6f} {gp_y:12.6f} {gp_z:12.6f}\n"
+                          .format(gp_x = grid_point[0],
+                            gp_y = grid_point[1], gp_z = grid_point[2]))
 
 def main() -> None:
 
