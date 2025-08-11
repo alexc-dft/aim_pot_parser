@@ -25,7 +25,6 @@ Integers are a maximum of 5 wide and floats are in 12.6 format.
 
 import argparse
 import sys
-from pathlib import Path, PurePath
 import math
 import os
 
@@ -68,18 +67,18 @@ def read_commmand_line() -> str:
     parser.add_argument("input_file",
                         nargs="?",
                         default=DEFAULT_INPUT_FILENAME,
-                        type=argparse.FileType("r"),
                         help="input file, if none specified default input file is used.")
 
     args = parser.parse_args()
     verbose_output = args.verbose
+    input_filename = args.input_file
 
-    # File was opened by argpass to check it exists, close and get name
-    args.input_file.close()
-    input_filename = args.input_file.name
+    # Check provided file is valid
+    if not os.path.isfile(input_filename):
+        sys.exit(f"Error: no such file - '{input_filename}'")
 
     if verbose_output:
-        print("Verbose output on\n")
+        print("Verbose output on.\n")
         print(f"Input file: {input_filename}\n")
 
     return input_filename
@@ -147,16 +146,26 @@ def write_pot_file(repeats: list, vectors: list) -> None:
 
     # Open an outfile in cwd
     # (N.B. this is the directory regGridPlot.py was called from, not where it lives)
-    outpath = Path.cwd() / OUTPUT_FILENAME
+    outpath = os.getcwd() + OUTPUT_FILENAME
 
     if verbose_output:
-        print(f"Writing output to file at: {outpath}\n")
+        print(f"Writing output to file at: {outpath}.\n")
+
+    num_grid_points = str(math.prod(repeats))
 
     # Open output file
     with open(outpath,"w") as outfile:
 
         # Write out number of grid points as line 1
-        outfile.write(str(math.prod(repeats)))
+        outfile.write(num_grid_points)
+
+        if verbose_output:
+            print(f"Writing {num_grid_points} grid points.\n")
+
+        for ia in range(1, repeats[0]+1):
+            for ib in range(1, repeats[1]+1):
+                for ic in range(1, repeats[2]+1):
+                    pass
 
 def main() -> None:
 
