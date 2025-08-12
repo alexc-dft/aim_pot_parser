@@ -20,6 +20,9 @@ Repeats_A(int) A_x(float) A_y(float) A_z(float)
 Repeats_B(int) B_x(float) B_y(float) B_z(float)
 Repeats_C(int) C_x(float) C_y(float) C_z(float)
 
+Repeats values must be >= 1.
+Vector compoment values must be >= 0.0.
+
 Integers are a maximum of 5 wide and floats are in 12.6 format.
 """
 
@@ -28,6 +31,7 @@ import sys
 import os
 import numpy as np
 import io_params
+import math
 
 #Module development info
 VERSION = "0.1"
@@ -126,6 +130,12 @@ def read_input_file(input_filename: str) -> object:
 
         # Increment index
         index+=1
+
+    # Error checking to ensure input values are valid
+    if any(repeats < 1):
+        sys.exit(f"Error: value error - repeats values in {input_filename} must be >= 1")
+    if np.any(vectors < 0.0):
+        sys.exit(f"Error: value error - repeats values in {input_filename} must be > 0.0")
 
     if verbose_output:
         print("Input data:\n")

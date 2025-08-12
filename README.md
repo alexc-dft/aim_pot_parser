@@ -39,6 +39,9 @@ Repeats_A(int) A_x(float) A_y(float) A_z(float)
 Repeats_B(int) B_x(float) B_y(float) B_z(float)
 Repeats_C(int) C_x(float) C_y(float) C_z(float)
 
+Repeats values must be >= 1.
+Vector compoment values must be >= 0.0.
+
 Integers are a maximum of 5 wide and floats are in 12.6 format.
 
 # AIMPRO job docs
