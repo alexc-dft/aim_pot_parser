@@ -14,7 +14,7 @@ If no input file is specified the default input file from io_params will be used
 
 [grid_vectors_input_file]
 
-NOTE: this must match the one used by regGridPlot
+NOTE: this file be the same as the one used by regGridPlot
 
 Specifies the vectors & their repeats defining the grid.
 The file is delimited by whitespace and has the format:
