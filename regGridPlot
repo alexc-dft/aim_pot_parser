@@ -177,6 +177,7 @@ def write_pot_file(repeats: object, vectors: object) -> None:
                     grid_point = ia * vectors[0, :] \
                                     + ib * vectors[1, :] \
                                     + ic * vectors[2, :]
+
                     # Write grid point to file with 12.6f formatting
                     outfile.write("{gp_x:12.6f} {gp_y:12.6f} {gp_z:12.6f}\n"
                           .format(gp_x = grid_point[0],
