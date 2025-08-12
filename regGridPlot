@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regular Grid Plotter: regGridPlot [options] [input_file]
+"""Regular Grid Plotter: regGridPlot [options] [grid_vectors_input_file]
 
 This script plots a regular grid in the required format for the potential job in the AIMPRO code.
 
@@ -7,12 +7,12 @@ AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/
 
 The output pot_file is written to the current working directory
 
-If no input file is specified the default input file in ./plot_input/default.in will be used. This file is user editable.
+If no input file is specified the default input file  from io_params will be used. This file is user editable (advanced).
 
 [options]
 -d, --debug: Enables debug mode for verbose output.
 
-[input_file]
+[grid_vectors_input_file]
 Specifies the vectors & their repeats defining the grid.
 The file is delimited by whitespace and has the format:
 
@@ -27,15 +27,12 @@ import argparse
 import sys
 import os
 import numpy as np
+import io_params
 
 #Module development info
 VERSION = "0.1"
 VERSION_DATE = "11/08/2025"
 AUTHORS = "Alex Christison"
-
-# Filename constants
-DEFAULT_INPUT_FILENAME = os.path.dirname(__file__) +  "/plot_input/default.in" # Define filepath relative to script location
-OUTPUT_FILENAME = "/pot_file"
 
 def read_commmand_line() -> str:
     """Gets input filename.
@@ -55,19 +52,19 @@ def read_commmand_line() -> str:
     global verbose_output
 
     parser = argparse.ArgumentParser(
-                    prog="regGridPlot",
-                    usage="regGridPlot [options] [input_file]",
-                    description="Plot a regular grid for the AIMPRO potential job.",
-                    epilog="AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html")
+                    prog = "regGridPlot",
+                    usage = "regGridPlot [options] [input_file]",
+                    description = "Plot a regular grid for the AIMPRO potential job.",
+                    epilog = "AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html")
 
     parser.add_argument("-v", "--verbose",
-                        action="store_true",
-                        help="verbose output mode")
+                        action = "store_true",
+                        help = "verbose output mode")
 
     parser.add_argument("input_file",
-                        nargs="?",
-                        default=DEFAULT_INPUT_FILENAME,
-                        help="input file, if none specified default input file is used.")
+                        nargs = "?",
+                        default = io_params.DEFAULT_POT_INPUT_FILENAME,
+                        help = "input file, if none specified default input file is used.")
 
     args = parser.parse_args()
     verbose_output = args.verbose
@@ -153,7 +150,7 @@ def write_pot_file(repeats: object, vectors: object) -> None:
 
     # Open an outfile in cwd
     # (N.B. this is the directory regGridPlot was called from, not where it lives)
-    outpath = os.getcwd() + OUTPUT_FILENAME
+    outpath = os.getcwd() + io_params.POT_OUTPUT_FILENAME
 
     if verbose_output:
         print(f"Writing output to file: {outpath}\n")

@@ -26,15 +26,15 @@ The output pot_file is written to the current working directory
 
 # regGridPlot usage
 
-regGridPlot [options] [input_file]
+regGridPlot [options] [grid_vectors_input_file]
 
 [options]
 -d, --debug: Enables debug mode for verbose output.
 
-[input_file] specifies the vectors & their repeats defining the grid.
+[grid_vectors_input_file] specifies the vectors & their repeats defining the grid.
 The file is delimited by whitespace and has the format:
 
-If no input file is specified the default input file in ./plot_input/default.in will be used.
+If no input file is specified the default input file  from io_params will be used. This file is user editable (advanced).
 
 Repeats_A(int) A_x(float) A_y(float) A_z(float)
 Repeats_B(int) B_x(float) B_y(float) B_z(float)

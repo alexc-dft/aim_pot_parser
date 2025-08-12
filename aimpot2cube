@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+"""AIMPRO potential 2 cube passer: aimpot2cube AIMPRO_output AIMPRO_potential_output [grid_vectors_input_file]
+
+This script plots a regular grid in the required format for the potential job in the AIMPRO code.
+
+AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html
+
+The output pot_file is written to the current working directory.
+
+If no input file is specified the default input file from io_params will be used. This file is user editable (advanced).
+
+[options]
+-d, --debug: Enables debug mode for verbose output.
+
+[grid_vectors_input_file]
+Specifies the vectors & their repeats defining the grid.
+The file is delimited by whitespace and has the format:
+
+Repeats_A(int) A_x(float) A_y(float) A_z(float)
+Repeats_B(int) B_x(float) B_y(float) B_z(float)
+Repeats_C(int) C_x(float) C_y(float) C_z(float)
+
+Integers are a maximum of 5 wide and floats are in 12.6 format.
+"""
+
+import argparse
+import sys
+import os
+import numpy as np
+import io_params
+import pandas as pd
+
+#Module development info
+VERSION = "0.1"
+VERSION_DATE = "12/08/2025"
+AUTHORS = "Alex Christison"
+
+def read_commmand_line() -> str:
+    """Gets input filenames.
+
+    If no input file is provided in command line the default input file is used.
+
+    Args:
+        None
+
+    Returns:
+        input_filename: Filename of input file
+
+    Raises:
+        Sets global verbose output flag if specified in cmd line args.
+        Errors & exits with message if incorrect number of args detected.
+    """
+    global verbose_output
+
+    parser = argparse.ArgumentParser(
+                    prog = "regGridPlot",
+                    usage = "regGridPlot [options] [input_file]",
+                    description = "Plot a regular grid for the AIMPRO potential job.",
+                    epilog = "AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html")
+
+    parser.add_argument("-v", "--verbose",
+                        action = "store_true",
+                        help = "verbose output mode")
+
+    parser.add_argument("input_file",
+                        nargs = "?",
+                        default = io_params.DEFAULT_INPUT_FILENAME,
+                        help = "input file, if none specified default input file is used.")
+
+    args = parser.parse_args()
+    verbose_output = args.verbose
+    input_filename = args.input_file
+
+    # Check provided file is valid
+    if not os.path.isfile(input_filename):
+        sys.exit(f"Error: no such file - '{input_filename}'")
+
+    if verbose_output:
+        print("Verbose output on.\n")
+        print(f"Input file: {input_filename}\n")
+
+    return input_filename
+
+def read_input_file(input_filename: str) -> object:
+    """Reads input file.
+
+    Args:
+        input_filename: Input filename/path.
+
+    Returns:
+        repeats: number of repeats of each vector.
+        vectors: grid vectors.
+
+    Raises:
+        Errors & exits with message if incorrect input file format detected.
+    """
+
+    # Define lists to store vectors & their repeats
+    repeats = np.zeros([3], dtype=int)
+    vectors = np.zeros([3, 3])
+
+    # Read in input file
+    with open(input_filename,"r") as infile:
+        # Split into rows
+        raw_input = infile.read().splitlines()
+
+    if len(raw_input) != 3:
+        sys.exit(f"Error: incorrect input file format - {input_filename} must have only 3 rows")
+
+    for row in raw_input:
+
+        # Split in individual items
+        split_row = row.split()
+
+        index = raw_input.index(row)
+
+        if len(split_row) != 4:
+            sys.exit(f"Error: incorrect input file format - {input_filename} must have only 4 columns")
+
+        # Cast repeats to integer and add to numpy array
+        split_row[0] = int(split_row[0])
+        repeats[index] = np.array(split_row[0])
+
+        # Map vectors to floats and add to numpy array
+        split_row[1:4] = map(float,split_row[1:4])
+        vectors[index, :] = np.array(split_row[1:4])
+
+    if verbose_output:
+        print("Input data:\n")
+        for i in range(len(repeats)):
+            print("{rep:5d} {vec_a:12.6f} {vec_b:12.6f} {vec_c:12.6f}"
+                  .format(rep = repeats[i],vec_a = vectors[i, 0],
+                          vec_b = vectors[i, 1], vec_c = vectors[i, 2]))
+        print("\n")
+
+    return repeats, vectors
+
+def write_pot_file(repeats: object, vectors: object) -> None:
+    """Generates and writes out AIMPRO pot_file.
+
+    Args:
+        repeats: number of repeats of each vector.
+        vectors: grid vectors.
+
+    Returns:
+        None
+
+    Raises:
+        None
+    """
+
+    # Open an outfile in cwd
+    # (N.B. this is the directory regGridPlot was called from, not where it lives)
+    outpath = os.getcwd() + io_params.POT_OUTPUT_FILENAME
+
+    if verbose_output:
+        print(f"Writing output to file: {outpath}\n")
+
+    num_grid_points = str(np.prod(repeats))
+
+    # Open output file
+    with open(outpath,"w") as outfile:
+
+        # Write out number of grid points as line 1
+        outfile.write(num_grid_points+"\n")
+
+        if verbose_output:
+            print(f"Writing {num_grid_points} grid points.\n")
+
+        for ia in range(0, repeats[0]):
+            for ib in range(0, repeats[1]):
+                for ic in range(0, repeats[2]):
+
+                    # Calculate grid point
+                    grid_point = ia * vectors[0, :] \
+                                    + ib * vectors[1, :] \
+                                    + ic * vectors[2, :]
+
+                    # Write grid point to file with 12.6f formatting
+                    outfile.write("{gp_x:12.6f} {gp_y:12.6f} {gp_z:12.6f}\n"
+                          .format(gp_x = grid_point[0],
+                            gp_y = grid_point[1], gp_z = grid_point[2]))
+
+        if verbose_output:
+            print(f"Finished writing to: {outpath}\n")
+
+def main() -> None:
+
+    # Read cmd line for input file
+    filename = read_commmand_line()
+
+    # Get repeats and vectors from input file
+    rep, vec = read_input_file(filename)
+
+    # Write grid using vectors & their repeats
+    write_pot_file(rep, vec)
+
+if __name__ == "__main__":
+    main()
