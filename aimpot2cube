@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AIMPRO potential 2 cube passer: aimpot2cube AIMPRO_output AIMPRO_potential_output [grid_vectors_input_file]
+"""AIMPRO potential 2 cube passer: aimpot2cube [options] AIMPRO_output AIMPRO_potential_output [grid_vectors_input_file]
 
 This script plots a regular grid in the required format for the potential job in the AIMPRO code.
 
@@ -10,9 +10,12 @@ The output pot_file is written to the current working directory.
 If no input file is specified the default input file from io_params will be used. This file is user editable (advanced).
 
 [options]
--d, --debug: Enables debug mode for verbose output.
+-v, --verbose: Enables verbose output.
 
 [grid_vectors_input_file]
+
+NOTE: this must match the one used by regGridPlot
+
 Specifies the vectors & their repeats defining the grid.
 The file is delimited by whitespace and has the format:
 
