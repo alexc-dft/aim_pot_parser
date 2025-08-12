@@ -106,15 +106,15 @@ def read_input_file(input_filename: str) -> object:
     if len(raw_input) != 3:
         sys.exit(f"Error: incorrect input file format - {input_filename} must have only 3 rows")
 
+    index = 0
     for row in raw_input:
 
         # Split in individual items
         split_row = row.split()
 
-        index = raw_input.index(row)
-
         if len(split_row) != 4:
             sys.exit(f"Error: incorrect input file format - {input_filename} must have only 4 columns")
+        print(split_row)
 
         # Cast repeats to integer and add to numpy array
         split_row[0] = int(split_row[0])
@@ -124,6 +124,9 @@ def read_input_file(input_filename: str) -> object:
         split_row[1:4] = map(float,split_row[1:4])
         vectors[index, :] = np.array(split_row[1:4])
 
+        # Increment index
+        index+=1
+
     if verbose_output:
         print("Input data:\n")
         for i in range(len(repeats)):
@@ -131,6 +134,7 @@ def read_input_file(input_filename: str) -> object:
                   .format(rep = repeats[i],vec_a = vectors[i, 0],
                           vec_b = vectors[i, 1], vec_c = vectors[i, 2]))
         print("\n")
+        print(repeats)
 
     return repeats, vectors
 
