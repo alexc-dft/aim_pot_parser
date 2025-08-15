@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
-"""AIMPRO potential 2 cube passer: aimpot2cube [options] AIMPRO_output AIMPRO_potential_output [grid_vectors_input_file]
+"""AIMPRO potential 2 cube passer: aimpot2cube [options] AIMPRO_output_file [grid_vectors_input_file]
 
-This script plots a regular grid in the required format for the potential job in the AIMPRO code.
+TODO Add description here
 
-AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html
-
-The output pot_file is written to the current working directory.
-
-If no input file is specified the default input file from io_params will be used. This file is user editable (advanced).
+If no grid_vectors_input_fileis specified the default input file from io_params will be used. This file is user editable (advanced).
 
 [options]
 -v, --verbose: Enables verbose output.
 
+AIMPRO_output_file
+
+Output file from AIMPRO potential job
+
+AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html
+
 [grid_vectors_input_file]
 
-NOTE: this file be the same as the one used by regGridPlot
+NOTE: this file must be the same as the one used by regGridPlot
 
 Specifies the vectors & their repeats defining the grid.
 The file is delimited by whitespace and has the format:
@@ -23,7 +25,7 @@ Repeats_A(int) A_x(float) A_y(float) A_z(float)
 Repeats_B(int) B_x(float) B_y(float) B_z(float)
 Repeats_C(int) C_x(float) C_y(float) C_z(float)
 
-Integers are a maximum of 5 wide and floats are in 12.6 format.
+Foats are in 12.6 format.
 """
 
 import argparse
@@ -35,11 +37,11 @@ import pandas as pd
 
 #Module development info
 VERSION = "0.1"
-VERSION_DATE = "12/08/2025"
+VERSION_DATE = "15/08/2025"
 AUTHORS = "Alex Christison"
 
 def read_commmand_line() -> str:
-    """Gets input filenames.
+    """Gets input filename.
 
     If no input file is provided in command line the default input file is used.
 
@@ -67,7 +69,7 @@ def read_commmand_line() -> str:
 
     parser.add_argument("input_file",
                         nargs = "?",
-                        default = io_params.DEFAULT_INPUT_FILENAME,
+                        default = io_params.DEFAULT_POT_INPUT_FILENAME,
                         help = "input file, if none specified default input file is used.")
 
     args = parser.parse_args()
@@ -110,12 +112,11 @@ def read_input_file(input_filename: str) -> object:
     if len(raw_input) != 3:
         sys.exit(f"Error: incorrect input file format - {input_filename} must have only 3 rows")
 
+    index = 0
     for row in raw_input:
 
         # Split in individual items
         split_row = row.split()
-
-        index = raw_input.index(row)
 
         if len(split_row) != 4:
             sys.exit(f"Error: incorrect input file format - {input_filename} must have only 4 columns")
@@ -127,6 +128,15 @@ def read_input_file(input_filename: str) -> object:
         # Map vectors to floats and add to numpy array
         split_row[1:4] = map(float,split_row[1:4])
         vectors[index, :] = np.array(split_row[1:4])
+
+        # Increment index
+        index+=1
+
+    # Error checking to ensure input values are valid
+    if any(repeats < 1):
+        sys.exit(f"Error: value error - repeats values in {input_filename} must be >= 1")
+    if np.any(vectors < 0.0):
+        sys.exit(f"Error: value error - repeats values in {input_filename} must be > 0.0")
 
     if verbose_output:
         print("Input data:\n")
