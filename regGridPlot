@@ -82,7 +82,7 @@ def read_commmand_line() -> str:
 
     # Check provided file is valid
     if not os.path.isfile(input_filename):
-        sys.exit(f"Error: no such file - '{input_filename}'")
+        raise FileNotFoundError(f"no such file - '{input_filename}'")
 
     if verbose_output:
         print("Verbose output on.\n")
@@ -115,7 +115,7 @@ def read_input_file(input_filename: str) -> object:
         raw_input = infile.read().splitlines()
 
     if len(raw_input) != 3:
-        sys.exit(f"Error: incorrect input file format - {input_filename} must have only 3 rows")
+        raise Exception(f"incorrect input file format - {input_filename} must have only 3 rows")
 
     index = 0
     for row in raw_input:
@@ -124,7 +124,7 @@ def read_input_file(input_filename: str) -> object:
         split_row = row.split()
 
         if len(split_row) != 4:
-            sys.exit(f"Error: incorrect input file format - {input_filename} must have only 4 columns")
+            raise Exception(f"incorrect input file format - {input_filename} must have only 4 columns")
 
         # Cast repeats to integer and add to numpy array
         split_row[0] = int(split_row[0])
@@ -139,9 +139,9 @@ def read_input_file(input_filename: str) -> object:
 
     # Error checking to ensure input values are valid
     if any(repeats < 1):
-        sys.exit(f"Error: value error - repeats values in {input_filename} must be >= 1")
+        raise ValueError(f"repeats values in {input_filename} must be >= 1")
     if np.any(vectors < 0.0):
-        sys.exit(f"Error: value error - repeats values in {input_filename} must be > 0.0")
+        raise ValueError(f"grid vector values in {input_filename} must be > 0.0")
 
     if verbose_output:
         print("Input data:\n")
