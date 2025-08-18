@@ -45,6 +45,8 @@ def read_commmand_line() -> str:
 
     If no input file is provided in command line the default input file is used.
 
+    Sets global verbose output flag if specified in cmd line args.
+
     Args:
         None
 
@@ -52,8 +54,9 @@ def read_commmand_line() -> str:
         input_filename: Filename of input file
 
     Raises:
-        Sets global verbose output flag if specified in cmd line args.
         Errors & exits with message if incorrect number of args detected.
+        Errors & exits with message if provided input file does not exist.
+        Warns if AIMPRO output file does not match conventional AIM.sh.o* format.
     """
     global verbose_output
 
@@ -99,6 +102,7 @@ def read_input_file(input_filename: str) -> object:
 
     Raises:
         Errors & exits with message if incorrect input file format detected.
+        Errors & exits with message if incorrect input values are detected.
     """
 
     # Define lists to store vectors & their repeats
