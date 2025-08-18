@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+
+# Copyright (c) A Christison 2025 All Rights Reserved.
+
 """AIMPRO potential 2 cube passer: aimpot2cube [options] AIMPRO_output_file [grid_vectors_input_file]
 
 TODO Add description here
@@ -25,7 +28,7 @@ Repeats_A(int) A_x(float) A_y(float) A_z(float)
 Repeats_B(int) B_x(float) B_y(float) B_z(float)
 Repeats_C(int) C_x(float) C_y(float) C_z(float)
 
-Foats are in 12.6 format.
+Floats are in 12.6 format.
 """
 
 import argparse
@@ -36,7 +39,7 @@ import io_params
 import pandas as pd
 
 #Module development info
-VERSION = "0.1"
+VERSION_NUMBER = "0.1"
 VERSION_DATE = "15/08/2025"
 AUTHORS = "Alex Christison"
 
@@ -59,9 +62,10 @@ def read_commmand_line() -> str:
 
     parser = argparse.ArgumentParser(
                     prog = "regGridPlot",
+                    formatter_class=argparse.RawDescriptionHelpFormatter,
                     usage = "regGridPlot [options] [input_file]",
-                    description = "Plot a regular grid for the AIMPRO potential job.",
-                    epilog = "AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html")
+                    description = "Plot a regular grid for the AIMPRO potential job.\n\nAIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html",
+                    epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\nCopyright (c) A Christison 2025 All Rights Reserved.")
 
     parser.add_argument("-v", "--verbose",
                         action = "store_true",
@@ -70,7 +74,7 @@ def read_commmand_line() -> str:
     parser.add_argument("input_file",
                         nargs = "?",
                         default = io_params.DEFAULT_POT_INPUT_FILENAME,
-                        help = "input file, if none specified default input file is used.")
+                        help = f"input file, if none specified the default input file is used {io_params.DEFAULT_POT_INPUT_FILENAME}")
 
     args = parser.parse_args()
     verbose_output = args.verbose

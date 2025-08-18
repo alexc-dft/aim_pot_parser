@@ -1,6 +1,10 @@
 # aim_pot_parser - An AIMPRO potential to .cube format parser
 Scripts for setting up a regular grid of points for AIMPRO potential calculations and parsing the results to the .cube file format
 
+Please acknowledge the code author(s) (Alex Christison) in works arising from the use of this software.
+
+Copyright (c) A Christison 2025 All Rights Reserved.
+
 N.B. recurse submodules must be enabled to properly clone this repo: git clone --recurse-submodules <repo_address>
 
 All routines & classes must have Google style docstrings: https://google.github.io/styleguide/pyguide.html

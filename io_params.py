@@ -1,3 +1,5 @@
+# Copyright (c) A Christison 2025 All Rights Reserved.
+
 """I/O parameters
 
 This module stores the I/O parameters for the aim_pot_parser repo.
