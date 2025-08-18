@@ -71,7 +71,7 @@ def read_commmand_line() -> str:
     parser.add_argument("input_file",
                         nargs = "?",
                         default = io_params.DEFAULT_POT_INPUT_FILENAME,
-                        help = f"input file, if none specified the default input file is used {io_params.DEFAULT_POT_INPUT_FILENAME}")
+                        help = f"input file, if none specified the default input file is used: {io_params.DEFAULT_POT_INPUT_FILENAME}")
 
     args = parser.parse_args()
     verbose_output = args.verbose
