@@ -21,7 +21,7 @@ The output pot_file is written to the current working directory
 # Overall usage workflow
 
 1. Generate a pot_file using regGridPlot
-2. Run a joint potential & mulliken job with the AIMPRO code
+2. Run a potential job in the AIMPRO code (atomic positons MUST be defined in au)
 3. Use aimpot2cube to pass AIMPRO results into .cube format
 
 # regGridPlot usage
@@ -50,6 +50,17 @@ Integers are a maximum of 5 wide and floats are in 12.6 format.
 
 AIMPRO task documentation 
 - Potential job: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html
+
+The atomic positions in the potential job MUST be defined in au i.e. begin[atomic]{positions} MUST be specified.
+
+Non au refs can be tranfomed to au as follows:
+
+$ cp dat dat_old
+$ gres -e dat
+$ gres -x2o xyz.dat.all
+$ InsertOTB otb.xyz.all dat_old > dat
+(Optional) $ rm dat_old
+Finally set REF to atomic in begin[REF]{positions} in dat file using your favourite text editor.
 
 # aimpot2cube usage
 
