@@ -90,11 +90,14 @@ def read_commmand_line() -> str:
 
     return input_filename
 
-def read_input_file(input_filename: str) -> object:
-    """Reads input file.
+def read_grid_vectors_infile(grid_vec_infile: str) -> object:
+    """Reads grid vectors from input file.
+
+    The grid of points is regenerated to validate the points in the AIMPRO output.
+
 
     Args:
-        input_filename: Input filename/path.
+        grid_vec_infile: Grid vectors input filename/path.
 
     Returns:
         repeats: number of repeats of each vector.
@@ -110,7 +113,7 @@ def read_input_file(input_filename: str) -> object:
     vectors = np.zeros([3, 3])
 
     # Read in input file
-    with open(input_filename,"r") as infile:
+    with open(grid_vec_infile,"r") as infile:
         # Split into rows
         raw_input = infile.read().splitlines()
 
@@ -139,9 +142,9 @@ def read_input_file(input_filename: str) -> object:
 
     # Error checking to ensure input values are valid
     if any(repeats < 1):
-        raise ValueError(f"repeats values in {input_filename} must be >= 1")
+        raise ValueError(f"repeats values in {grid_vec_infile} must be >= 1")
     if np.any(vectors < 0.0):
-        raise ValueError(f"grid vector values in {input_filename} must be > 0.0")
+        raise ValueError(f"grid vector values in {grid_vec_infile} must be > 0.0")
 
     if verbose_output:
         print("Input data:\n")
@@ -208,7 +211,7 @@ def main() -> None:
     filename = read_commmand_line()
 
     # Get repeats and vectors from input file
-    rep, vec = read_input_file(filename)
+    rep, vec = read_grid_vectors_infile(filename)
 
     # Write grid using vectors & their repeats
     write_pot_file(rep, vec)
