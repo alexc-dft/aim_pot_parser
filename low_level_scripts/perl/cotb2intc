@@ -1,0 +1,405 @@
+#!/usr/bin/perl -w
+
+# Copyright (c) J.P. Goss 2011 All Rights Reserved.
+
+&Defaults;
+&CommandLine;
+&ScanDataFiles;
+&GetLatticeInfo;
+&Recentre;
+&BuildNewDataFile;
+
+exit;
+
+######################################################################
+# Build a new data file from the best bits of the original files:
+######################################################################
+sub BuildNewDataFile{
+    open OUT, ">otb.intc" or die;
+    if(@species){print OUT "%".(join" ",@species)."\n";}
+    print OUT "$pos2";
+    print STDERR "Written int-c positional otb to otb.intc\n";
+}
+######################################################################
+
+######################################################################
+# Just recentre the atoms as requierd, and ensure the atoms so that
+# they are all within the parallelapiped defined by the lattice
+# vectors
+######################################################################
+sub Recentre{
+    @centre=&ScaleVec(&AddVec(@vec[0..2],&AddVec(@vec[3..8])),0.5);
+    @pcentre=&ReturnCoefs(@vec,@centre);
+    
+    for$x(split"\n",$pos){
+	my@otb=(split" ",$x);	
+	for$i(0..2){
+	    $otb[$i+6]-=($o[$i]-$centre[$i]);
+	}
+	
+	#Inside?
+	
+	@c=&ReturnCoefs(@vec,@otb[6..8]);
+	
+	if($compact){		
+	    for(0..2){
+		while($c[$_]<0){$c[$_]+=1}
+		while($c[$_]>=1){$c[$_]-=1}
+	    }
+	}
+
+	@otb[6..8]=@c;
+	
+	if($recentre){
+	    for(0..2){$otb[$_+6]-=$pcentre[$_]}
+	}
+	
+	$pos2.=(sprintf"%4d %2d %5d %5d %5d %5d %17.10f %17.10f %17.10f\n",
+		@otb);
+	
+    }
+}
+
+######################################################################
+
+sub MatVecMult{
+    if($#_-11){die"Wrong number of arguments passed to MatVecMult\n"}
+    my@a=@_[0..8];my@b=@_[9..11];my@c=();
+    $c[0]=$a[0]*$b[0]+$a[1]*$b[1]+$a[2]*$b[2];
+    $c[1]=$a[3]*$b[0]+$a[4]*$b[1]+$a[5]*$b[2];
+    $c[2]=$a[6]*$b[0]+$a[7]*$b[1]+$a[8]*$b[2];
+    return@c;
+}
+
+sub MatMult{
+    if($#_-17){die"Wrong number of arguments passed to MatMult\n"}
+    my@a=@_[0..8];my@b=@_[9..17];my@c=();
+    $c[0]=$a[0]*$b[0]+$a[1]*$b[3]+$a[2]*$b[6];
+    $c[1]=$a[0]*$b[1]+$a[1]*$b[4]+$a[2]*$b[7];
+    $c[2]=$a[0]*$b[2]+$a[1]*$b[5]+$a[2]*$b[8];
+    $c[3]=$a[3]*$b[0]+$a[4]*$b[3]+$a[5]*$b[6];
+    $c[4]=$a[3]*$b[1]+$a[4]*$b[4]+$a[5]*$b[7];
+    $c[5]=$a[3]*$b[2]+$a[4]*$b[5]+$a[5]*$b[8];
+    $c[6]=$a[6]*$b[0]+$a[7]*$b[3]+$a[8]*$b[6];
+    $c[7]=$a[6]*$b[1]+$a[7]*$b[4]+$a[8]*$b[7];
+    $c[8]=$a[6]*$b[2]+$a[7]*$b[5]+$a[8]*$b[8];
+    return@c;
+}
+
+sub PrintScalar{
+    if($#_-1){die"Wrong number of arguments passed to PrintScalar\n"}
+    printf STDERR "%20s:",$_[0];my@a=@_[1..1];for$j(0..0){printf " %10.5f",shift@a}print"\n";
+}
+
+sub PrintVec{
+    if($#_-3){die"Wrong number of arguments passed to PrintVec\n"}
+    printf STDERR "%20s:",$_[0];my@a=@_[1..3];for$j(0..2){printf " %10.5f",shift@a}print"\n";
+}
+
+sub PrintMat{
+    if($#_-9){die"Wrong number of arguments passed to PrintMat\n"}
+    printf STDERR "%s\n",$_[0];my@a=@_[1..9];for$i(0..2){for$j(0..2){printf " %10.5f",shift@a}print"\n"}
+}
+
+# Inverse:
+sub Inv{
+    if($#_-8){die"Wrong number of arguments passed to Inv\n"}
+
+#| a11 a12 a13 |-1             |   a33a22-a32a23  -(a33a12-a32a13)   a23a12-a22a13  |
+#| a21 a22 a23 |    =  1/DET * | -(a33a21-a31a23)   a33a11-a31a13  -(a23a11-a21a13) |
+#| a31 a32 a33 |               |   a32a21-a31a22  -(a32a11-a31a12)   a22a11-a21a12  |
+
+    my@a=@_;
+    my$det=&Det(@a);
+
+    if(!$det){die "Singular matrix obtained! @a\n"}
+    
+    my@b;
+    $b[0]=$a[8]*$a[4]-$a[7]*$a[5];
+    $b[1]=$a[7]*$a[2]-$a[8]*$a[1];
+    $b[2]=$a[5]*$a[1]-$a[4]*$a[2];
+    $b[3]=$a[6]*$a[5]-$a[3]*$a[8];
+    $b[4]=$a[8]*$a[0]-$a[2]*$a[6];
+    $b[5]=$a[2]*$a[3]-$a[0]*$a[5];
+    $b[6]=$a[3]*$a[7]-$a[4]*$a[6];
+    $b[7]=$a[1]*$a[6]-$a[0]*$a[7];
+    $b[8]=$a[0]*$a[4]-$a[1]*$a[3];
+    return(&Scale(@b,1/$det));
+}
+
+# Scale a 3 vector:
+sub ScaleVec{
+    if($#_-3){die"Wrong number of arguments ($#_) passed to ScaleVec\n"}
+    my@a=@_[0..2];for(0..2){$a[$_]*=$_[3]}return@a;
+}
+
+# Scale a 3x3 matrix:
+sub Scale{
+    if($#_-9){die"Wrong number of arguments passed to Scale\n"}
+    my@a=@_[0..8];for(0..8){$a[$_]*=$_[9]}return@a;
+}
+
+# Determinant:
+sub Det{
+    if($#_-8){die"Wrong number of arguments passed to Det\n"}
+    my@a=@_;
+    my$det=abs(
+	       $a[0]*($a[8]*$a[4]-$a[7]*$a[5])
+	       -$a[3]*($a[8]*$a[1]-$a[7]*$a[2])
+	       +$a[6]*($a[5]*$a[1]-$a[4]*$a[2])
+	       );
+    return$det;
+}
+
+# Add two 3-vectors:
+sub AddVec{
+    if($#_-5){die"Wrong number ($#_) of arguments passed to AddVec\n"}
+    my@a=();for(0..2){$a[$_]=($_[$_]+$_[$_+3])}return@a;
+}
+
+# Dot Product of two three-vectors.
+sub dp{
+    if($#_-5){die"Wrong number of arguments passed to dp\n"}
+    my$dp=0;for(0..2){$dp+=($_[$_]*$_[$_+3])}return$dp;
+}
+
+#Cross product of two three vectors:
+sub cp{
+    if($#_-5){die"Wrong number of arguments passed to cp\n"}
+    my@a=();
+    $a[0]=$_[1]*$_[5]-$_[2]*$_[4];
+    $a[1]=$_[2]*$_[3]-$_[0]*$_[5];
+    $a[2]=$_[0]*$_[4]-$_[1]*$_[3];
+    return@a;
+}
+
+#Calculate lattice vectors based upon definition:
+sub GetLatticeDefinitions{
+    my $type=$_[0];
+    my $orient=$_[1];
+    my @p=@_[2..$#_];
+    @p=(@p,0,0,0,0,0);
+    %conventional=(
+        "cub-p" => [$p[0],0,0,
+                0,$p[0],0,
+                0,0,$p[0]],
+        "cub-i" => [$p[0],0,0,
+                0,$p[0],0,
+                0,0,$p[0]],
+        "cub-f" => [$p[0],0,0,
+                0,$p[0],0,
+                0,0,$p[0]],
+        "tet-p" => [$p[0],0,0,
+                0,$p[0],0,
+                0,0,$p[1],
+                $p[0],0,0,
+                0,$p[0],0,
+                0,0,$p[1]],
+        "tet-i" => [$p[0],0,0,
+                0,$p[0],0,
+                0,0,$p[1],
+                $p[0],0,0,
+                0,$p[0],0,
+                0,0,$p[1]],
+        "ort-p" => [$p[0],0,0,
+                0,$p[1],0,
+                0,0,$p[2]],
+        "ort-i" => [$p[0],0,0,
+                0,$p[1],0,
+                0,0,$p[2]],
+        "ort-c" => [$p[0],0,0,
+                0,$p[1],0,
+                0,0,$p[2]],
+        "ort-f" => [$p[0],0,0,
+                0,$p[1],0,
+                0,0,$p[2]],
+        "mon-p" => [$p[0],0,0,
+                0,$p[1],0,
+                $p[2]*sin($p[3]),0,$p[2]*cos($p[3])],
+        "mon-c" => [$p[0],0,0,
+                0,$p[1],0,
+                $p[2]*sin($p[3]),0,$p[2]*cos($p[3])],
+        "trc-p" => [$p[0],0,0,
+                $p[1],$p[2],0,
+                $p[3],$p[4],$p[5]],
+        "trg-r" => [
+            $p[0],$p[1],$p[1],
+            $p[1],$p[0],$p[1],
+            $p[1],$p[1],$p[0],
+            $p[1],0,$p[0],
+            -0.5*$p[1],0.5*sqrt(3)*$p[1],$p[0],
+            -0.5*$p[1],-0.5*sqrt(3)*$p[1],$p[0],
+            $p[0]*sin($p[1]),0,$p[0]*cos($p[1]),
+            -0.5*$p[0]*sin($p[1]),0.5*sqrt(3)*$p[0]*sin($p[1]),$p[0]*cos($p[1]),
+            -0.5*$p[0]*sin($p[1]),-0.5*sqrt(3)*$p[0]*sin($p[1]),$p[0]*cos($p[1]),
+            $p[0]*(1+$p[1]),$p[0]*$p[1],$p[0]*$p[1],
+            $p[0]*$p[1],$p[0]*(1+$p[1]),$p[0]*$p[1],
+            $p[0]*$p[1],$p[0]*$p[1],$p[0]*(1+$p[1])
+        ],
+        "hex-p" => [
+            $p[0],0,0,
+            -0.5*$p[0],0.5*sqrt(3)*$p[0],0,
+            0,0,$p[1],
+            0.5*$p[0],-0.5*sqrt(3)*$p[0],0,
+            0.5*$p[0],0.5*sqrt(3)*$p[0],0,
+            0,0,$p[1]
+            ]
+        );
+
+    if(!exists $conventional{$type}){die "No such thing: $type\n"}
+    return @{$conventional{$type}}[3*($orient-1)..(3*($orient-1)+8)];
+}
+
+######################################################################
+#Return -1 for negative, +1 for positive and zero for zero.
+######################################################################
+sub sign{if($_[0]<0){return-1}elsif($_[0]>0){return 1}else{return 0}}
+######################################################################
+
+######################################################################
+#Get the data files information:
+######################################################################
+sub ScanDataFiles{
+    open IN, "<$files[0]" or die;
+    $getpos=$part=$start_otb_line=0;
+    @species=();
+    while(<IN>){
+    if($getpos==1&&$.==$start_otb_line&&/^\s*%(.*)$/){@species=(split" ",$1)}
+	next if /^\s*[!%]|^\s*$/;
+	if($getpos==1){
+	    if(/end\{pos/){
+		$part++;
+		$getpos=0;
+	    }else{
+		$pos.=$_;
+		next;
+	    }
+	}
+	elsif(/lattice(\{.*\})/){$lattice=$1}
+	elsif(/begin\[atomic\]\{positions\}/){
+	    s/atomic/int-c/;
+	    $getpos=1;
+	    $start_otb_line=$.+1;
+	}
+#	$stuff[$part].=$_;
+    }
+}
+######################################################################
+
+######################################################################
+# Analyse the command line options:
+######################################################################
+sub CommandLine{
+    my@a=@ARGV;
+    while(@a){
+	my$a=shift@a;
+	#Look for data files:
+	if(-e $a){push @files,$a}
+	elsif($a eq "-h"){&Help}
+	elsif($a eq "-c"){$compact=1}
+	elsif($a eq "-r"){$recentre=1}
+	elsif($a eq "-o"){
+	    if($#a>1){
+		for(0..2){$o[$_]=shift@a}
+	    }else{die "Not 3 values for -os\n"}}
+	else{
+	    die "Unknown Command Line option: '$a'\n"}
+    }
+    
+    #Some checks
+    if($#files){
+	printf"Wrong number of files supplied: I need 1 file, you supplied %d!\n",$#files+1;
+	&Help;
+    }
+    for$a(@o){
+	unless(&CheckANumber($a)){
+	    die "Value provided for '-o' ($a) not recognised as a number\n";
+	}
+    }	
+}
+######################################################################
+
+######################################################################
+# Convert lattice information into basis vectors:
+######################################################################
+sub GetLatticeInfo{
+    $type=$params=0;
+    $scale=$orient=1;
+    if($lattice=~/type\s*=\s*([a-z]{3}-[a-z])/){$type=$1;}
+    if($lattice=~/orient\s*=\s*(\d)/){$orient=$1;}
+    if($lattice=~/scale\s*=\s*([\d\s]+)[,\}]/){$scale=$1;}
+    if($lattice=~/params\s*=\s*([-?\d\s\.]+)[,\}]/){$params=$1;}
+    
+    #Check that the minimum info exists:
+    if(!$params&&!$type){
+	die"Can't get lattice info from '$lattice'\n";
+    }
+
+    @vec=&GetLatticeDefinitions($type,$orient,(split" ",$params));
+
+    @scale=split" ",$scale;
+    #Scale not factored into int-c conversion
+
+}
+######################################################################
+
+######################################################################
+# Returns point in terms of the coefs of basis vectors
+######################################################################
+sub ReturnCoefs{
+    if($#_-11){die "Wrong number of terms ($#_!=11) passed to ReturnCoefs\n"}
+    
+    my@v=@_[0..8]; # These are the basis vectors
+    my@p=@_[9..11]; # This is the 'point'
+    my@a=();
+    my@rhs=();
+    
+    #First generate the vi.vj matrix:
+    $a[0]=&dp(@v[0..2],@v[0..2]);
+    $a[1]=&dp(@v[0..2],@v[3..5]);
+    $a[2]=&dp(@v[0..2],@v[6..8]);
+    $a[3]=&dp(@v[3..5],@v[0..2]);
+    $a[4]=&dp(@v[3..5],@v[3..5]);
+    $a[5]=&dp(@v[3..5],@v[6..8]);
+    $a[6]=&dp(@v[6..8],@v[0..2]);
+    $a[7]=&dp(@v[6..8],@v[3..5]);
+    $a[8]=&dp(@v[6..8],@v[6..8]);
+
+    #Then generate the vi.p:
+    $rhs[0]=&dp(@v[0..2],@p);
+    $rhs[1]=&dp(@v[3..5],@p);
+    $rhs[2]=&dp(@v[6..8],@p);
+    
+    my @c=&MatVecMult(&Inv(@a),@rhs);
+
+    my @e=&Inv(@a);
+
+    my @d=&MatMult(@e,@a);
+   
+    return @c;
+}
+######################################################################
+
+######################################################################
+sub Defaults{
+    $recentre=1;
+    $compact=0;
+    @o=(0,0,0);
+}
+######################################################################
+
+######################################################################
+# Routines to check that strings are numbers:
+######################################################################
+sub CheckANumber{$n=$_[0];if($n=~/^-?(\d+\.?\d*|\.\d+)$/){return 1}else{return 0}}
+sub CheckAPositiveNumber{$n=$_[0];if($n=~/^(\d+\.?\d*|\.\d+)$/){return 1}else{return 0}}
+sub CheckAnInteger{$n=$_[0];if($n=~/^-?\d+$/){return 1}else{return 0}}
+sub CheckAPositiveInteger{$n=$_[0];if($n=~/^\d+$/){return 1}else{return 0}}
+######################################################################
+
+######################################################################
+sub Help{
+    print "otb2intc usage:\n\totb2intp [-h] [-c] [-r] [-o # # #] <AIMPRO DATA FILE>\n\nThis program takes an AIMPRO data file with positions in atomic units and rejigs the otb into an int-c form\n\nOptions:\n\t-h\t\tHelp info\n\t-c\t\tCompact positions by displacing into parallelapiped volume\n\t-r\t\tRecentre origin to specified position with '-o' option (currently on by default to center origin on 0 0 0)\n\t-o # # #\tSpecified origin for the cell\n\nIf present % species1 species2... comment from dat file is written to otb.intc file\n\nSubsequent use of gres -anal recommend to calculate neighbour map\n\nJPG Sept 2011 - updated AGC April 2025\n\n";
+    exit;
+}
+######################################################################
