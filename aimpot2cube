@@ -73,10 +73,10 @@ def read_commmand_line() -> str:
     global verbose_output
 
     parser = argparse.ArgumentParser(
-                    prog = "regGridPlot",
+                    prog = "aimpot2cube",
                     formatter_class=argparse.RawDescriptionHelpFormatter,
-                    usage = "regGridPlot [options] [input_file]",
-                    description = "Plot a regular grid for the AIMPRO potential job.\n\nAIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html",
+                    usage = "aimpot2cube [options] <AIMPRO_output_file>]",
+                    description = "Pass the output of an AIMPRO potential job to the .cbue file format.\n\nAIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html\n\n .cube file format: https://paulbourke.net/dataformats/cube/",
                     epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\nCopyright (c) A Christison 2025 All Rights Reserved.")
 
     parser.add_argument("-v", "--verbose",
