@@ -9,7 +9,8 @@ TODO Add further description here
 CUBE file format documentation: https://paulbourke.net/dataformats/cube/
 
 [options]
--v, --verbose: Enables verbose output.
+-h, --help: display help dialogue
+-v, --verbose: Enables verbose output
 
 AIMPRO_output_file
 Output file from AIMPRO potential job

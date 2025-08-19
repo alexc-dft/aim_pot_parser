@@ -21,7 +21,7 @@ The output pot_file is written to the current working directory
 # Overall usage workflow
 
 1. Generate a pot_file using regGridPlot
-2. Use any2atomic to convert atom postions in dat file to the atomic units reference frame
+2. Use any2apc --atomic to convert atom postions in dat file to the atomic units reference frame
 3. Run a potential job in the AIMPRO code (atomic positons MUST be defined in au)
 4. Use aimpot2cube to pass AIMPRO results into .cube format
 
@@ -35,7 +35,8 @@ AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/
 The output pot_file is written to the current working directory
 
 [options]
--v, --verbose: Enables verbose output.
+-h, --help: display help dialogue
+-v, --verbose: Enables verbose output
 
 [grid_vectors_input_file]
 Specifies the vectors & their repeats defining the grid.
@@ -52,20 +53,27 @@ Vector compoment values must be >= 0.0.
 
 Floats are in 12.6 format.
 
-# any2atomic usage
-any2atomic [options] dat_file
+# any2apc usage
+any2apc [options] [--atomic | --int-p | --int-c] dat_file
 
-This script converts AIMRPO atomic positions using any set of reference vectors to atomic using Jon Goss's gres & InsertOTB Perl scripts.
+This script converts AIMRPO atomic positions using any reference frame to either atomic, int-p or int-c based on user selection, using Jon Goss's gres & InsertOTB Perl scripts.
 
 Atom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html
 
 Perl scripts
 gres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html
-InsertOTB : https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html
-(Copyright (c) J.P. Goss 2015, 2024 All Rights Reserved.)
+InsertOTB: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html
+otb2intp: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/DataFiles.html
+(Copyright (c) J.P. Goss 2024, 2015, 2011 All Rights Reserved.)
 
 [options]
--rb, --retain_bak: Retains backup copy of datafile (dat_file.bak).
+-h, --help: display help dialogue
+-rb, --retain_bak: Retains backup copy of datafile (dat_file.bak)
+
+[--atomic | --int-p | --int-c]
+-a, --atomic: convert to atomic reference frame
+-p, --int-p: convert to int-p reference frame
+-c, --int-c: convert to int-c reference frame
 
 dat_file
 AIMPRO dat file, this must follow the dat.xxx file name convention
@@ -74,7 +82,7 @@ AIMPRO dat file, this must follow the dat.xxx file name convention
 
 The atomic positions in the potential job MUST be defined in au i.e. begin[atomic]{positions} MUST be specified.
 
-any2atomic can be used to convert the atom positions in a dat file to the atomic reference frame from any other reference frame.
+any2apc --atomic can be used to convert the atom positions in a dat file to the atomic reference frame from any other reference frame.
 
 Atom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html
 Potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html
@@ -87,7 +95,8 @@ TODO Add further description here
 CUBE file format documentation: https://paulbourke.net/dataformats/cube/
 
 [options]
--v, --verbose: Enables verbose output.
+-h, --help: display help dialogue
+-v, --verbose: Enables verbose output
 
 AIMPRO_output
 The standard AIMPRO output file

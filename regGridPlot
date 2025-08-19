@@ -13,7 +13,8 @@ The output pot_file is written to the current working directory
 If no input file is specified the default input file from io_params will be used. This file is user editable (advanced: see ./low_level_scripts/python/io_params.py).
 
 [options]
--v, --verbose: Enables verbose output.
+-h, --help: display help dialogue
+-v, --verbose: Enables verbose output
 
 [grid_vectors_input_file]
 Specifies the vectors & their repeats defining the grid.
