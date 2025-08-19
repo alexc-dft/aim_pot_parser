@@ -65,7 +65,7 @@ InsertOTB : https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html
 (Copyright (c) J.P. Goss 2015, 2024 All Rights Reserved.)
 
 [options]
--db, --delete_bak: Deletes backup copy of datafile (dat_file.bak) without this the .bak is retained.
+-rb, --retain_bak: Retains backup copy of datafile (dat_file.bak).
 
 <dat_file>
 AIMPRO dat file, this must follow the dat.xxx file name convention

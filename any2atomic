@@ -14,7 +14,7 @@ InsertOTB : https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html
 (Copyright (c) J.P. Goss 2015, 2024 All Rights Reserved.)
 
 [options]
--db, --delete_bak: Deletes backup copy of datafile (dat_file.bak) without this the .bak is retained.
+-rb, --retain_bak: Retains backup copy of datafile (dat_file.bak).
 
 dat_file
 AIMPRO dat file, this must follow the dat.xxx file name convention
@@ -48,7 +48,7 @@ def read_commmand_line() -> str:
         Errors & exits with message if AIMPRO output file does not match conventional AIM.sh.o* format.
     """
 
-    global delete_bak
+    global retain_bak
 
     parser = argparse.ArgumentParser(
                     prog = "any2atomic",
@@ -57,16 +57,16 @@ def read_commmand_line() -> str:
                     description = "Converts atom positions in an AIMPRO dat file (dat_file) from any reference frame to atomic using gres & InsertOTB.\n\nAtom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html\n\ngres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html\nInsertOTB : https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html\n(Copyright (c) J.P. Goss 2015, 2024 All Rights Reserved.)",
                     epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\nCopyright (c) A Christison 2025 All Rights Reserved.")
 
-    parser.add_argument("-db", "--delete_bak",
+    parser.add_argument("-rb", "--retain_bak",
                         action = "store_true",
-                        help = "delete produced backup of original dat_file (dat_file.bak)")
+                        help = "retain produced backup of original dat_file (dat_file.bak)")
 
     parser.add_argument("dat_file",
                         nargs = 1,
                         help = f"AIMPRO dat file, must follow the dat.xxx file name convention")
 
     args = parser.parse_args()
-    delete_bak = args.delete_bak
+    retain_bak = args.retain_bak
     input_filename = args.dat_file[0]
 
     # Check provided file is valid
@@ -119,8 +119,8 @@ def convert_to_atomic(input_file: str) -> None:
     # Remove temporary xyz & otb files
     subprocess.run(f"rm xyz.{input_file}.all  otb.xyz.{input_file}.all", shell=True, check=True)
 
-    # if global delete_bak flag set, delete bacupk dat file (dat_file.bak)
-    if delete_bak:
+    # if global retain_bak not flag set, delete bacupk dat file (dat_file.bak)
+    if not retain_bak:
         subprocess.run(f"rm {input_file}.bak", shell=True, check=True)
 
 
