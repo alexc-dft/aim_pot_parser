@@ -112,7 +112,7 @@ sub Inv{
     my@a=@_;
     my$det=&Det(@a);
 
-    if(!$det){die "Singular matrix obtained! @a"}
+    if(!$det){die "Singular matrix obtained! @aAre you sure lattice params are correctly defined (i.e. params=)?\n\n"}
     
     my@b;
     $b[0]=$a[8]*$a[4]-$a[7]*$a[5];
