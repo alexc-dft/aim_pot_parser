@@ -9,11 +9,13 @@ if($ARGV[0]=~/^dat/){
 }else{
     $datfile=$ARGV[1];$otbfile=$ARGV[0];
 }
+print STDERR "DATA FILE = $datfile;  OTB FILE = $otbfile\n";
 #Read in the otb:
 open OTB, "<$otbfile" or die;while(<OTB>){$o.=$_}close(OTB);
 #Read in the data file:
 open DAT, "<$datfile" or die;
 $keep=1;
+my $dat="";
 while(<DAT>){
     if(/^\s*%/){}
     elsif(/begin.*\{positions\}/){$dat.=$_;$keep=0}
