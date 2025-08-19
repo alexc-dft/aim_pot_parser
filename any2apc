@@ -2,19 +2,28 @@
 
 # Copyright (c) A Christison 2025 All Rights Reserved.
 
-"""any2atomic [options] <dat_file>
+"""any2atomic [options] (--atomic | --intp | --intc) dat_file
 
-This script converts AIMRPO atomic positions using any set of reference vectors to atomic using Jon Goss's gres & InsertOTB Perl scripts.
+This script converts AIMRPO atomic positions using any reference frame to either atomic, int-p or int-c based on user selection, using Jon Goss's gres & InsertOTB Perl scripts.
 
 Atom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html
 
 Perl scripts
 gres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html
-InsertOTB : https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html
-(Copyright (c) J.P. Goss 2015, 2024 All Rights Reserved.)
+InsertOTB: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html
+otb2intp: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/DataFiles.html
+(Copyright (c) J.P. Goss 2024, 2015, 2011 All Rights Reserved.)
 
 [options]
--rb, --retain_bak: Retains backup copy of datafile (dat_file.bak).
+-h, --help: display help dialogue
+-rb, --retain_bak: Retains backup copy of datafile (dat_file.bak)
+
+(--atomic | --intp | --intc)
+-a, --atomic: convert to atomic reference frame
+-p, --intp: convert to int-p reference frame
+-c, --intc: convert to int-c reference frame
+
+The above options are mutually exclusive and required.
 
 dat_file
 AIMPRO dat file, this must follow the dat.xxx file name convention
@@ -26,14 +35,17 @@ import fnmatch
 import os
 
 # Module development info
-VERSION_NUMBER = "0.1"
+VERSION_NUMBER = "0.2"
 VERSION_DATE = "19/08/2025"
 AUTHORS = "Alex Christison"
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
 # Perl script path details
-GRES_PATH = os.path.dirname(__file__) + "/low_level_scripts/perl/gres"
-INSTEROTB_PATH = os.path.dirname(__file__) + "/low_level_scripts/perl/InsertOTB"
+PERL_PATH = os.path.dirname(__file__) + "/low_level_scripts/perl"
+GRES_PATH = PERL_PATH + "/gres"
+CINSERTOTB_PATH = PERL_PATH + "/cInsertOTB"
+COTB2INTP_PATH = PERL_PATH + "/cotb2intp"
+COTB2INTC_PATH = PERL_PATH + "/cotb2intc"
 
 def read_commmand_line() -> str:
     """Gets input filename,dat_file must follow the dat.xxx file name convention
@@ -49,18 +61,31 @@ def read_commmand_line() -> str:
         Errors & exits with message if AIMPRO output file does not match conventional AIM.sh.o* format.
     """
 
-    global retain_bak
+    global retain_bak, do_atomic, do_intp, do_intc
 
     parser = argparse.ArgumentParser(
                     prog = "any2atomic",
                     formatter_class=argparse.RawDescriptionHelpFormatter,
-                    usage = "any2atomic [options] <dat_file>",
                     description = "Converts atom positions in an AIMPRO dat file (dat_file) from any reference frame to atomic using gres & InsertOTB.\n\nAtom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html\n\ngres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html\nInsertOTB : https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html\n(Copyright (c) J.P. Goss 2015, 2024 All Rights Reserved.)",
                     epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.")
 
     parser.add_argument("-rb", "--retain_bak",
                         action = "store_true",
-                        help = "retain produced backup of original dat_file (dat_file.bak)")
+                        help = "retain backup of original dat_file (dat_file.bak)")
+
+    group = parser.add_mutually_exclusive_group(required=True)
+
+    group.add_argument("-a", "--atomic",
+                        action = "store_true",
+                        help = "convert to atomic reference frame")
+
+    group.add_argument("-p", "--intp",
+                        action = "store_true",
+                        help = "convert to int-p reference frame")
+
+    group.add_argument("-c", "--intc",
+                        action = "store_true",
+                        help = "convert to int-c reference frame")
 
     parser.add_argument("dat_file",
                         nargs = 1,
@@ -69,6 +94,9 @@ def read_commmand_line() -> str:
     args = parser.parse_args()
     retain_bak = args.retain_bak
     input_filename = args.dat_file[0]
+    do_atomic = args.atomic
+    do_intp = args.intp
+    do_intc = args.intc
 
     # Check provided file is valid
     if not os.path.isfile(input_filename):
@@ -106,16 +134,59 @@ def convert_to_atomic(input_file: str) -> None:
     subprocess.run(f"cp {input_file} {input_file}.bak", shell=True, check=True)
 
     # Convert dat file to xyz
-    subprocess.run(f"{GRES_PATH} -e {input_file}", shell=True, check=True)
+    subprocess.run(f"{GRES_PATH} -e {input_file} 1> /dev/null", shell=True, check=True)
 
     # Convert xyz to otb, positions are now in atomic
-    subprocess.run(f"{GRES_PATH} -x2o xyz.{input_file}.all", shell=True, check=True)
+    subprocess.run(f"{GRES_PATH} -x2o xyz.{input_file}.all 1> /dev/null", shell=True, check=True)
 
     # Insert positions into original dat file
-    subprocess.run(f"{INSTEROTB_PATH} otb.xyz.{input_file}.all {input_file}.bak > {input_file}", shell=True, check=True)
+    subprocess.run(f"{CINSERTOTB_PATH} otb.xyz.{input_file}.all {input_file}.bak > {input_file}", shell=True, check=True)
 
     # Change reference setting in positions to atomic
     subprocess.run(f"sed -i 's/begin\\[.*\\]{{positions}}/begin\\[atomic\\]{{positions}}/g' {input_file}", shell=True, check=True)
+
+    # More steps to do if using internal coordinates
+    if do_intp or do_intc:
+
+        # Separate perl script screen printouts
+        print("")
+
+        if do_intp:
+
+            # Convert atomic to int-p
+            subprocess.run(f"{COTB2INTP_PATH} {input_file}", shell=True, check=True)
+
+            # Separate perl script screen printouts
+            print("")
+
+            # Insert positions into original dat file
+            subprocess.run(f"{CINSERTOTB_PATH} otb.intp {input_file} > {input_file}_tmp", shell=True, check=True)
+
+            # Change reference setting in positions to int-p
+            subprocess.run(f"sed -i 's/begin\\[.*\\]{{positions}}/begin\\[int-p\\]{{positions}}/g' {input_file}_tmp", shell=True, check=True)
+
+            # Remove int-p otb file
+            subprocess.run(f"rm otb.intp", shell=True, check=True)
+
+        elif do_intc:
+
+            # Convert atomic to int-c
+            subprocess.run(f"{COTB2INTC_PATH} {input_file}", shell=True, check=True)
+
+            # Separate perl script screen printouts
+            print("")
+
+            # Insert positions into original dat file
+            subprocess.run(f"{CINSERTOTB_PATH} otb.intc {input_file} > {input_file}_tmp", shell=True, check=True)
+
+            # Change reference setting in positions to int-p
+            subprocess.run(f"sed -i 's/begin\\[.*\\]{{positions}}/begin\\[int-c\\]{{positions}}/g' {input_file}_tmp", shell=True, check=True)
+
+            # Remove int-c otb file
+            subprocess.run(f"rm otb.intc", shell=True, check=True)
+
+        # Remove temporary dat file
+        subprocess.run(f"mv {input_file}_tmp {input_file}", shell=True, check=True)
 
     # Remove temporary xyz & otb files
     subprocess.run(f"rm xyz.{input_file}.all  otb.xyz.{input_file}.all", shell=True, check=True)
@@ -124,6 +195,25 @@ def convert_to_atomic(input_file: str) -> None:
     if not retain_bak:
         subprocess.run(f"rm {input_file}.bak", shell=True, check=True)
 
+    # Separate perl script screen printouts
+    print("")
+
+    # Inform user otb files have been removed to avoid confusion
+    print("Temporary otb files removed\n")
+
+    # Select coordinate type output text
+    if do_atomic:
+        coord_str = "atomic"
+    elif do_intp:
+        coord_str = "int-p"
+    elif do_intc:
+        coord_str = "int-c"
+    else:
+        # We shouldn't ever reach here!
+        text = "ERROR!"
+
+    # Print completion message
+    print(f"Success! Atom positions written to {input_file} in the {coord_str} reference frame")
 
 def main() -> None:
 
