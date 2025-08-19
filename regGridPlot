@@ -56,7 +56,6 @@ def read_commmand_line() -> str:
     Raises:
         Errors & exits with message if incorrect number of args detected.
         Errors & exits with message if provided input file does not exist.
-        Warns if AIMPRO output file does not match conventional AIM.sh.o* format.
     """
     global verbose_output
 

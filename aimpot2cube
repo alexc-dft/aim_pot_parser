@@ -107,9 +107,9 @@ def read_commmand_line() -> str:
     if not os.path.isfile(grid_vec_infile):
         raise FileNotFoundError(f"no such file - '{grid_vec_infile}'")
 
-    # Check if AIMPRO file has correct naming convention, warn if not (are you sure this is an AIMPRO output file)
+    # Check if AIMPRO file has correct naming convention, warn if not
     if not fnmatch.fnmatch(aimpro_infile ,"AIM.sh.o*")
-        raise Warning(f"{aimpro_infile} filename does not match the conventional AIMPRO output filename format (AIM.sh.o*), are you sure it is an AIMPRO output file?")
+        print(f"Warning: {aimpro_infile} filename does not match the conventional AIMPRO output filename format (AIM.sh.o*), are you sure it is an AIMPRO output file?")
 
     if verbose_output:
         print("Verbose output on.\n")
