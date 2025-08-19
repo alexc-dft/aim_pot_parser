@@ -47,10 +47,11 @@ import pandas as pd
 import fnmatch
 import regGridPlot as rgp
 
-#Module development info
+# Module development info
 VERSION_NUMBER = "0.1"
 VERSION_DATE = "15/08/2025"
 AUTHORS = "Alex Christison"
+COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
 def read_commmand_line() -> str:
     """Gets input filename(s).
@@ -77,7 +78,7 @@ def read_commmand_line() -> str:
                     formatter_class=argparse.RawDescriptionHelpFormatter,
                     usage = "aimpot2cube [options] <AIMPRO_output_file>]",
                     description = "Pass the output of an AIMPRO potential job to the .cbue file format.\n\nAIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html\n\n .cube file format: https://paulbourke.net/dataformats/cube/",
-                    epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\nCopyright (c) A Christison 2025 All Rights Reserved.")
+                    epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.")
 
     parser.add_argument("-v", "--verbose",
                         action = "store_true",

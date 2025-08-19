@@ -35,10 +35,11 @@ import os
 import numpy as np
 import io_params
 
-#Module development info
+# Module development info
 VERSION_NUMBER = "0.1"
 VERSION_DATE = "11/08/2025"
 AUTHORS = "Alex Christison"
+COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
 def read_commmand_line() -> str:
     """Gets input filename.
@@ -64,7 +65,7 @@ def read_commmand_line() -> str:
                     formatter_class=argparse.RawDescriptionHelpFormatter,
                     usage = "regGridPlot [options] [input_file]",
                     description = "Plot a regular grid for the AIMPRO potential job.\n\nAIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html",
-                    epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\nCopyright (c) A Christison 2025 All Rights Reserved.")
+                    epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.")
 
     parser.add_argument("-v", "--verbose",
                         action = "store_true",

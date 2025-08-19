@@ -29,6 +29,7 @@ import os
 VERSION_NUMBER = "0.1"
 VERSION_DATE = "19/08/2025"
 AUTHORS = "Alex Christison"
+COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
 # Perl script path details
 GRES_PATH = os.path.dirname(__file__) + "/low_level_scripts/perl/gres"
@@ -55,7 +56,7 @@ def read_commmand_line() -> str:
                     formatter_class=argparse.RawDescriptionHelpFormatter,
                     usage = "any2atomic [options] <dat_file>",
                     description = "Converts atom positions in an AIMPRO dat file (dat_file) from any reference frame to atomic using gres & InsertOTB.\n\nAtom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html\n\ngres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html\nInsertOTB : https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html\n(Copyright (c) J.P. Goss 2015, 2024 All Rights Reserved.)",
-                    epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\nCopyright (c) A Christison 2025 All Rights Reserved.")
+                    epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.")
 
     parser.add_argument("-rb", "--retain_bak",
                         action = "store_true",

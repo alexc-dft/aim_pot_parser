@@ -9,6 +9,12 @@ These can be user reconfigured - recommened only for advanced users.
 
 import os
 
+# Module development info
+VERSION_NUMBER = "0.1"
+VERSION_DATE = "12/08/2025"
+AUTHORS = "Alex Christison"
+COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
+
 # Filename constants
 
 DEFAULT_POT_INPUT_FILENAME = os.path.dirname(__file__) +  "/plot_input/default.in" # Define filepath relative to script location
