@@ -2,7 +2,7 @@
 
 # Copyright (c) A Christison 2025 All Rights Reserved.
 
-"""AIMPRO potential 2 cube passer: aimpot2cube [options] <AIMPRO_output_file> [grid_vectors_input_file]
+"""AIMPRO potential 2 cube passer: aimpot2cube [options] AIMPRO_output_file [grid_vectors_input_file]
 
 TODO Add further description here
 
@@ -11,7 +11,7 @@ CUBE file format documentation: https://paulbourke.net/dataformats/cube/
 [options]
 -v, --verbose: Enables verbose output.
 
-<AIMPRO_output_file>
+AIMPRO_output_file
 Output file from AIMPRO potential job
 
 AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html
@@ -76,7 +76,6 @@ def read_commmand_line() -> str:
     parser = argparse.ArgumentParser(
                     prog = "aimpot2cube",
                     formatter_class=argparse.RawDescriptionHelpFormatter,
-                    usage = "aimpot2cube [options] <AIMPRO_output_file>]",
                     description = "Pass the output of an AIMPRO potential job to the .cbue file format.\n\nAIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html\n\n .cube file format: https://paulbourke.net/dataformats/cube/",
                     epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.")
 
@@ -84,7 +83,7 @@ def read_commmand_line() -> str:
                         action = "store_true",
                         help = "turn on verbose output mode")
 
-    parser.add_argument("aimpro_outfile",
+    parser.add_argument("aimpro_output_file",
                         nargs = 1,
                         help = "the AIM.sh.o* output file from an AIMPRO potential job")
 
@@ -95,7 +94,7 @@ def read_commmand_line() -> str:
 
     args = parser.parse_args()
     verbose_output = args.verbose
-    aimpro_infile = aimpro_outfile_input
+    aimpro_infile = aimpro_output_file
     grid_vec_infile = args.grid_vectors_input_file
 
     # Check provided files are valid
@@ -105,7 +104,7 @@ def read_commmand_line() -> str:
         raise FileNotFoundError(f"no such file - '{grid_vec_infile}'")
 
     # Check if AIMPRO file has correct naming convention, warn if not
-    if not fnmatch.fnmatch(aimpro_infile ,"AIM.sh.o*")
+    if not fnmatch.fnmatch(aimpro_infile ,"AIM.sh.o*"):
         print(f"Warning: {aimpro_infile} filename does not match the conventional AIMPRO output filename format (AIM.sh.o*), are you sure it is an AIMPRO output file?")
 
     if verbose_output:

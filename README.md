@@ -5,7 +5,7 @@ Please acknowledge the code author(s) (Alex Christison) in works arising from th
 
 Copyright (c) A Christison 2025 All Rights Reserved.
 
-N.B. recurse submodules must be enabled to properly clone this repo: git clone --recurse-submodules <repo_address>
+N.B. recurse submodules must be enabled to properly clone this repo: git clone --recurse-submodules repo_address
 
 All routines & classes must have Google style docstrings: https://google.github.io/styleguide/pyguide.html
 
@@ -53,7 +53,7 @@ Vector compoment values must be >= 0.0.
 Floats are in 12.6 format.
 
 # any2atomic usage
-any2atomic [options] <dat_file>
+any2atomic [options] dat_file
 
 This script converts AIMRPO atomic positions using any set of reference vectors to atomic using Jon Goss's gres & InsertOTB Perl scripts.
 
@@ -67,7 +67,7 @@ InsertOTB : https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html
 [options]
 -rb, --retain_bak: Retains backup copy of datafile (dat_file.bak).
 
-<dat_file>
+dat_file
 AIMPRO dat file, this must follow the dat.xxx file name convention
 
 # AIMPRO dat file & job docs
@@ -80,7 +80,7 @@ Atom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restri
 Potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html
 
 # aimpot2cube usage
-aimpot2cube [options] <AIMPRO_output> [grid_vectors_input_file]
+aimpot2cube [options] AIMPRO_output [grid_vectors_input_file]
 
 TODO Add further description here
 
@@ -89,7 +89,7 @@ CUBE file format documentation: https://paulbourke.net/dataformats/cube/
 [options]
 -v, --verbose: Enables verbose output.
 
-<AIMPRO_output>
+AIMPRO_output
 The standard AIMPRO output file
 
 [grid_vectors_input_file]

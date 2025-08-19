@@ -63,7 +63,6 @@ def read_commmand_line() -> str:
     parser = argparse.ArgumentParser(
                     prog = "regGridPlot",
                     formatter_class=argparse.RawDescriptionHelpFormatter,
-                    usage = "regGridPlot [options] [input_file]",
                     description = "Plot a regular grid for the AIMPRO potential job.\n\nAIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html",
                     epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.")
 
