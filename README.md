@@ -54,7 +54,7 @@ Vector compoment values must be >= 0.0.
 Floats are in 12.6 format.
 
 # any2apc usage
-any2apc [options] [--atomic | --int-p | --int-c] dat_file
+any2apc [options] (--atomic | --intp | --intc) dat_file
 
 This script converts AIMRPO atomic positions using any reference frame to either atomic, int-p or int-c based on user selection, using Jon Goss's gres & InsertOTB Perl scripts.
 
@@ -70,10 +70,12 @@ otb2intp: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/DataFiles.html
 -h, --help: display help dialogue
 -rb, --retain_bak: Retains backup copy of datafile (dat_file.bak)
 
-[--atomic | --int-p | --int-c]
+(--atomic | --intp | --intc)
 -a, --atomic: convert to atomic reference frame
--p, --int-p: convert to int-p reference frame
--c, --int-c: convert to int-c reference frame
+-p, --intp: convert to int-p reference frame
+-c, --intc: convert to int-c reference frame
+
+The above options are mutually exclusive and required.
 
 dat_file
 AIMPRO dat file, this must follow the dat.xxx file name convention
