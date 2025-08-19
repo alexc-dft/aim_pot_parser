@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+
+# Copyright (c) A Christison 2025 All Rights Reserved.
+
+"""any2atomic [options] <dat_file>
+
+This script converts AIMRPO atomic positions using any set of reference vectors to atomic using Jon Goss's gres & InsertOTB Perl scripts.
+
+Atom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html
+
+Perl scripts
+gres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html
+InsertOTB : https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html
+(Copyright (c) J.P. Goss 2015, 2024 All Rights Reserved.)
+
+[options]
+-db, --delete_bak: Deletes backup copy of datafile (dat_file.bak) without this the .bak is retained.
+
+dat_file
+AIMPRO dat file, this must follow the dat.xxx file name convention
+"""
+
+import subprocess
+import argparse
+import fnmatch
+import os
+
+# Module development info
+VERSION_NUMBER = "0.1"
+VERSION_DATE = "19/08/2025"
+AUTHORS = "Alex Christison"
+
+# Perl script path details
+GRES_PATH = os.path.dirname(__file__) + "/low_level_scripts/perl/gres"
+INSTEROTB_PATH = os.path.dirname(__file__) + "/low_level_scripts/perl/InsertOTB"
+
+def read_commmand_line() -> str:
+    """Gets input filename,dat_file must follow the dat.xxx file name convention
+
+    Args:
+        None
+
+    Returns:
+        input_filename: Filename of input file
+
+    Raises:
+        Errors & exits with message if provided input file does not exist.
+        Errors & exits with message if AIMPRO output file does not match conventional AIM.sh.o* format.
+    """
+
+    global delete_bak
+
+    parser = argparse.ArgumentParser(
+                    prog = "any2atomic",
+                    formatter_class=argparse.RawDescriptionHelpFormatter,
+                    usage = "any2atomic [options] <dat_file>",
+                    description = "Converts atom positions in an AIMPRO dat file (dat_file) from any reference frame to atomic using gres & InsertOTB.\n\nAtom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html\n\ngres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html\nInsertOTB : https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html\n(Copyright (c) J.P. Goss 2015, 2024 All Rights Reserved.)",
+                    epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\nCopyright (c) A Christison 2025 All Rights Reserved.")
+
+    parser.add_argument("-db", "--delete_bak",
+                        action = "store_true",
+                        help = "delete produced backup of original dat_file (dat_file.bak)")
+
+    parser.add_argument("dat_file",
+                        nargs = 1,
+                        help = f"AIMPRO dat file, must follow the dat.xxx file name convention")
+
+    args = parser.parse_args()
+    delete_bak = args.delete_bak
+    input_filename = args.dat_file[0]
+
+    # Check provided file is valid
+    if not os.path.isfile(input_filename):
+        raise FileNotFoundError(f"no such file - '{input_filename}'")
+
+    # Check if AIMPRO dat file has correct naming convention, error if not
+    if not fnmatch.fnmatch(input_filename ,"dat") or fnmatch.fnmatch(input_filename ,"dat.*"):
+        raise Exception(f"incorrect file name convention - {input_filename} filename does not match AIMPRO dat file naming convention (dat.XXX)")
+
+    return input_filename
+
+def convert_to_atomic(input_file: str) -> None:
+    """Converts positions in AIMPRO dat file to atomic
+
+    Args:
+        input_file: AIMPRO dat file
+
+    Returns:
+        None
+
+    Raises:
+        None
+    """
+
+    # Ensure we are able to create the xyz & otb files we temporarily need, backup exisitng ones and inform user
+    if (os.path.isfile(f"xyz.{input_file}.all")):
+        subprocess.run(f"mv xyz.{input_file}.all xyz.{input_file}.all.bak", shell=True, check=True)
+        print(f"Warning: exisitng xyz.{input_file}.all moved to xyz.{input_file}.all.bak\n")
+
+    if (os.path.isfile(f"otb.xyz.{input_file}.all")):
+        subprocess.run(f"mv otb.xyz.{input_file}.all otb.xyz.{input_file}.all.bak", shell=True, check=True)
+        print(f"Warning: exisitng otb.xyz.{input_file}.all moved to otb.xyz.{input_file}.all.bak\n")
+
+    # Backup input dat file
+    subprocess.run(f"cp {input_file} {input_file}.bak", shell=True, check=True)
+
+    # Convert dat file to xyz
+    subprocess.run(f"{GRES_PATH} -e {input_file}", shell=True, check=True)
+
+    # Convert xyz to otb, positions are now in atomic
+    subprocess.run(f"{GRES_PATH} -x2o xyz.{input_file}.all", shell=True, check=True)
+
+    # Insert positions into original dat file
+    subprocess.run(f"{INSTEROTB_PATH} otb.xyz.{input_file}.all {input_file}.bak > {input_file}", shell=True, check=True)
+
+    # Change reference setting in positions to atomic
+    subprocess.run(f"sed -i 's/begin\\[.*\\]{{positions}}/begin\\[atomic\\]{{positions}}/g' {input_file}", shell=True, check=True)
+
+    # Remove temporary xyz & otb files
+    subprocess.run(f"rm xyz.{input_file}.all  otb.xyz.{input_file}.all", shell=True, check=True)
+
+    # if global delete_bak flag set, delete bacupk dat file (dat_file.bak)
+    if delete_bak:
+        subprocess.run(f"rm {input_file}.bak", shell=True, check=True)
+
+
+def main() -> None:
+
+    # Read cmd line for input file
+    filename = read_commmand_line()
+
+    # Convert positions in dat_file to atomic
+    convert_to_atomic(filename)
+
+if __name__ == "__main__":
+    main()

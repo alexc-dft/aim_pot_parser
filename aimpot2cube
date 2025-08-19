@@ -2,35 +2,31 @@
 
 # Copyright (c) A Christison 2025 All Rights Reserved.
 
-"""AIMPRO potential 2 cube passer: aimpot2cube [options] AIMPRO_output_file [grid_vectors_input_file]
+"""AIMPRO potential 2 cube passer: aimpot2cube [options] <AIMPRO_output_file> [grid_vectors_input_file]
 
 TODO Add further description here
 
-If no grid_vectors_input_file is specified the default input file from io_params will be used. This file is user editable (advanced: see ./low_level_scripts/python/io_params.py).
+CUBE file format documentation: https://paulbourke.net/dataformats/cube/
 
 [options]
 -v, --verbose: Enables verbose output.
 
-AIMPRO_output_file
-
+<AIMPRO_output_file>
 Output file from AIMPRO potential job
 
 AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html
 
 The atomic positions in the potential job MUST be defined in au i.e. begin[atomic]{positions} MUST be specified.
 
-Non au refs can be tranfomed to au as follows:
+any2atomic can be used to convert the atom positions in a dat file to the atomic reference frame from any other reference frame.
 
-$ cp dat dat_old
-$ gres -e dat
-$ gres -x2o xyz.dat.all
-$ InsertOTB otb.xyz.all dat_old > dat
-(Optional) $ rm dat_old
-Finally set REF to atomic in begin[REF]{positions} in dat file using your favourite text editor.
+Atom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html
 
 [grid_vectors_input_file]
 
 NOTE: this file must be the same as the one used by regGridPlot
+
+If no grid_vectors_input_file is specified the default input file from io_params will be used. This file is user editable (advanced: see ./low_level_scripts/python/io_params.py).
 
 Specifies the vectors & their repeats defining the grid.
 The file is delimited by whitespace and has the format:

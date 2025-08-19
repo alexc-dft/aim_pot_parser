@@ -1,0 +1,3960 @@
+#!/usr/bin/perl
+
+# Copyright (c) J.P. Goss 2024 All Rights Reserved.
+
+use Math::Trig;
+require 5;
+
+#Always start with the defaults:
+&Defaults;
+
+#The following line should be commented out to suppress immediate
+#debugging output...
+#$option{$invocation}{'debug'}[0]++;
+
+#Get the command line options:
+&SetSwitches;
+&ProcessSwitches;
+
+#Special cases:
+if($invocation eq "o2x"||$options{$invocation}{'o2x'}[0]){&o2x($files[0]);&Exit()}
+elsif($invocation eq "x2o"||$options{$invocation}{'x2o'}[0]){&x2o($files[0]);&Exit()}
+elsif($options{$invocation}{'scale'}[0]){&scale($files[0],1);&Exit()}
+elsif($options{$invocation}{'iscale'}[0]){&scale($files[0],-1);&Exit()}
+elsif($invocation eq "analysis"||$options{$invocation}{'anal'}[0]){&anal($files[0]);&Exit()}
+elsif($invocation eq "Homer"){&Homer($files[0]);&Exit()}
+elsif($invocation eq "gres"){
+    
+    # Have we been asked to do something other than analyse dat/res files?
+    if($options{$invocation}{'c'}[0]){&CleanUpDirectory;&Exit}
+    
+    #If we're accumulating Homer data...
+    if($options{$invocation}{"allhomer"}[0]){$allhomerdata=OpenOutput(ALLHOMER,"force new","all",($options{$invocation}{'average'}[0]?"k-av":""),"accumulated homer input file")}
+    
+    
+    # Then for each file, get the appropriate information:
+    for $file (@files){
+	
+	&Initialise();
+	
+	# Try to determine the type of file we're looking at (eg AIMPRO output, xyz, otb, etc)
+	if(&FileType($file) eq "otb"){
+	    OpenInput($file);
+	    while(<RES>){if($.==1&&/\%\s*(.*)$/){$data{"Species"}=$1}elsif(/^\s*\d+\s+(\d+)\s/){push @tmp,$1}}
+	    $n=(sort bynumber @tmp)[$#tmp];
+	    close(RES);
+	    while((split" ",$data{"Species"})<$n){$data{"Species"}.=" X"}
+	    OpenInput($file);
+	    &GetOTB();
+	    if($options{$invocation}{'bond'}[0]){&PrintBondCentreOTBFile()}
+	}elsif(&FileType($file) eq "xyz"){
+	    if($options{$invocation}{'bond'}[0]){}
+	}elsif(&FileType($file) eq"aimpro"){
+	    
+	    #'GRES' results file:
+	    &Gres($file);
+	    
+	    #If necessary, massage the data:
+	    if(!$data{"Num. atoms"}){$data{"Num. atoms"}=$#{$data{'otb'}[1]}+1}
+	    
+	    #Convert lattice definitions into lattice vectors:
+	    if(exists $data{"lattice type"}){
+		if(exists $data{'d-latt P'}){
+		    @{ $data{'d-latt P recon'} }= 
+			LatticeDefinitions(
+			    $data{"lattice type"},
+			    $data{"lattice orient"},
+			    $data{"lattice scale"},
+			    (split" ",$data{"lattice params"})
+			);
+		    my $a=$b=$dp=0;
+		    for(0..8){
+			$a+=(${$data{'d-latt P'} }[$_]*${$data{'d-latt P'} }[$_]);
+			$b+=(${$data{'d-latt P recon'} }[$_]*${$data{'d-latt P recon'} }[$_]);
+			$dp+=(${$data{'d-latt P'} }[$_]*${$data{'d-latt P recon'} }[$_]);
+		    }
+		    $dp/=(sqrt($a)*sqrt($b));
+		    if((1-$dp)>1e-5){
+			printf "Internal check on lattice vectors has failed!\n a^2 = %10.5f, b^2 = %10.5f\n",$a, $b;
+			printf "Dot product = %10.ef\n";$dp;
+			printf "'d-latt P recon' (%d): \n%8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n",1*@{$data{'d-latt P recon'}},@{$data{'d-latt P recon'}};
+			printf "      'd-latt P' (%d): \n%8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n",1*@{$data{'d-latt P'}},@{$data{'d-latt P'}};
+			die;
+			}
+		}elsif(exists $data{"lattice type"}){
+		    @{ $data{'d-latt P'} }= 
+			LatticeDefinitions(
+			    $data{"lattice type"},
+			    $data{"lattice orient"},
+			    $data{"lattice scale"},
+			    (split" ",$data{"lattice params"})
+			);
+		    @{ $data{'d-latt C'} }= @{ $data{'d-latt P'} }[9..17];
+		    @{ $data{'d-latt P'} }= @{ $data{'d-latt P'} }[0..8];
+		}
+	    }elsif(exists $data{"lattice vecs"}){
+		@{ $data{"d-latt P"} }=(split" ",$data{"lattice vecs"});
+		my $a=(split" ",$data{"lattice params"})[0];
+		for(0..8){${$data{"d-latt P"}}[$_]*=$a}
+	    }
+	    
+	    # Having got the information from the results file, output the
+	    # information as requested
+	    &Output();
+	    
+	}
+	
+	# Ensure that all the file handles are closed:
+	&CloseAllFiles();
+    }
+    
+    #If we need to, end the accummulation of homer data:
+    if($options{$invocation}{'allhomer'}[0]){
+	&PrintHOMERFile("allhomerend");
+	&CloseAllFiles();
+    }
+}else{
+    # If I get here then I've done something wrong...
+    print "Apparently I know about '$invocation', but I don't know what to do next...\n";
+    Exit();
+}
+
+# Run any system commands that result:
+&System();
+
+&Exit();
+
+######################################################################
+#### Subroutines #####################################################
+######################################################################
+
+######################################################################
+#### Determine the most likely file type #############################
+######################################################################
+sub FileType{
+    if($#_){die "Wrong number of arguments passed to File Type"}
+    my $f=pop @_;
+    OpenInput($f);
+    my $filetype="aimpro";
+    while(<RES>){
+	next if /[\%\#]/;
+	#If the file starts with a line containing a single integer it's probably an XYZ file:
+	if(/^\s*\d+\s*$/){$filetype="xyz";last}
+	#Does the line conform to OTB?
+	elsif(/^\s*\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+-?(\d+\.?\d*|\.\d+)\s+-?(\d+\.?\d*|\.\d+)\s+-?(\d+\.?\d*|\.\d+)\s*$/){$filetype="otb";last}
+	else{last}
+    }
+    close(RES);
+    return $filetype;
+}
+
+######################################################################
+#### System calls are made from the system hash ######################
+######################################################################
+sub System{
+    my $spawn="";my $len=0;
+    if(@{$system{'xyz'}}&&($options{$invocation}{'xyz'}[0] ne "NONE")){
+	if($options{$invocation}{'xyz'}[0]=~/jmol/){
+	    if($options{$invocation}{'q'}>1){$spawn.="\tSpawning XYZ viewer\n"}
+	    for(@{$system{'xyz'}}){
+		system "$options{$invocation}{'xyz'}[0] $_ &";
+	    }
+	}else{
+	    my $files = (join" ",@{$system{'xyz'}});
+	    if($options{$invocation}{'q'}>1){$spawn.="\tSpawning XYZ viewer\n"}
+	    system "$options{$invocation}{'xyz'}[0] $files &";
+	}
+    }elsif(@{$system{'xyz'}}&&$options{$invocation}{'xyz'}[0] eq "NONE"){
+	print "\a\t*** No XYZ displaying software detected ***\n";
+    }
+    if($options{$invocation}{'xhomer'}[0]&&($options{$invocation}{'postscript'}[0] ne "NONE")){
+	foreach(@{$system{'postscript'}}){
+	    system "$options{$invocation}{'postscript'}[0] $_ &";
+	    $nviewers++;
+	}
+	if($options{$invocation}{'q'}>1){
+	    $spawn.=("\tSpawning ".(($nviewers>1)?"$nviewers ":"")."PS viewer".(($nviewers>1)?"s":"")."\n");
+	}
+    }
+    
+    if($spawn){
+        for(split"\n",$spawn){$len=(length($_)>$len)?length($_):$len}
+        for(2..$len){$stars.="*"}
+        print "\n\t$stars\n$spawn\t$stars\n";
+    }
+}
+
+######################################################################
+#### Initialise for each file ########################################
+######################################################################
+sub Initialise{
+    $FirstSet=$interval=$DipoleSet=0;
+    undef %data;
+    undef %homerdata;
+    %data=(
+	'screened exchange'=>0,
+	'rescaled positions'=>1,
+	'lattice a0'=>1.0,
+	'lattice scale'=>"1 1 1",
+	'Optimise'=>"No optimisation"
+	);
+    return;
+}
+
+######################################################################
+#### Set up the defaults and data hashes #############################
+######################################################################
+sub Defaults{
+    $error=0;
+    #File roots that are recognised:
+    %root=(
+	'PDB'=>'pdb',
+	'SAD'=>'xyz.saddle',
+	'CHA'=>'xyz.latest',
+	'NEB'=>'latest',
+	'ANL'=>'anl',
+	'DAT'=>'dat',
+	'DDS'=>'dds',
+	'DIAGDD'=>'diagdd',
+	'EXPONS' => 'exp',
+	'ALLHOMER' => 'hom',
+	'HOMER' => 'hom',
+	'HOMERPS' => '',
+	'OTB'=>'otb',
+	'SCA'=>'',
+	'REC'=>'ddrestart',
+	'RPT'=>'rpt',
+	'WFN'=>'wfn',
+	'XBS'=>'xbs',
+	'XRPT'=>'xyz.rpt',
+	'XYZ'=>'xyz'
+	);
+    #Constants:
+    %const=(
+	'angtoau'  => 1.88972598857892320310,
+	'autoang'  => 0.529177249,
+	'rateconst'=> 1063056.42795046,
+	'version'  => "6.2n Nov 2016"
+	);
+    #Atomic species data:
+    # - Each entry is [mass, coval rad, vdw rad]
+    # - Mass is proton masses, lengths in Angstrom
+    # - '0.00' entries mark unknown values
+    %Atoms=(
+	Ag => ['107', '1.34', '1.27'],
+	Al => ['027', '1.18', '1.70'],
+	Ar => ['040', '1.74', '1.91'],
+	As => ['075', '1.21', '2.00'],
+	At => ['210', '0.00', '0.00'],
+	Au => ['197', '1.34', '1.37'],
+	B  => ['011', '0.91', '2.08'],
+	Ba => ['138', '0.00', '0.00'],
+	Be => ['009', '0.00', '0.00'],
+	Bi => ['209', '1.52', '2.00'],
+	Br => ['079', '1.14', '1.95'],
+	C  => ['012', '0.77', '1.65'],
+	Ca => ['040', '1.74', '1.18'],
+	Cd => ['114', '1.49', '1.49'],
+	Ce => ['140', '1.76', '1.76'],
+	Cl => ['035', '0.99', '1.80'],
+	Co => ['059', '1.16', '0.88'],
+	Cr => ['052', '1.18', '1.37'],
+	Cs => ['133', '2.35', '1.84'],
+	Cu => ['063', '1.17', '0.72'],
+	Dy => ['164', '1.76', '1.76'],
+	Er => ['166', '1.76', '1.76'],
+	Eu => ['153', '1.76', '1.76'],
+	F  => ['019', '0.72', '1.40'],
+	Fe => ['056', '1.17', '0.90'],
+	Ga => ['069', '1.26', '1.37'],
+	Gd => ['158', '1.76', '1.76'],
+	Ge => ['074', '1.23', '1.25'],
+	H  => ['001', '0.32', '1.25'],
+	He => ['004', '0.31', '1.20'],
+	Hf => ['180', '0.00', '0.00'],
+	Hg => ['202', '1.44', '1.55'],
+	Ho => ['165', '1.76', '1.76'],
+	I  => ['127', '1.33', '2.15'],
+	In => ['115', '1.63', '1.63'],
+	Ir => ['193', '0.00', '0.00'],
+	K  => ['039', '2.03', '1.44'],
+	Kr => ['084', '0.00', '0.00'],
+	La => ['139', '1.76', '1.76'],
+	Li => ['007', '1.23', '1.86'],
+	Lu => ['175', '0.00', '0.00'],
+	Mg => ['024', '1.36', '0.87'],
+	Mn => ['055', '1.17', '1.37'],
+	Mo => ['098', '2.00', '2.00'],
+	N  => ['014', '0.75', '1.50'],
+	Na => ['023', '1.54', '1.12'],
+	Nb => ['093', '0.00', '0.00'],
+	Nd => ['142', '1.76', '1.76'],
+	Ne => ['020', '1.31', '1.60'],
+	Ni => ['058', '1.15', '0.69'],
+	O  => ['016', '0.73', '1.35'],
+	Os => ['192', '0.00', '0.00'],
+	P  => ['031', '1.06', '1.75'],
+	Pb => ['208', '2.15', '2.02'],
+	Pd => ['106', '1.28', '1.63'],
+	Pm => ['145', '1.76', '1.76'],
+	Po => ['210', '0.00', '0.00'],
+	Pr => ['141', '1.76', '1.76'],
+	Pt => ['195', '1.38', '1.38'],
+	Rb => ['085', '2.16', '1.58'],
+	Re => ['187', '0.00', '0.00'],
+	Rn => ['222', '0.00', '0.00'],
+	Ru => ['102', '0.00', '0.00'],
+	S  => ['032', '1.02', '1.85'],
+	Sb => ['121', '1.82', '1.82'],
+	Sc => ['045', '1.44', '1.37'],
+	Se => ['080', '1.17', '2.00'],
+	Si => ['028', '1.16', '1.93'],
+	Sm => ['152', '1.76', '1.76'],
+	Sn => ['120', '1.40', '2.17'],
+	Sr => ['088', '0.00', '0.00'],
+	Ta => ['181', '0.00', '0.00'],
+	Tb => ['159', '1.76', '1.76'],
+	Tc => ['099', '0.00', '0.00'],
+	Te => ['130', '1.37', '2.20'],
+	Th => ['103', '0.00', '0.00'],
+	Ti => ['048', '1.32', '1.37'],
+	Tl => ['205', '0.00', '0.00'],
+	Tm => ['169', '1.76', '1.76'],
+	V  => ['051', '1.22', '1.37'],
+	W  => ['184', '1.30', '2.00'],
+	Xe => ['129', '0.00', '0.00'],
+	Y  => ['089', '0.00', '0.00'],
+	Yb => ['174', '1.76', '1.76'],
+	Zn => ['064', '1.25', '0.74'],
+	Zr => ['090', '1.45', '2.00'],
+	);
+    #Set up a structure for the various options appropriate to
+    #each invocation.  Implicit within are the default values.
+    %options=(
+	gres => {
+	    "USAGE"     => [-1,  "bin", "gres <options> <files>",                                         1],
+	    "allhomer"  => [0,   "bin", "Generate  single homer input for multiple res files",            1],
+	    "anal"      => [0,   "bin", "Analysis of neighbour map for single otb file",                  1],
+	    "average"   => [0,   "bin", "Output homer file with average over k-points",                   1],
+	    "b"         => [0,   "bin", "Band file output with homer option",                             0],
+	    "bond"      => [0,   "bin", "Generate otb with bond-centres as atoms (works on OTB input)",   1],
+	    "bondfudge" => [2.0, "va1", "Multiplicitive factor for xbs bonds (default=2)",                1],
+	    "c"         => [0,   "bin", "Clean up the current directory - rm xyz, otb, etc files",        1],
+	    "centre"    => [0,   "bin", "When repeating unit cell, repeat in both directions",            1],
+	    "d"         => [0,   "bin", "Get the double derivative matrix",                               1],
+	    "D"         => [0,   "bin", "Get the eigenvalues and dipole matrix elements",                 0],
+	    "debug"     => [0,   "bin", "Debugging output switched on",                                   1],
+	    "diagdd"    => [0,   "bin", "Generate input file for diagdd",                                 1],
+	    "e"         => [0,   "bin", "Get atomic positions for xyz animations",                        1],
+	    "einit"     => [0,   "bin", "Get initial xyz structure",                                      1],
+	    "elast"     => [0,   "bin", "Get final xyz structure",                                        1],
+	    "xsaddle"   => [0,   "bin", "Get and open an xyz animation of saddle point NEB optimisation", 1],
+	    "xlatest"   => [0,   "bin", "Get and open an xyz animation of latest NEB chain (latest.xyz)", 1],
+	    "esaddle"   => [0,   "bin", "Get xyz animation of the NEB saddle point optimisation",         1],
+	    "elatest"   => [0,   "bin", "Get xyz animation of the NEB latest chain (latest.xyz)",         1],
+	    "erepeat"   => [0,   "va3", "Repeat a unit cell (xyz) in each lattice direction (3 integers)",1],
+	    "erepeatlast"=> [0,   "va3", "Repeat unit cell (xyz) in lattice drctns (3 integers), last structure",      1],
+	    "expons"    => [0,   "bin", "Get sorted list from exponent optimisation",                     1],
+	    "h"         => [0,   "bin", "Help information",                                               1],
+	    "homer"     => [0,   "bin", "Generate input file to be read into Homer(tm)",                  1],
+	    "homerps"   => [0,   "bin", "Generate Homer input file and PS via Homer(tm)",                 1],
+	    "homo"      => [0,   "bin", "Detect and output the homo (and lumo) evals",                    0],
+	    "include"   => [0,   "va1", "Output the first \# atoms of the final positions in xbs format", 1],
+	    "iscale"    => [0,   "va1", "Scale a single otb file by 1/this factor",                       1],
+	    "n"         => [1.0, "va1", "Refractive index (C: 2.36, Si:3.46)",                            0],
+	    "o"         => [0,   "bin", "Get atomic positions in `OTB' format (-v -> 1st & last iters)",  1],
+	    "o2x"       => [0,   "bin", "o2x emulation -- may be used in conjunction with -s",            1],
+	    "oinit"     => [0,   "bin", "Output initial iteration OTB",                                   1],
+	    "olast"     => [0,   "bin", "Output final iteration OTB",                                     1],
+	    "over"      => [0,   "bin", "Override file preservation",                                     1],
+	    "q"         => [2,   "va1", "Quiet level \# (0-4) (larger numbers provide more output)",      1],
+	    "r"         => [0,   "bin", "Evaluate rates for dipole transitions",                          0],
+	    "repeat"    => [0,   "va3", "Repeat a unit cell (otb) in each lattice direction (3 integers)",1],
+	    "R"         => [0,   "bin", "Reconstruct data file from results file",                        1],
+	    "Rlast"     => [0,   "bin", "Reconstruct data file from results file - use last otb",         1],
+	    "NEB"       => [0,   "bin", "Reconstruct latest.neb file from results file",                  1],
+	    "radfudge"  => [0.5, "va1", "Multiplicitive factor for xbs atom radii (default=0.5)",         1],
+	    "s"         => [0,   "va1", "Species for o2x emulation",                                      1],
+	    "sort"      => [0,   "bin", "Sort expons data by energy",                                     1],
+	    "scale"     => [0,   "va1", "Scale a single otb file by this factor",                         1],
+	    "v"         => [0,   "bin", "Verbose output",                                                 1],
+	    "V"         => [0,   "bin", "Version info",                                                   1],
+	    "wf"        => [0,   "bin", "Get wavefunction coefficients",                                  1],
+	    "wo"        => ['',  "va1", "Working directory for all output files",                         1],
+	    "x"         => [0,   "bin", "Generate xyz animation and open in viewer",                      1],
+	    "pdb"       => [0,,  "bin", "Generate pdb structure",                                         1],
+	    "x2o"       => [0,   "bin", "Generate otb from single xyz file",                              1],
+	    "xyz"       => [0,   "va1", "Set xyz viewer command",                                         1],
+	    "xbs"       => [0,   "bin", "Output final positions in xbs format",                           1],
+	    "xhomer"    => [0,   "bin", "Generate Homer input file and PS via Homer(tm) and view",        1],
+	    "xinit"     => [0,   "bin", "Generate xyz of initial structure and open in viewer",           1],
+	    "xrepeat"   => [0,   "va3", "Repeat & open xyz repeated in each direction (3 integers)",      1],
+	    "xrepeatlast"=> [0,   "va3", "Repeat & open xyz repeated in each direction (3 integers), final structure",      1],
+	    "xlast"     => [0,   "bin", "Generate xyz of final structure and open in viewer",             1]
+	},
+	o2x => {
+	    "USAGE"     => [-1,  "bin", "o2x <-s \"C Si ...\"> file.otb",                                 1],
+	    "debug"     => [0,   "bin", "Debugging output switched on",                                   1],
+	    "h"         => [0,   "bin", "Help information",                                               1],
+	    "s"         => [0,   "va1", "Atomic species",                                                 1],
+	    "over"      => [0,   "bin", "Overwrite existing files",                                       1]
+	},
+	x2o => {
+	    "USAGE"     => [-1,  "bin", "x2o file.xyz",                                                   1],
+	    "bondfudge" => [2.24, "va1", "Multiplicitive fudge factor for bond lengths (default=2.24)",   1],
+	    "debug"     => [0,   "bin", "Debugging output switched on",                                   1],
+	    "h"         => [0,   "bin", "Help information",                                               1],
+	    "over"      => [0,   "bin", "Overwrite existing files",                                       1]
+	},
+	analysis => {
+	    "USAGE"     => [-1,  "bin", "analysis file.otb",                                              1],
+	    "debug"     => [0,   "bin", "Debugging output switched on",                                   1],
+	    "h"         => [0,   "bin", "Help information",                                               1],
+	    "over"      => [0,   "bin", "Overwrite existing files",                                       1],
+	    "bondfudge" => [2.0, "va1", "Multiplicitive fudge factor for bond lengths (default=2)",       1],
+	    "s"         => [0,   "va1", "Atomic species",                                                 1]
+	},
+	Homer => {
+	    "USAGE"     => [-1,  "bin", "Homer <input.file>",                                             1],
+	    "area"      => [0,   "va2","Graph plot area (default 12x20cm) excluding labels",              1],
+	    "debug"     => [0,   "bin", "Debugging output switched on",                                   1],
+	    "h"         => [0,   "bin", "Help information",                                               1],
+	    "sym"       => [9,   "va1", "Symbol size in points (default=9pt)",                            1],
+	    "paper"     => [0,   "va2", "Paper size (default a4=21x29.7cm)",                              1],
+	    "w"         => [5,   "va1", "White space above and below levels (default = 5%)",              1],
+	    "s"         => [5,   "va1", "White space between spectra (default = 5%)",                     1],
+	    "l"         => [1,   "va1", "Linewidth (default = 1)",                                        1],
+	    "d"         => [1,   "va1", "Decimal places (default = 1)",                                   1],
+	    "rep"       => [0,   "bin", "Replicate av to plot up & down",                                 1],
+	    "over"      => [0,   "bin", "Overwrite existing files",                                       1]
+	}	      
+	);
+    
+    #How have I been invoked?
+    &Invocation;
+    
+    #Set XYZ & PS viewing software:
+    &setXYZviewer;
+    &setPSviewer;
+    
+}
+
+######################################################################
+#### Look for the available software for viewing xyz data ############
+######################################################################
+sub setXYZviewer{
+    local(%progs);
+    #Listed here are the known packages for visualisation, along with 
+    #the options required for XYZ format input.  The index preceding
+    #the program name indicates the order of preference should a platform
+    #have more that one available option.
+    %progs=(
+	"5 minimol" =>" ",
+	"2 xmakemol"=>" -f",
+	"3 xmol"    =>" -readFormat xyz",
+	"4 rasmol"  =>" -xyz",
+	"1 jmol"    =>" -g 565x525"
+	);
+    #Assume the worst:
+    $options{$invocation}{'xyz'}[0]="NONE";
+    #Look for the program on the machine and return the complete 
+    #command line:
+    for(sort keys %progs){
+	($p)=/^\d (.*)/;
+	open T, "which $p|";
+	if(($t)=($t=<T>)=~/^(\/.*)\n$/){
+	    $options{$invocation}{'xyz'}[0]=$t.$progs{$_};
+	    last;
+	}
+	close T;
+    }
+}
+
+######################################################################
+#### Look for the available software for viewing ps data #############
+######################################################################
+sub setPSviewer{
+    local(%progs);
+    #Listed here are the known packages for visualisation.
+    #The index preceding
+    #the program name indicates the order of preference should a platform
+    #have more that one available option.
+    %progs=(
+	"5 gv" =>" ",
+	"2 ghostview" =>" ",
+	"3 ggv" =>" ",
+	"4 evince" =>" ",
+	"1 display" =>" ",
+	"6 ghostscript" =>" "
+	);
+    #Assume the worst:
+    $options{$invocation}{'postscript'}[0]="NONE";
+    #Look for the program on the machine and return the complete 
+    #command line:
+    for(sort keys %progs){
+	($p)=/^\d (.*)/;
+	open T, "which $p|";
+	if(($t)=($t=<T>)=~/^(\/.*)\n$/){
+	    $options{$invocation}{'postscript'}[0]=$t.$progs{$_};
+	    last;
+	}
+	close T;
+    }
+}
+
+######################################################################
+#### Check that the invocation is known ##############################
+######################################################################
+sub Invocation{
+    $invocation="";
+    for(keys %options){	$invocation = $_ if $0 =~ /(\/|^)$_$/ }
+    ##############################################
+    ############### QUICK HACK: ##################
+    ##############################################
+    if($0 =~ /(\/|^)new_gres/){$invocation="gres"}
+    if($0 =~ /(\/|^)aimgres/){$invocation="gres"}
+    ##############################################
+    die "Don't know how to run '$0'\n" if !$invocation;
+}
+
+######################################################################
+#### Set switches hash from command line options #####################
+######################################################################
+sub SetSwitches{
+    print "!DBG! In SetSwitches\n" if $options{$invocation}{'debug'}[0];
+    while($_=shift @ARGV){
+	#Switches:
+	if(($a)=$_=~/^-(.*)$/){
+	    die "Unknown option -$a\n" if !CheckOption($a);
+	    if($options{$invocation}{'debug'}[0]){print "!DBG! Option -$a accepted\n";}
+	    die "Can't set option -$a\n" if !SetOption($a);
+	    if($options{$invocation}{'debug'}[0]){print "!DBG! Option -$a set to $options{$invocation}{$a}[0]\n";}
+	}	
+	#Files:
+	else{if(-e $_){push @files,$_;}else{die "No such file: '$_'\n";}}
+    }
+}
+
+######################################################################
+#### Process the switches for combinations and global effects ########
+######################################################################
+sub ProcessSwitches{
+    # Globals:
+    if($options{$invocation}{h}[0]){&Help;}
+    
+    if($invocation eq "gres"){
+	if($options{$invocation}{V}[0]){print "Version $const{'version'}\n";&Exit}
+	
+	# Combinations have extra effects:
+	if($options{$invocation}{o}[0]&&$options{$invocation}{v}[0]){
+	    $options{$invocation}{oinit}[0]=$options{$invocation}{olast}[0]=1;
+	}
+	if($options{$invocation}{v}[0]){$options{$invocation}{q}[0]=4;}
+	
+	# Some options might not require any files:
+	if($options{$invocation}{'c'}[0]){return;}
+	
+	# ...others only want a single xyz or otb file:
+	if($options{$invocation}{'scale'}[0] or
+	   $options{$invocation}{'o2x'}[0] or 
+	   $options{$invocation}{'anal'}[0] or 
+	   $options{$invocation}{'x2o'}[0]){
+	    if($#files){die "The option chosen requires a single file.\n"}
+	    return;
+	}
+	
+	# Otherwise, are there any files?
+	if(!($#files+1)){print "No files provided!\n";&Help}
+    }elsif($invocation eq "o2x"){
+	if(!($#files+1)){print "No files provided!\n";&Help}
+	if($#files){&Help}
+    }elsif($invocation eq "x2o"){
+	if(!($#files+1)){print "No files provided!\n";&Help}
+	if($#files){&Help}
+    }elsif($invocation eq "analysis"){
+	if(!($#files+1)){print "No files provided!\n";&Help}
+	if($#files){&Help}
+    }elsif($invocation eq "Homer"){
+	if(!($#files+1)){print "No files provided!\n";&Help}
+	if($#files){&Help}
+    }
+}
+
+######################################################################
+#### Help output from the options hash ###############################
+######################################################################
+sub Help{
+    print "Version $const{'version'}\nUsage: $options{$invocation}{USAGE}[2]\n$invocation options:\n";
+    $l=0;for(keys %{$options{$invocation}}){
+	next if $_ eq "USAGE";	               #Ignore usage info
+	next if !$options{$invocation}{$_}[3]; #Ignore unsupported options
+	$l=(length($_)>$l)?length($_):$l;
+    } 
+    for(sort keys %{$options{$invocation}}){
+	next if $_ eq "USAGE";	               #Ignore usage info
+	next if !$options{$invocation}{$_}[3]; #Ignore unsupported options
+	print" "x(1+$l-length()),"-$_ ... $options{$invocation}{$_}[2]\n";
+    }
+    &Exit;
+}
+
+######################################################################
+#### Check options hash for the one we've just been handed ###########
+######################################################################
+sub CheckOption{
+    local $option=$_[0];
+    die "Too many arguments given to 'CheckOption'" if $#_;
+    for(keys % { $options{$invocation} }){return 1 if $_ eq $option and $options{$invocation}{$_[0]}[3];}
+    # Check for maintainance flag (0=unsupported, 1=supported)
+    for(keys % { $options{$invocation} }){
+	if ($_ eq $option and !$options{$invocation}{$_[0]}[3]){ die "$_: Option not supported :-)\n";}
+    }
+    return 0;
+}
+
+######################################################################
+#### Toggle binary switch / set a variable switch ####################
+######################################################################
+sub SetOption{
+    die "Too many arguments given to 'SetOption'" if $#_;
+    # Toggle Binary switch:
+    if($options{$invocation}{$_[0]}[1] eq "bin"){$options{$invocation}{$_[0]}[0]=($options{$invocation}{$_[0]}[0])?0:1;return 1;}
+    # Try to set a variable:
+    elsif($options{$invocation}{$_[0]}[1] =~/^va([1-9])$/){
+	#nval is the number of values that follow the command line option:
+	my $nval=$1;$options{$invocation}{$_[0]}[0]="";
+	while($nval){
+	    if($_ = shift @ARGV){
+		die "Argument(s) missing for option -$_[0]?\n" if /^-/;
+		$options{$invocation}{$_[0]}[0].=($_.($nval>1?",":""));
+	    }elsif($_ eq "0"){
+		$options{$invocation}{$_[0]}[0].=("0".($nval>1?",":""));
+	    }else{
+		die"Argument(s) missing for option -$_[0]\n";
+	    }
+	    
+	    --$nval;
+	}
+	return 1;
+    }else{
+	die "\aERROR: Major failure in setting options\n";
+    }
+}
+
+######################################################################
+#### Grep information from results file ##############################
+######################################################################
+sub Gres{
+    #I need the name of the file to gres:
+    if($#_){die "Wrong number of arguments supplied to Gres ($#_!=0)\n";}
+    my $f=$_[0];
+    OpenInput($f);
+    if($options{$invocation}{'debug'}[0]){print "!DBG! At last... GRES\n";}    
+    while(<RES>){
+	# Ignore comment lines:
+	next if /^\s*[%\#!]/;
+	# - Run subroutines first - they may have data at the end that is still needed:
+	if(/\*   dat   \*/){$xxx=1;$_=<RES>;$_=<RES>;next}
+	if(/^[\s\/]*begin\{symmetry\}/){push @ { $data{'Data File'}},$_;$data{'Symmetry'}="Symmetry turned on";&GetSymmetry}	
+	if(/EVAL/){$data{"SX points"}=0}
+	while(/(evals|eval|unoccupied|k-point|kpoint|min energy|max energy|avg energy)/){
+	    if($options{$invocation}{'debug'}[0]){print "!DBG! EVALS: $_\n";}    
+	    last if /Special|folded|reduced|dE_/;
+	    last if /E_sx|E_i/;
+	    last if /WAVEFUNCTION/;
+	    last if /analysis\{/;
+	    $data{"SX points"}++;
+	    my $t=$1;
+	    if(/spin, kpoint :\s+(\d+)\s+(\d+)/){
+		$data{'Num. k-points'}=$2;
+		if($data{'Metallic'}){$data{"mue $1"}=(split)[7]}
+	    }
+	    if(/spin, (min|max|avg)/){
+		$t=$1;$data{"Compressed evals"}=1;
+		if($data{'Metallic'}){
+		    my$s=(split)[5];
+		    if($data{'Metallic'}){$data{"mue $s"}=(split)[6]}
+		}
+	    }
+	    last if /nominally/;
+	    if($t!~/unocc/){$data{'EvalSet'}++;}
+	    &GetEvals($t);	    
+	}
+	if(/(positions\}|positions of atoms|cluster\})/ and !/(end|charge|restart)/){
+	    if(/units=/){$data{"rescaled positions"}=0}
+	    if(/\[atomic\]/){$data{'units'}="Positions given in a.u.";$data{"unit definition"}="atomic";}
+	    elsif(/\[ang/){$data{'units'}="Positions given in Angstrom";$data{"unit definition"}="ang";}
+	    elsif(/\[int-p/){$data{'units'}="Positions given by internal (int-p)";$data{"unit definition"}="int-p"}
+	    elsif(/\[int-c/){$data{'units'}="Positions given by internal (int-c)";$data{"unit definition"}="int-c"}
+	    elsif(/\[internal/){$data{'units'}="Positions given by internal";$data{"unit definition"}="internal"}
+	    elsif(/\[(.*)\]/){$data{'units'}="Positions given by a scaling factor ($1)";$data{"unit definition"}=$1}
+	    elsif(/begin\{pos/i&&!$data{"unit definition"}){$data{'units'}="Initial positions given by a0";$data{"unit definition"}="relative"}
+	    elsif(/begin\{clust/i&&!$data{"unit definition"}){$data{'units'}="Initial positions in a.u.";$data{"unit definition"}="atomic"}
+	    if(/(begin)/){push @ { $data{'Data File'}},$_}
+	    $data{'OTBSet'}++;
+	    if($options{$invocation}{'debug'}[0]){chomp;print "!DBG! Incrementing OTBSet: line $. ($data{'OTBSet'}), '$_'\n";}
+	    &GetOTB();
+	}
+	if(/begin.*\{lattice\}/){push @ { $data{'Data File'}},$_;&GetLattice}
+	while(/wavefunction coef/){$data{'WFNcoef'}++;&GetWFN}
+	while(/DIPOLE/){$data{'DipoleSet'}++;&GetDipole}
+	if(/use_kpar/){$data{use_kpar}=1}
+	if(/row of dynamical matrix/){&GetDDS}
+	if(/parameter\{.*exc\s*=\s*([a-z]+)\s*[\s,\}]/){$data{EXC}=$1}
+	if(/parameter\{.*use_real_space_build.*\}/){$data{RSB}=1}
+	if(/parameter\{.*gvec_cutoff\s*=\s*(.*)?\}/){$data{gvec_cutoff}=$1}
+	if(/begin\{(bhs|pseudo|hghpseudo)\}/){
+	    push @ { $data{'Data File'}},$_;
+	    if($1 eq "bhs"){
+		$data{'Basis type'}="Analytical";
+	    }elsif($1 eq "pseudo"){
+		$data{'Basis type'}="Tabulated";
+	    }elsif($1 eq "hghpseudo"){
+		$data{'Basis type'}="HGH";
+	    }
+	    &GetSpecies;
+	}
+	if(/2DD TO BE CALCULATED/){&Get2DD}
+	if(/begin.*sampling/){push @ { $data{'Data File'}},$_;&GetSampling}
+	if(/The following bond centres have been identified/){&GetBondCentrePositions(0)}
+	if(/the following bond centres have been included/){&GetBondCentrePositions(1)}	
+	##########################################
+	# Now for the easier to get information: #
+	##########################################
+	chomp;
+	# - Restart Dump information
+	if(/DONE READING OF RESTART DUMP  (?)/){$data{'restart read'}=$1}
+	if(/WRITTEN RESTART DUMP/){$data{'restart write'}++}
+	# - TAGE screened exchange
+	if(/Here comes screended EXCHANGE/){$data{"screened exchange"}=1;next}
+	# - The starting banner (some versions)
+	if(/ABINITIO/){$data{"starting banner"}++;next}
+	# - Reproduction of data file:
+	if(/^\s*(\/.*)/||$xxx){push @ { $data{'Data File'}},$_;}  #No next here!!!
+	if(/end\{data\}/){$xxx=0}
+	# - Symmetry: 
+	if(/\s*Isogonal point group: (\w+) /){$data{'Group'}="(".$1.")";next}	
+	if(/\s*MATRICES :\s*(\d+)/){$data{'Symmetry'}="$1 symmetry operation".($1-1?"s":"")." detected".($data{'Group'}?" $data{'Group'}":"").".";next}	
+	if(/symmetry of molecule identified as (\S+)/||/symmetry identified as (\S+)/){$data{'Symmetry'}="Molecular symmetry set to '$1'.";next}
+	if(/spherical top|symmetric top/){$data{'Symmetry'}="\aSYMMETRIC TOP";next}
+	# - Complete output?
+	if(/time : end\s+\d+\s+(\S+)\s/){$data{'Completed'}="Apparently ($1s)";next}
+	# - Self-consistency and total energy:
+	if(/not converged/){$data{'not converged'}.=(($data{'Num. iteration'}?$data{'Num. iteration'}:0)." ");next}
+	if(/mcmax\s+(\d+)/){$data{'mcmax'}=$1;delete $data{'Final energy mc,'};next}
+	if(/point ([12]) /){$data{'point data'}=$1;next}
+	if(/mc,/||/etot,echerr/){
+	    print "!DBG! ETOT located ($_)\n" if $options{$invocation}{'debug'}[0];
+	    if(exists $data{'Final energy egy'}&&!$data{'point data'}){delete $data{'Final energy egy'}}
+	    $data{'Final energy mc,'}=(split)[2];
+	    $data{"echerr $data{'point data'}"}=(split)[3];
+	    next;
+	}
+	if(/egy /){
+	    if($data{'mcmax'}){delete $data{'mcmax'}}
+	    @{$data{'Energy components'}}=(split);
+	    $data{'Final energy egy'}=$data{'Energy components'}[1];
+	    delete $data{'Final energy mc,'};
+	    next;
+	}
+	if(/etot/){@{$data{'Energy terms'}}=(split",",$_);next}
+	if(/ SHIFTT\(ch\/neut\):(.*)$/){$data{'Energy shiftt'}=$1;$data{'Energy shiftt'}=~s/,//g;}
+	if(/ To get backward compatible energy, add: (.*)$/){$data{"backward"}++;$data{"Energy shiftt"}="0 $1";}
+	if(/ To get backward compatible energy, subtract: (.*)$/){$data{"backward"}++;$data{"Energy shiftt"}="$1 0";}
+	# - Optimisation	
+	if(/atoms to be optimised :(.*)$/){$data{'Optimise'}=eval($1)." atoms optimised";next}
+	if(/^\s*latconst/){$data{'Optimise'}="Isotropic lattice constant optimisation";next}
+	if(/all atoms to be optimised/){$data{'Optimise'}="All atoms optimised";next}
+	if(/atoms to be optimised :\s+(\d+)/){my $o;$_="";while(($_=<RES>)=~/^\s*\d+/){$o.=$_};@{$data{'Optimised atoms'}}=split " ",$o;next}
+	if(/optimise\{(.*)\}/){my$o=$1;if($o=~/all/){$data{'Optimise'}="All atoms optimised"}else{@{$data{'Optimised atoms'}}=split " ",$o};next}
+	if(/iteration :/){$data{'Num. iteration'}++;delete $data{'point data'};next}
+	if(/final energy.*\s(\S+)$/){
+	    $data{'Final energy'}=$1;
+	    delete $data{'Final energy egy'};
+	    next;
+	}
+	if(/final gradient.*\s(\S+)$/){$data{'Final gradient'}=$1;next}
+	if(/maximum move\s*(\S+)$/){$data{'Maximum move'}=$1;next}
+	if(/maximum at move \(au\)\s*(\S+)$/){$data{'Maximum move'}=$1;next}
+	if(/maximum lv move \(au\)\s*(\S+)$/){$data{'Maximum lv move'}=$1;next}
+	if(/maximum force.*\s(\S+)$/){$data{'Maximum force'}=$1;next}
+	if(/energy change.*\s(\S+)$/){$data{'Energy change'}=eval($1);next}
+	if(/relative energy.*\s(\S+)$/){$a=$1;$a=~s/D/e/;$data{'Relative energy'}=eval($a);next}
+	if(/( diffusion point |DIF POINT)/){push @{$data{'DiffPoint'}},$data{'OTBSet'};next}
+	if(/^[abc]ucl:(.*)$/){
+	    my $i=$data{'OTBSet'}+1;
+	    push @{$data{"d-latt P $i"}},(split" ",$1);next;
+	}
+	if(/^pars:(.*)$/){
+	    push @{$data{'pars'}[$data{'OTBSet'}]},(split" ",$1);next;
+	}	
+	# - NEB runs
+	if(/Nudged Elastic Band Diffusion Run/){$data{'NEB'}=1;next}
+	if(/Number of Images\s+=\s*(\d+)$/){$data{'NEB nimages'}=$1;next}
+	if(/Number of Passes\s+=\s*(\d+)$/){$data{'NEB passes'}=$1;next}
+	if(/Structural Iters per pass.+=\s*(\d+)$/){$data{'NEB nopt'}=$1;next}
+	if(/Path specification\s+=\s([0-9a-z\-]+)\s*$/){$data{'NEB path'}=$1;next}
+	if(/Climbing band after iter\s+=\s*(-?\d+)$/){$data{'NEB climb'}=$1;next}
+	# - Exponent optimisation
+	if(/optexp\{(.*)\}/){$data{'optexp'}=$1;next}
+	if(/ABC\s+\d+\s+(.*)$/){push @ { $data{'ABC'} },$1;next}
+	# - Number of atoms/types:
+	if(/no. atoms=\s+(\d+)\s+no. types=\s+(\d+)/){$data{'Num. atoms'}=$1;$data{'Num. types'}=$2;next}
+	if(/natom\s+:\s+(\d+)/){$data{'Num. atoms'}=$1;next}
+	if(/nty\s+:\s+(\d+)/){$data{'Num. types'}=$1;next}
+	# - Electronic levels:
+	if(/nkpt\s+:\s+(\d+)/){$data{'Num. k-points'}=$1;next}
+	if(/Processing filling of one-electron states/&&!$data{'Num. k-points'}){$data{'Num. k-points'}=$#{$data{'k-points'}}+1}
+	if(/Filling chosen :\s+(\S+.*)/){$data{"Electronic levels (".++$data{"Spin"}.")"}.=join " ",split " ",$1;next}
+	if(/spin, nfild,npfil,wtpoc :\s+(\d)\s+(\S+.*)/){$data{"Electronic levels ($1)"}.=join " ",split " ",$2;$data{"Spin"}=$1;next}
+	if(/filling.*metallic/){$data{'Metallic'}=1}
+	if(/filling.*unpaired\s*=\s*\?/){$data{'autospin'}=1}
+	if(/filling.*smear=([a-z]*)?[ ,}]/){$data{'Smearing'}=$1}
+	if(/kt=\s*([\d\.]*)/i){$data{'Temperature'}=$1;next}
+	if(/Zero temp/i){$data{'Temperature'}=0;next}
+	if(/finite temperature calculation, beta=\s*(\S*)$/ or /Finite temperature, kT is :\s*(\S+)$/){$data{'Temperature'}=eval($1);next}
+	if(/k point\s+[\d\*]+\s+(\S.*)$/){push @ { $data{'k-points'} },$1;next}
+	if(/of electrons :\s*(\d+)/){$data{'Num. electrons'}=$1;next}
+	if(/NET MAGNETIC MOMENT\s+(-?\d.+) /){$data{'muB'}=$1;next}
+	if(/fix_kpt_occ=FALSE/){$data{'Metallic'}=1;next}
+	# - Evals are stored in the 'data' hash in arrays called 'evals'
+	if(/proton charge=\s*(\S+)$/||/Charged Unit cell.*\s(\S+)$/){$data{'Charge state'}=eval($1);next}
+	# - Atom positions
+	if(/unit\{atomic\}/){$data{'units'}="Positions given in a.u.";$data{"unit definition"}="atomic";next}
+	if(/unit\{ang.*\}/){$data{'units'}="Positions given in Angstrom.";$data{"unit definition"}="angstroms";next}
+	if(/lattice\{(.*)\}/){
+	    $c=$1;
+	    $c=~s/,\s+/,/g;
+	    $c=~s/\s+=/=/g;
+	    my$a;for$a(split ",",$c){my @d=split"=",$a;if($d[0] eq "iorient"){$d[0]="orient"}$data{"lattice $d[0]"}=$d[1]}
+	    if(!$data{"lattice params"}){$data{"lattice params"}=$data{"lattice a0"}}
+	    if(!$data{"lattice orient"}){$data{"lattice orient"}=1}
+	}
+	# - Mulliken stuff and wavefunction coefficients
+	if(/mulliken populations to be found between levels(.*)and(.*)$/){$data{'Mulliken analysis'}=eval($1)." -> ".eval($2);next}
+	# - Energy Double Derivs
+	if(/derivs.*\{(.*)\}/){@ { $data{"dds"} } = (split " ",$1);next}
+	if(/ atoms for which derivatives are to be found :(.*)$/){$data{"N dds"}=$1;next}
+	if(/ derivatives to be found for all atoms/){$data{"N dds"}=$data{'Num. atoms'};next}
+	if(/REC/){$data{'REC'}.=($_."\n");next}
+	# - Restart options:
+	if(/restart\{(.*)\}/){
+	    for (split ",",$1){
+		s/\s//g;
+		if(/^(.*)=(.*)$/){$data{"restart options $1"}=$2;}else{$data{"restart options $_"}=1}
+	    }
+	    next;
+	}
+	# - Basis
+	if(/chden\{\s*(\d+)\s*\}/){$data{'Charge Density option'}=$1;next;}
+	if(/SIZES : (NDIM\/NSP\/NFIT\/NBTOT) :(.*)$/){@a=split"/",lc($1);@b=split" ",$2;for(0..3){$data{"Basis $a[$_]"}=$b[$_];}next}
+	if(($a,$b)=/(nfit,ndim.*):(.*)$/){$a=~s/\s//g;@a=split",",lc($a);@b=split" ",$b;for(0..3){$data{"Basis $a[$_]"}=$b[$_];}next}
+	if(/DFLT/){$data{'Basis BCs'}++;next}
+	if(/energy cutoff :(.*)/){$data{"Ecut"}=eval($1);next}
+	if(/size of fft grid :(.*)/){@ { $data{"FFT grid"}}=(split" ",$1);next}
+	if(/Lattice constant \(au\)\s*(\S+)/){$data{"Optimised a0"}=$1;next}
+	if(/\"Lattice constant\"\s*(\S+)/){$data{"Optimised a0"}=$1;next}
+	if(/Minimum energy \(au\) is(.*)$/){$data{"Optimised energy"}=$1;next}
+	if(/Bulk modulus \(au\)\s*(\S+)/){$data{"Bulk modulus au"}=$1;next}
+	if(/Bulk modulus \(SI\)\s*(\S+)/){$data{"Bulk modulus SI"}=$1;next}
+	if(/A PROBLEM WAS DETECTED IN DIAGONALISATION/){$data{"DIIS warning"}++;next}
+	# Lattice definition given during output	
+	if(/^\s*unit vectors/){&GetLatticeVectors("P")}
+	if(/^\s* CC unit vectors/){&GetLatticeVectors("C")}
+	# NEB data
+	if(/\s\d+\s+ichain/){
+	    &GetNEBimage(
+			 (!exists $data{"NEB iter"}?0:$data{"NEB iter"}+1),
+			 (split)[0]);
+	}
+	if(/s and d/){$data{"NEB iter"}=(split)[9];&GetNEBenergies()}
+	if(/saddle/){$data{"NEB saddle image"}[$data{"NEB iter"}]=(split)[5];&GetNEBsaddle($data{"NEB iter"})}
+    }
+}
+
+######################################################################
+#### Get the NEB energy profile data #################################
+######################################################################
+sub GetNEBenergies{
+    print "!DBG! Getting NEB energies\n" if $options{$invocation}{'debug'}[0];
+    # While one is reading non-blank lines not including 'iter', read data...
+    while(($_=<RES>)!~/iter/&&!eof){ 
+	if(/^\s*[!%]/){next} 
+	else{
+	    s/(\d)-(\d)/$1 -$2/;
+	    push @ { $data{'NEB energies'}[$data{"NEB iter"}] },$_;
+	}
+    } 
+    return;
+}
+
+######################################################################
+#### Get the saddle point structure for a NEB pass ###################
+######################################################################
+sub GetNEBsaddle{
+    print "!DBG! Getting NEB saddle point structure\n" if $options{$invocation}{'debug'}[0];
+    # Add the single 'saddle' OTB structure...
+    while(($_=<RES>)!~/\*\*\*/&&!eof){ 
+	if(/^\s*[!%]/){next} 
+	else{push @ { $data{'NEB saddle'}[$data{"NEB iter"}] },$_}
+    } 
+    return;
+}
+
+######################################################################
+#### Get the full NEB image structure for a NEB pass #################
+######################################################################
+sub GetNEBimage{
+    print "!DBG! Getting NEB chain structure\n" if $options{$invocation}{'debug'}[0];
+    if($#_-1){die "Wrong \# of arguments passed to GetNEBimage\n"}
+    # Add the single 'saddle' OTB structure...
+    my ($iter,$image)=@_;
+    print "!DBG! NEB iter = $iter, image = $image\n" if $options{$invocation}{'debug'}[0];
+    @ { $ { $data{'NEB images'}[$iter] }[$image]}=();
+    while(($_=<RES>)!~/s and d|time/&&!eof){ 
+        chomp;
+	if(/^\s*[!%]/){next} 
+	elsif(/chai/){$image=(split)[0]}
+	else{push @ { $ { $data{'NEB images'}[$iter] }[$image]},$_}
+    } 
+    return;
+}
+
+######################################################################
+#### Rescale initial OTB to atomic units #############################
+######################################################################
+sub ScaleOTB{
+    #
+    #Input parameters are the otb set number (typically 1) and the
+    #scaling factor (typically a0):
+    #
+    if($#_-1){die "Wrong \# of arguments passed to ScaleOTB\n"}
+    my ($iter,$scale)=@_;
+    for(0..$#{$data{'otb'}[$iter]}){
+	my @d=split" ", $ { $data{'otb'}[$iter] } [$_];
+	for(6..8){$d[$_]*=$scale;}
+	${$data{'otb'}[$iter]}[$_]=(join" ",@d);
+    }
+}
+
+######     #    #       ######   ####
+#          #    #       #       #
+#####      #    #       #####    ####
+#          #    #       #            #
+#          #    #       #       #    #
+#          #    ######  ######   ####
+
+######################################################################
+#### Open the results file ###########################################
+######################################################################
+sub OpenInput{
+    #I need to be given the name of the file to open:
+    if($#_){die "Wrong no. of arguments for openinput!\n";}
+    my $file=$_[0];$tag="";
+    my $compressed=0;
+    if($options{$invocation}{'debug'}[0]){print "!DBG! Opening input file\n";}
+    #Check the file name for subdirectories and split off res or rest
+    if($file=~m+^(.*)/(.*)+){$dir="$1/";$file=$2;}else{$dir="./";}
+    if($file=~/^(.*)(\.gz|\.bz2|\.Z)$/){$file=$1;$compressed=$2;}
+    if($file=~/^rest?\.(.*)$/){$tag=$1;}else{$tag=$file;}
+    if($options{$invocation}{'debug'}[0]){
+	print "!DBG! '$dir', '$file', '$compressed'\n";
+    }
+    if($compressed){
+	if($compressed eq ".bz2"){
+	    # Check that the compression method exists:
+	    my $a=`which bzip2`;if($a=~/bzip2 not in/i){die "Cannot bzip2!\n"}
+	    open(RES,"bzip2 -cd $dir$file.bz2|") or die"cannot open $dir$file\n";
+	}else{
+	    my $a=`which gzip`;if($a=~/gzip not in/i){die "Cannot gzip!\n"}
+	    open(RES,"gzip -cd $dir$file|") or die"cannot open $dir$file\n";
+	}
+    }else{
+	open(RES,"$dir$file") or die "cannot open $dir$file\n";
+    }
+    # Record the fact that the file has been opened
+    @ { $OpenFiles{RES} } = ("$file","");
+}
+
+######################################################################
+#### File rename to not overwrite ####################################
+######################################################################
+sub OpenOutput{
+    #
+    # Arguments are it's type (HANDLE), anything to add to the end of
+    # the filename, and a description of the contents.  The hash
+    # %OpenFiles contains this information.
+    #
+    die "Wrong number of arguments passed to OpenOutput\n" if ($#_-4);
+    my ($h,$mode,$body,$t,$d)=@_;
+    #The file type must be registered in the root hash:
+    if(!exists $root{$h}){die "Error in OpenOutput: file type $h not defined in root hash\n";}
+    $f="";
+    #Test to see if one can write files where you are asking:
+    my @destinations=("","$ENV{HOME}/scratch/","/tmp");
+    if($options{$invocation}{'wo'}[0]){unshift @destinations,$options{$invocation}{'wo'}[0]}
+    while(@destinations){
+	$a=shift @destinations;
+	if($a eq ""){$a="."}
+	if(-w "$a"){last}
+	# We've looked at the possibilities and found nowhere to write:
+	if($#destinations==-1){
+	    print "\a\t***Cannot write to any of the suggested directories***\n";
+	    return 0;
+	}
+    }
+    if($a ne $options{$invocation}{'wo'}[0] and $options{$invocation}{'wo'}[0]){
+	print "\t\a***Cannot write to $options{$invocation}{'wo'}[0]: defaulting to $a***\n";
+    }
+    if($a ne "." and !$options{$invocation}{'wo'}[0]){
+	print "\t\a***Cannot write to current directory: defaulting to $a***\n";
+    }
+    if($a eq "."){$options{$invocation}{'wo'}[0]=""}else{$options{$invocation}{'wo'}[0]=$a}
+    #Now build the file name including the path where needed:
+    if($options{$invocation}{'wo'}[0]){$f=$options{$invocation}{'wo'}[0]."/";}
+    if($root{$h}){$f.=$root{$h}.".$body".($t?".$t":"")}else{$f.="$body".($t?".$t":"")}
+    print "!DBG! file: $f, tail: $t, handle: $h, description: $d\n" if $options{$invocation}{debug}[0];
+    #
+    #If the -over flag is used, then do not preserve any existing
+    #files.
+    #
+    if(!$options{$invocation}{'over'}[0] 
+       && $mode ne "force new"
+       && $mode ne "append"
+	){$f.="+"while(-e "$f");}
+    #
+    if($mode eq "new" || $mode eq "force new"){
+	open $h,">$f" or die "can't open $h: $f\n";
+    }elsif($mode eq "append"){
+	open $h,">>$f" or die "can't open $h: $f\n";
+    }
+    chmod 0666, $f;
+    select $h;$|=1;select STDOUT;
+    # Put into record that this file has been opened:
+    @ { $OpenFiles{$h} } = ($f,$d);
+    return $f;
+}
+
+######################################################################
+#### Add information about output file (eg failure to write) #########
+######################################################################
+sub CommentOutput{
+    #
+    # Arguments are the HANDLE and the comment.
+    #
+    die "Wrong number of arguments sent to CommentOutput\n" if ($#_-1);
+    my($h,$c)=@_;
+    if(exists $OpenFiles{$h}){push @ {$OpenFiles{$h}},$c;}
+    else{
+	if(exists $FileComments{$h}){
+	    push @{$FileComments{$h}},$c;
+	}else{
+	    $ { $FileComments{$h}} [0]=$c;
+	}
+    }
+}
+
+######################################################################
+#### Close all open file handles (where appropriate?) ################
+######################################################################
+sub CloseAllFiles{while(($a,$b)=each %OpenFiles){close($a);delete $OpenFiles{$a}}}
+
+######################################################################
+#### Close all open file handles and exit for a clean getaway ########
+######################################################################
+sub Exit{
+    &CloseAllFiles;
+    if($ENV{HOSTNAME}=~/snufkin/){exit}
+    if($ENV{HOSTNAME}=~/rhodes/){exit}
+    if($ENV{HOSTNAME}=~/trueman/){exit}
+    if($ENV{HOSTNAME}=~/polaris/){exit}
+    if($ENV{HOSTNAME}=~/srif/){exit}
+    if($ENV{HOSTNAME}=~/verity/){exit}
+    #if($error){die "\n"}else{exit}
+}
+
+######################################################################
+#### Convert otb to xyz format: ######################################
+######################################################################
+sub scale{
+    if($#_-1){die "Wrong no. of arguments passed to scale\n";}
+    my ($file,$type)=(@_[0..1]);
+    my $otb="";
+    OpenInput($file);
+    if($options{$invocation}{'debug'}[0]){
+	print "!DGB! scale factor = $options{$invocation}{'scale'}[0]\n";
+	print "!DGB! iscale factor = $options{$invocation}{'iscale'}[0]\n";
+    }
+    if(!$options{$invocation}{'iscale'}[0]&&!$options{$invocation}{'scale'}[0]){die;}
+    if($type==-1){$options{$invocation}{'scale'}[0]=1.0/$options{$invocation}{'iscale'}[0]}
+    if($options{$invocation}{'debug'}[0]){print "!DGB! scale factor = $options{$invocation}{'scale'}[0]\n";}
+    if(OpenOutput(SCA,"new",$tag,"scaled","scaled OTB output")){
+	while(<RES>){
+	    if(/^\s*[\#\%]/){$otb.=$_;next}	
+	    else{push @ { $data{'otb'}[0] },$_}
+	}
+	ScaleOTB(0,$options{$invocation}{'scale'}[0]);
+	print SCA $otb;
+	for(@ { $data{'otb'}[0]}){print SCA (FormatOTB($_))}
+	&FileSummary;
+    }
+}
+
+######################################################################
+#### Convert otb to xyz format: ######################################
+######################################################################
+sub o2x{
+    if($#_){die "Wrong no. of arguments passed to o2x\n";}
+    my $file=$_[0];
+    my @species=();
+    OpenInput($file);
+    if(OpenOutput(XYZ,"new",$tag,"","XYZ output")){
+	if($options{$invocation}{'s'}[0]){@species=split" ",$options{$invocation}{'s'}[0]}
+	while(<RES>){
+	    if($.==1&&/^\s*\%\s*([a-zA-Z].*)$/){@species=split" ",$1;next}
+	    elsif(/^\s*[\#\%]/){next}
+	    else{
+		@d=split;
+		if($#d==8){
+		    $natom++;
+		    for(6..8){
+			$d[$_]*=$const{'autoang'};
+		    }
+		    if(!$species[$d[1]-1]){
+			print STDERR "What is species $d[1]?";
+			while(<STDIN>){if(/^([A-Z][a-z]?)$/){$species[$d[1]-1]=$1;last}}
+		    }
+		    $xyz.=FormatXYZ($species[$d[1]-1],@d[6..8]);
+		}else{
+		    die "Error reading $file: is it really otb?\n";
+		}
+	    }
+	}
+	print XYZ $natom."\n\n".$xyz;
+    }
+    &FileSummary;
+}
+
+######################################################################
+#### Analyse otb and output with correct neighbour map: ##############
+######################################################################
+sub anal{
+    if($#_){die "Wrong no. of arguments passed to anal\n";}
+    # We need to know the species for an intelligent neighbour map:
+    my @species=();
+    if($options{$invocation}{'s'}[0]){@species=(split" ",$options{$invocation}{'s'}[0])}
+    my ($header,$n,$file)=("",0,$_[0]);
+    my @r=();
+    OpenInput($file);
+    if(OpenOutput(ANL,"new",$tag,"","neighbour map analysis output")){
+	while(<RES>){
+	    if($.==1&&/^\s*%(.*)$/){@species=(split" ",$1)}
+	    if(/^\s*[%\#]/){$header.=$_;next}
+	    else{
+		@d=split;
+		if($#d==8){
+		    @{$b[++$n]}=@d[0..1];
+		    while(!$species[$d[1]-1]){
+			print "Atom type $d[1]?";chomp($_=<STDIN>);
+			if(/^[a-z]{1,2}$/i){$species[$d[1]-1]=$_;$species[$d[1]-1]=ucfirst($species[$d[1]-1])}
+		    }
+		    push @{$r[$n]},@d[6..8];
+		}else{
+		    die "Error reading $file ($#d): is it really otb?\n";
+		}
+	    }
+	}
+	# Now for the slow bit - what are the neighbours?
+	# (Here we use the atomic radii of the two species multiplied by the
+	# "bondfudge" factor.)
+	for $i (1..$n){
+	    for $j($i+1..$n){
+		my $dist=VectorLength(VectorDiff(@{$r[$i]},@{$r[$j]}));	    
+		my $cutoff=(($Atoms{$species[$b[$i][1]-1]}[1]+$Atoms{$species[$b[$j][1]-1]}[1])
+			    *$options{$invocation}{'bondfudge'}[0]);
+		if($dist<$cutoff){
+		    push @{$neighbours[$i]},"$dist $j";push @{$neighbours[$j]},"$dist $i";
+		}
+	    }	
+	}    
+	if($header ne ""){print ANL $header}else{print ANL "%".(join" ",@species)."\n";}
+	for $i (1..$n){
+	    #We need 4 neighbours:
+	    my @n=(0,0,0,0);for((BubbleSort( @ { $neighbours[$i]}))[0..3]){unshift @n,(split)[1]}
+	    print ANL (FormatOTB(join" ",(++$atom_number),$ { $b[$i]}[1],@n[0..3],@{$r[$i]}));	    
+	}
+    }
+    &FileSummary;
+}
+
+######################################################################
+#### Convert xyz to otb format: ######################################
+######################################################################
+sub x2o{
+    if($#_){die "Wrong no. of arguments passed to x2o\n";}
+    my ($n,$file)=(0,$_[0]);
+    my @r=();
+    OpenInput($file);
+    if(OpenOutput(OTB,"new",$tag,"","OTB output")){
+	while(<RES>){
+	    if($.==1){$natom=$_}
+	    elsif($.==2){next}
+	    else{
+		@d=split;
+		if($#d==3||$#d==4||$#d==6||$#d==7){
+		    if(!exists $type{$d[0]}){$type{$d[0]}=++$ntype;$type2[$ntype]=$d[0]}
+		    $species[++$n]=$d[0];
+		    for(1..3){$d[$_]/=$const{'autoang'}}
+		    push @{$r[$n]},@d[1..3];
+		}else{
+		    die "Error reading $file ($#d): is it really xyz?\n";
+		}
+	    }
+	}
+	# Check that the correct number has been read in:
+	if($n-$natom){die "The XYZ and no. atoms read in does not agree\n";}
+	# Now for the slow bit - what are the neighbours?
+	# (Here we use the atomic radii of the two species multiplied by the
+	# "bondfudge" factor.)
+	# Work out the length-scale for the zoning of the structure...
+	my $rmax=0;
+	for my $i(1..$n){
+	    my$t=$Atoms{$species[$i]}[1];
+	    $rmax=($t>$rmax?$t:$rmax);
+	}
+	$rmax*=2*$options{$invocation}{'bondfudge'}[0];
+        $rmax=($rmax?$rmax:1);
+	
+	# In practice, we compare squares of distances...
+	my $r2max=$rmax*$rmax;
+	
+	my@address=();
+	my@list=();
+	# Allocate each atom to a zone...
+	
+	for $i (1..$n){
+	    my @cell=();
+	    for my $j (0..2){
+		my $r=$r[$i][$j];
+		$cell[$j]=($r>0?int($r/$rmax):int($r/$rmax-1));
+	    }
+	    @{$address[$i]}=@cell;
+	    for my $c1 (-1,0,1){
+		for my $c2 (-1,0,1){
+		    for my $c3 (-1,0,1){
+			push @{$list{$cell[0]+$c1}{$cell[1]+$c2}{$cell[2]+$c3}},$i
+		    }
+		}
+	    }
+	}
+	
+	# Now find the neighbours...
+	for my $atom (1..$n){
+	    my @list=@{$list{$address[$atom][0]}{$address[$atom][1]}{$address[$atom][2]}};
+	    my $m=$#list;
+	    my @r2=();
+	    my %d2=();
+	    for my $i (0..$m){
+		next unless ($atom-$list[$i]); 
+		for my $k (0..2){
+		    $r2[$list[$i]]+=($r[$atom][$k]-$r[$list[$i]][$k])**2;
+		}
+		push @{$d2{$r2[$list[$i]]}},$list[$i];
+	    }
+	    my $r1=$Atoms{$species[$atom]}[1];
+	    for my $j (sort bynumber keys %d2){		
+		my $dist=sqrt($j);
+		for my $k (sort bynumber @{$d2{$j}}){
+		    my $r2=$Atoms{$species[$k]}[1];
+		    my $test=$options{$invocation}{'bondfudge'}[0]
+			*($r1+$r2);
+		    if($test>=$dist){
+			push @{$neighbours[$atom]},"$dist $k";
+		    }
+		}
+	    }
+	}
+	print OTB "%".(join" ",@type2)."\n";
+	for $i (1..$n){
+	    #We need 4 neighbours:
+	    my @tmp=();
+	    my @n=(0,0,0,0);
+	    for((BubbleSort(@{$neighbours[$i]}))[0..3]){push@tmp,(split)[1]}
+	    @n=(@tmp,@n);
+	    print OTB (FormatOTB(join" ",
+				 $i,
+				 $type{$species[$i]},
+				 @n[0..3],
+				 @{$r[$i]})
+		);
+	}
+    }
+    &FileSummary;
+}
+
+######################################################################
+#### Clean up the current directory from root hash info ##############
+######################################################################
+sub CleanUpDirectory{
+    my @t=();
+    #List files and colate those that match a gres output format:
+    open LS, "ls -1|";
+    while(<LS>){
+	chomp;
+	for $k (keys %root){
+	    # We don't delete "dat" files!
+	    next if /^dat\./;
+	    # We do delete everything else:
+	    if($_=~/^$root{$k}\./){chomp;push @t,$_}
+	}
+    }
+    close(LS);
+    #Have any files been found?
+    if($#t!=-1){
+	#List the files found and ask for confirmation to delete:
+	print "Clean up:\n";for(@t){print "\t$_\n"}print "Delete (y/n)?";
+	(<STDIN>=~/y/i)?unlink @t:print "Not removed\n";
+    }else{
+	print "Nothing detected to delete\n";
+    }
+}
+
+####   #    #   #####  #####   #    #   #####
+#    #  #    #     #    #    #  #    #     #
+#    #  #    #     #    #    #  #    #     #
+#    #  #    #     #    #####   #    #     #
+#    #  #    #     #    #       #    #     #
+####    ####      #    #        ####      #
+
+######################################################################
+#### Output the data hash as far as required #########################
+######################################################################
+sub Output{
+    if($options{$invocation}{'debug'}[0]){
+	print "!DBG! Output data hash\n";
+	for(sort keys %data){
+	    print "$_:\t'$data{$_}'\n";
+	}
+    }
+    #Summarise the contents of the file:
+    if($options{$invocation}{'q'}[0]>0){
+	&Summary;
+    }
+    
+    # Output to separate files where appropriate:
+    if($options{$invocation}{'bond'}[0]){&PrintBondCentreOTBFile();}
+    if($options{$invocation}{'d'}[0]){&PrintDDSFile();}
+    if($options{$invocation}{'diagdd'}[0]){&PrintDIAGDDFile();}
+    if($options{$invocation}{'e'}[0]||$options{$invocation}{'x'}[0]){&PrintXYZFile(-1);}
+    if($options{$invocation}{'pdb'}[0]){&PrintPDBFile($data{'OTBSet'});}
+    if($options{$invocation}{'einit'}[0]||$options{$invocation}{'xinit'}[0]){&PrintXYZFile(1);}
+    if($options{$invocation}{'elast'}[0]||$options{$invocation}{'xlast'}[0]){&PrintXYZFile($data{'OTBSet'});}
+    if($options{$invocation}{'esaddle'}[0]||$options{$invocation}{'xsaddle'}[0]){&PrintNEBFile('saddle');}
+    if($options{$invocation}{'elatest'}[0]||$options{$invocation}{'xlatest'}[0]){&PrintNEBFile('latest');}
+    if($options{$invocation}{'expons'}[0]){&PrintEXPONSFile();}
+    if($options{$invocation}{'allhomer'}[0]){&PrintHOMERFile("all");}
+    if($options{$invocation}{'homer'}[0]||$options{$invocation}{'homerps'}[0]||$options{$invocation}{'xhomer'}[0]){$homerfile=&PrintHOMERFile("one");}
+    if($options{$invocation}{'homerps'}[0]||$options{$invocation}{'xhomer'}[0]){&Homer($homerfile);}
+    if($options{$invocation}{'o'}[0]){&PrintOTBFile(-1);}
+    if($options{$invocation}{'oinit'}[0]){&PrintOTBFile(1);}
+    if($options{$invocation}{'olast'}[0]){&PrintOTBFile($data{'OTBSet'});}
+    if($options{$invocation}{'repeat'}[0]||$options{$invocation}{'xrepeat'}[0]||$options{$invocation}{'erepeatlast'}[0]||$options{$invocation}{'xrepeatlast'}[0]||$options{$invocation}{'erepeat'}[0]){@_=();&PrintREPEATFile;}
+    if($options{$invocation}{'R'}[0]){&PrintDATFile(1);}
+    if($options{$invocation}{'NEB'}[0]){&PrintLATESTNEB($data{"NEB iter"});}
+    if($options{$invocation}{'Rlast'}[0]){&PrintDATFile($data{'OTBSet'});}
+    if($options{$invocation}{'xbs'}[0]){&PrintXBSFile();}
+    if($options{$invocation}{'wf'}[0]){&PrintWFNFile();}
+    
+    # End with a summary of the files produced...
+    if((keys %OpenFiles)-1+(keys %FileComments)){&FileSummary();}
+}
+
+######################################################################
+#### Output the pretty formatted info as required ####################
+######################################################################
+
+sub Summary{
+    print "$file:\n";
+    
+    # Atomic info:
+    if($options{$invocation}{'q'}[0]>3){print "\n\t**ATOMS**\n";}
+    if(exists $data{'Species'}){print "\tAtomic types (",$data{'Species'}=~tr/ / /+1,"): $data{'Species'}\n"}
+    if(exists $data{'Num. atoms'}){print "\tThere are $data{'Num. atoms'} atoms.\n"}
+    if(exists $data{'Basis type'}){print "\t$data{'Basis type'} pseudopotentials.\n"}
+    if(exists $data{'Symmetry'}){print "\t$data{'Symmetry'}\n"}
+    
+    # Electronic data:
+    if($options{$invocation}{'q'}[0]>3){print "\n\t**ELECTRONS**\n";}	
+    if(exists $data{'Num. electrons'}){
+	print "\tThere are $data{'Num. electrons'} electrons, spin ",(($data{'Spin'}==1)?"averaged":($data{"autospin"}?"polarised (***magnetic***)":"polarised")),".\n";
+    }
+    if(exists $data{'Spin'}){
+	if($data{'Spin'}==1){
+	    printf "\t\tAv: $data{'Electronic levels (1)'}%s\n",
+	    ($data{'Metallic'}?(sprintf " (metallic %.4f)",$data{'mue 1'}):"");
+	    @esum=split" ",$data{'Electronic levels (1)'};
+	    $esum=$esum[0]*2;
+	    for(2..$esum[1]+1){$esum+=$esum[$_]}
+	    if(abs((eval(sprintf"%.0f",$esum))-$esum)>0.01&&!$data{"Esum format error"}){print"\t\t\a** Warning - non-integer no. of electrons (",abs(int($esum)-$esum),") **\n"}
+	}else{
+	    for(1..2){
+		print "\t\t",(($_-1)?"Dn: ":"Up: ");
+		printf "%s%s%s\n",
+		($data{'autospin'}?
+		 ($data{'muB'}?
+		  ($data{'Num. electrons'}+($_-1?-1:1)*$data{'muB'})*0.5
+		  :
+		  "?"
+		 )
+		 :
+		 $data{"Electronic levels ($_)"}),
+		($data{'Metallic'}?(sprintf " (metallic %.4f)",$data{"mue $_"}):"");
+		@esum=split" ",$data{"Electronic levels ($_)"};
+		$esum=$esum[0];for(2..$esum[1]+1){$esum+=$esum[$_]}
+		if(abs((eval(sprintf"%.0f",$esum))-$esum)>0.01&&!$data{"Esum format error"}){print"\t\t\a** Warning - non-integer no. of electrons (",abs(int($esum)-$esum),") **\n"}
+	    }
+	}
+	#Check for esum error:
+	$ThisK=1;
+	$ThisSpin=1;
+	if(@ { $data{'esum'} }){
+	    for$k(0..  $# { $data{'esum'} }){
+		$_= $ { $data{'esum'} } [$_];
+		if($ThisSpin==1){$esum=$data{'Electronic levels (1)'}}else{$esum=$data{'Electronic levels (2)'}}
+		@esum=split" ",$esum;
+		$esum=$esum[0];if($data{'Spin'}==1){$esum*=2}
+		for(2..$esum[1]+1){$esum+=$esum[$_]}
+		if(abs($_-$esum)>0.001&&!$data{'Metallic'}){
+		    $error++;
+		    printf "\t\a**** Potential error in electron count ($ThisK)! Is this a metallic run? ****\n".
+			"\t**** Found %9.4f electrons where there should be %9.4f! ****\n",$_,$esum;last
+		}
+		$ThisK++;
+		if($ThisK>$data{'Num. k-points'}){
+		    $ThisK=1;
+		    if($data{'Spin'}==2&&$ThisSpin==1){$ThisSpin=2}else{$ThisSpin=1}
+		}
+	    }
+	}
+    }
+    if(exists $data{"restart write"}||exists $data{"restart read"}){
+	print "\tRestart Dump: ";
+	if(exists $data{"restart read"}){print "READ",
+					 ($data{"restart read"}eq"T"?
+					  "(ovrrdpsns)":"");
+					 if(exists $data{"restart write"}){print "/"}
+	}
+	if(exists $data{"restart write"}){print "WRITE"}
+	print "\n";
+    }
+    if(exists $data{"RSB"}){print "\tReal space build (gvec cut-off = ",($data{"gvec_cutoff"}?$data{"gvec_cutoff"}:"default"),")\n"}
+    if(exists $data{'Charge state'}){print "\tCharged system: $data{'Charge state'}\n"}
+    if(exists $data{'EXC'}){print"\tFunctional = $data{EXC}\n"}
+    if(exists $data{'Temperature'}){
+	print "\tElectronic temperature = $data{'Temperature'} eV (".($data{'Smearing'}?$data{'Smearing'}:"Fermi").")".(($data{'Temperature'}>0.1&&$data{'Smearing'}ne"methpax")?"**too high?!**":"")."\n";
+    }
+    print "\tndim = ".($data{'Basis ndim'}?$data{'Basis ndim'}:"?").", nfit = ".($data{'Basis nfit'}?$data{'Basis nfit'}:"?")."\n";
+    if(exists $data{'Charge Density option'}){print "\tCharge density type = $data{'Charge Density option'}\n";}
+    if(exists $data{'Num. bcs'}){
+	print "\t$data{'Num. bcs'} bond-centres detected".
+	    ($data{'Num. bcs'}/$data{'Num. atoms'}>2.2?" (too many?)":"").
+	    ($data{'Num. bcs'}/$data{'Num. atoms'}<1.8?" (too few?)":"").
+	    ".\n";
+    }elsif(exists $data{'Num. bcs detected'}){
+	print "\t$data{'Num. bcs detected'} bond-centres detected [not included]".
+	    ($data{'Num. bcs detected'}/$data{'Num. atoms'}>2.2?" (too many?)":"").
+	    ($data{'Num. bcs detected'}/$data{'Num. atoms'}<1.8?" (too few?)":"").
+	    ".\n";
+    }
+    if(exists $data{'Ecut'}){print "\tEcut = $data{'Ecut'} Ha, FFT grid = ",(join"x",@{$data{'FFT grid'}}),"\n";}
+    
+    # Job info:
+    if($options{$invocation}{'q'}[0]>3){print "\n\t**JOB**\n";}	
+    print "\t$data{'Optimise'}";
+    if(exists $data{'Num. iteration'}){print " ($data{'Num. iteration'} iteration".($data{'Num. iteration'}-1?"s":"").")\n"}else{print ".\n"}
+    if(exists $data{'NEB'}){
+	printf "\tNEB: imgs=%d  passes=%d  nopt=%d  clmb=%d  pth=%s\n",
+	$data{'NEB nimages'},$data{'NEB passes'},$data{'NEB nopt'},$data{'NEB climb'},$data{'NEB path'};
+    }
+    if(exists $data{'dds'}){
+	print "\tEnergy double derivs: ",(join " ",@{$data{'dds'}});
+	if($data{'DDS'}){print " (completed).\n"}
+	elsif($data{'REC'}){
+	    $a=$data{'REC'}=~s/deriv/deriv/g;
+	    printf " (restart, %2.0f%s done).\n",$a*100/3./(split" ",$data{"2DD"}),'%';
+	}
+	else{print " (s'mt went wrong).\n"}
+	    if($data{"2DD"}){
+		my @a=(split" ",$data{"2DD"});
+		my $trip=1;
+		printf "\tUniques: %3d independent atom sites as follows\n\t        ",$#a+1;
+		for(0..$#a){
+		    printf" %3d",$a[$_];
+		    if($_!=$#a && $trip==15){
+			$trip=0;
+			print"\n\t        ";
+		    }
+		    $trip++;
+		}
+		print "\n"
+	    }
+    }
+    if(exists $data{'Mulliken analysis'}){print "\tMulliken analysis, levels $data{'Mulliken analysis'}\n"}
+    if(exists $data{'optexp'}){
+	print "\tExponent optimisation (types $data{'optexp'}): ",$#{$data{'ABC'}}+1," energies\n"
+    }
+    if(exists $data{"Bulk modulus au"}){
+	printf "\tOptimised a0 = %8.6f au (egy=%.5f au)\n\tBulk modulus = %8.6f au (%.1f GPa)\n",$data{'Optimised a0'},
+	$data{"Optimised energy"},$data{'Bulk modulus au'},$data{'Bulk modulus au'}*29410;
+    }
+
+
+    # Lattice data:
+    if(exists $data{'lattice type'}||exists $data{'lattice vecs'}){
+	if($options{$invocation}{'q'}[0]>3){print "\n\t**PERIODICITY**\n";}
+	if($data{"lattice params"}){
+	    $data{'lattice params'}=~s/\s+/ /g;
+	    print "\tInput param(s) = $data{'lattice params'} au.".
+		($data{'lattice type'}?" ($data{'lattice type'})\n":"\n");
+	}else{
+	    print "\tInput a0 = $data{'lattice a0'} au.".
+		($data{'lattice type'}?" ($data{'lattice type'})\n":"\n");
+	}
+	if($data{'lattice vecs'}&&$options{$invocation}{'q'}[0]>2){
+	    print "\tLattice Vectors:\n";
+	    @d=(split" ",$data{'lattice vecs'});
+	    print"\t\ta1 = (",$d[0],",",$d[1],",",$d[2],")\n";
+	    print"\t\ta2 = (",$d[3],",",$d[4],",",$d[5],")\n";
+	    print"\t\ta3 = (",$d[6],",",$d[7],",",$d[8],")\n";
+	}
+	print "\tBZ-sampling: $data{'Num. k-points'} k-point".
+	    (($data{'Num. k-points'}>1)?"s":"").
+	    (($data{'use_kpar'})?" (kpar)":"").
+	    (($data{'k-points'}[0]=~/rel/)?" (rel)":"").
+	    (($options{$invocation}{'q'}[0]>2)?":\n":".\n")
+	    ;
+	if($options{$invocation}{'q'}[0]>2){
+	    for(0..($data{'Num. k-points'}-1)){print (join" ","\t\t",(split" ",$ { $data{'k-points'} }[$_])[0..3],"\n");}
+	}
+	if($#{ $data{'k-points'} }>=$data{'Num. k-points'}){
+	    print "\tBandstructure Sampling (",$#{ $data{'k-points'} }-$data{'Num. k-points'}+1,
+	    " point".(($#{ $data{'k-points'} }-$data{'Num. k-points'}>0)?"s":"").")\n";
+	    if($options{$invocation}{'q'}[0]>3){
+		for($data{'Num. k-points'}..$#{ $data{'k-points'} }){
+		    print (join" ","\t\t",(split" ",$ { $data{'k-points'} }[$_])[0..3],"\n");
+		}
+	    }
+	}
+    }
+    
+    # Energy data:
+    if($options{$invocation}{'q'}[0]>3){print "\n\t**ENERGY**\n";}	
+    if($options{$invocation}{'q'}[0]>2){
+	if(exists $data{'Final energy mc,'}){printf "\tFinal energy = %12.5f au (mid-S/C) [echerr=%.2e]\n",$data{'Final energy mc,'},$data{"echerr $data{'point data'}"}}
+    }
+    if(exists $data{'Final energy egy'}){printf "\tFinal energy = %12.5f au (S/C) [echerr=%.2e]\n",$data{'Final energy egy'},$data{"echerr "}}
+    if(exists $data{'Final energy'}&&!exists $data{'Final energy egy'}){printf "\tFinal energy = %12.5f au (linemin)\n",$data{'Final energy'}}
+    if($options{$invocation}{'q'}[0]>3){
+	if(exists $data{'Energy components'}){
+	    if($data{'Energy components'}[1]==$data{'Final energy'}){
+		for(0..$#{$data{'Energy components'}}-1){
+		    printf "\t      %6s = %12.5f au\n",$data{'Energy terms'}[$_],$data{'Energy components'}[$_+1];
+		}
+	    }}
+    }
+    @d=(split" ",$data{'Energy shiftt'});if(!$#d&&$d[0]=~/\*(.*)/){@d=($1,$1);}
+    my $shifty=($data{"backward"}?0:($d[1]-$d[0]));
+    my $thisenergy=0;
+    if(exists $data{'Final energy'}&&!exists $data{'Final energy egy'}){
+	$thisenergy=$data{'Final energy'};
+    }elsif(exists $data{'Final energy egy'}){
+	$thisenergy=$data{'Final energy egy'};
+    }elsif(exists $data{'Final energy mc,'}){
+	$thisenergy=$data{'Final energy mc,'};
+    }
+    if($#{$data{'NEB energies'}[$data{'NEB iter'}]}>-1){ 
+	printf "\tNEB Energies (iter %d):\n\t\t%4s %12s %9s %9s %9s\n",$data{"NEB iter"},"img","E(Ha)","E_rel(eV)","F_image","F_raw";
+	printf "\t\t%4s %12s %9s %9s %9s\n","====","============","=========","=========","=========";
+	for my $e (@{$data{'NEB energies'}[$data{'NEB iter'}]}){
+	    my@e=(split" ",$e);
+	    printf "\t\t%4d %12.5f %9.5f %9.5f %9.5f %s\n",@e,($e[0]==$data{'NEB saddle image'}[$data{"NEB iter"}]?"<- saddle":"");
+	}
+    }else{
+	printf "\t      SHIFTT(rel) += %9.5f au -> Etot = %11.5f au\n",
+	$shifty,$shifty+$thisenergy;
+    }
+    if($data{"backward"}){
+	printf "\t      Backward compatible energy  -> Ebak = %11.5f au\n",
+	($d[1]-$d[0])+$thisenergy;
+    }
+    
+    if(exists $data{'Energy change'}){
+	print "\t      (last change = $data{'Energy change'} eV, rel egy = $data{'Relative energy'} eV)\n";
+	print "\t      (max. force  =  $data{'Maximum force'} au)\n";
+    }
+    if(!exists $data{'mcmax'}){printf "\a\t*****Not self-consistent  [echerr=%.2e]*****\n",$data{"echerr $data{'point data'}"};$error++}
+    
+    # Error messages:
+    
+    if(exists $data{'not converged'}){print "\a\t*****Not converged iter: $data{'not converged'}*****\n"}
+    if(exists $data{'DIIS warning'}){print "\a\t***** DIIS warning detected in output *****\n"}
+    if($data{'starting banner'}>1){print "\a\t***** $data{'starting banner'} starting banners detected - probable concatenation of outputs *****\n"}
+    
+    # Gres settings:
+    if($options{$invocation}{'q'}[0]>3){print "\n\t**GRES**\n";}
+    if($options{$invocation}{'q'}[0]>2){
+	print "\tXYZ viewer set to '$options{$invocation}{'xyz'}[0]'\n";
+	print "\tFile over-writing ".($options{$invocation}{'over'}[0]?"enabled\n":"supressed\n");
+    }
+    
+    #If there are more files, add a space:
+    if($file ne $files[$#files]){print "\n"}
+    
+}
+
+######################################################################
+#### List the new files generated and their contents: ################
+######################################################################
+sub FileSummary{
+    if($options{$invocation}{'q'}[0]>3){print "\n\t**FILES**\n"}
+    # Work out the space needed for the descriptions:
+    $l=11;
+    for(keys %OpenFiles){
+	next if $_ eq "RES";
+	$l=(length($OpenFiles{$_}[1])>$l)?length($OpenFiles{$_}[1]):$l;
+    }
+    # Print them out:
+    for $k (keys %OpenFiles){
+	next if $k eq "RES";
+	print" "x(8+$l-length($OpenFiles{$k}[1])),"$OpenFiles{$k}[1]: $OpenFiles{$k}[0]\n";
+	# Also output additional comments if they exist:
+	if($#{$OpenFiles{$k}}>1){
+	    for(@ { $OpenFiles{$k} }[2..$#{$OpenFiles{$k}}]){print " "x($l-length($root{$k})-7),"\a!$root{$k} file creation: $_!\n";}
+	}
+    }
+    #Now for comments for files NOT opened:
+    for $k (keys %FileComments){
+	for(@ { $FileComments{$k}}){
+	    print " "x($l-length($root{$k})),"!$root{$k} ($k) file creation: $_!\n";
+	}
+    }
+}
+
+#####   #####      #    #    #   #####
+#    #  #    #     #    ##   #     #
+#    #  #    #     #    # #  #     #
+#####   #####      #    #  # #     #
+#       #   #      #    #   ##     #
+#       #    #     #    #    #     #
+
+######################################################################
+#### Output the reconstructed data file ##############################
+######################################################################
+sub PrintDATFile{
+    print "!DBG! In PrintDATFile\n" if $options{$invocation}{'debug'}[0];
+    #
+    # Argumant passed to this routine is the number of the iteration
+    # for which the otb is placed into the data file.
+    #
+    if($#_){die "Wrong number of argument passed to PrintDATFile\n";}
+    my $iter=$_[0];
+    if(!exists $data{'Data File'}){CommentOutput(DAT,"No data file info detected");return 0;}
+    if(OpenOutput(DAT,"new",$tag,"","Reconstructed dat file")){
+	if($ { $data{"Data File"} }[0] !~/begin\{data\}/){print DAT "/begin{data}\n";}
+	for(@{$data{"Data File"}}){
+	    print DAT $_,"\n";
+	    last if /end\{data\}/;
+	    # Positions:
+	    if(/begin(\[.*\]|)\{(positions|cluster)\}/){
+		for(@ {$data{'otb'}[$iter]}){print DAT (FormatOTB($_));}
+#	    print DAT "\/end{$1}\n";
+	    }
+	    # Basis:
+	    if(/begin\{(bhs|pseudo|hghpseudo)\}/){
+		for(@ {$data{'Basis'}}){print DAT $_;}
+#	    print DAT "\/end{$1}\n";
+	    }			# 
+	    # Lattice:
+            if(/lattice\{/&&@{$data{'pars'}[$iter-1]}){
+       print DAT "! pars at end of run are @{$data{'pars'}[$iter-1]}\n";
+}
+	    if(/begin.*\{lattice\}/){
+            if(@{$data{'pars'}[$iter-1]}){
+       print DAT "! pars at end of run are @{$data{'pars'}[$iter-1]}\n";
+}
+		print DAT $data{'lattice reconstruction'}."\n";
+#	    print DAT "\/end{$1}\n";
+	    }
+	    # Symmetry:
+	    if(/begin\{symmetry\}/){
+		for(@ {$data{'Symmetry input'}}){print DAT $_;}
+		print DAT "\/end{symmetry}\n";
+	    }
+	    # K-point sampling:
+	    if(/begin.*\{sampling\}/){
+		for(@ {$data{'sampling k-points'}}){print DAT (join" ",(split" ",$_)[0..3],"\n");}
+#	    print DAT "\/end{sampling}\n";
+	    }
+	}
+	# Just in case:
+	print DAT "/end{data}\n";
+    }
+}
+
+######################################################################
+#### Output the wavefunction coefficients to file ####################
+######################################################################
+sub PrintWFNFile{
+    print "!DBG! In PrintWFNFile\n" if $options{$invocation}{'debug'}[0];
+    if(!exists $data{'wfn'}){CommentOutput(WFN,"No wfn data found");return 0;}
+    ($n)=($data{'Mulliken analysis'}=~/(\d+)$/);
+    if(OpenOutput(WFN,"new",$tag,"","Wavefunction coefs")){
+	$i=1+$data{'WFNcoef'}-$n*($data{'Electronic levels (2)'}?2:1);
+	while($i-$data{'WFNcoef'}-1){print WFN join "",@ { $data{'wfn'}[$i] };++$i};
+    }
+}
+
+######################################################################
+#### Output the homer input file #####################################
+######################################################################
+sub PrintHOMERFile{
+    if($#_){die "Wrong number of argument passed to PrintHOMERFile\n";}
+    my $mode=$_[0];
+    print "!DBG! In PrintHOMERFile\n" if $options{$invocation}{'debug'}[0];
+    if(!exists $data{'evals'}){CommentOutput(HOMER,"No homer data found");return 0;}
+    my ($header,$evaltop,$evalbottom,$footer)=("/begin{data}\n\n%%Global parameters:\n%/title{}\n%/subtitle{}\n%/energy label{}\n%/world{-20 0}\n%/shift{0}\n%/ticks{1 0.5}\n%/tol{0.05}\n%/labels{bottom}\n%/align{1}\n%/dividers\n%/bands{-1 1}\n%/VBmin{0.5}\n/stagger\n%/average symbol{circle}\n%/empty symbol{circle}\n%/filled symbol{circle}\n%/symbol size{9}\n%/white space{5}\n%/gap space{5}\n%/linewidth{1}\n%/landscape\n%/paper{21 29.7}\n%/area{12 20}\n%/decimals{1}\n%/labelfontsize{24}\n%/tickfontsize{16}\n%/titlefontsize{32}\n%/subtitlefontsize{24}\n\n%%Annotation:\n%/text{1 1 \"(a)\"}\n\n","/begin{evals}\n% /shift{}\n% /label{}\n% /updown{}\n% /rotatelabel\n","\n/end{evals}\n\n","/end{data}\n");    
+    if($mode eq "all" || $mode eq "allhomerend"){
+	$file=OpenOutput(ALLHOMER,"append","all",($options{$invocation}{'average'}[0]?"k-av":""),"accumulated homer input file");
+	$HANDLE=ALLHOMER;
+    }elsif($mode eq "one"){
+	$file=OpenOutput(HOMER,"new",$tag,($options{$invocation}{'average'}[0]?"k-av":""),"homer input file");
+	$HANDLE=HOMER;
+    }
+    if($file && ($mode eq "one"||$mode eq "all")){
+	if($mode eq "one"|| ($mode eq "all" && !$allhomerstart) ){print $HANDLE $header;$allhomerstart++}
+	if($mode eq "all"){print $HANDLE "%hom.$tag:\n"}
+	# Where does one start?
+	my $FirtSet=1;
+	# The number of sets per interation =  #k-points x #spins
+	my $interval=(exists $data{'Num. k-points'}?$data{'Num. k-points'}:1)*$data{"Spin"};
+	if($data{"Compressed evals"}){$interval=3*$data{"Spin"}}
+	if($data{"screened exchange"}){$interval=$data{'SX points'}*3}
+	# If averaging over the k-points is requested, then build the averages:
+	if($options{$invocation}{'average'}[0]&&$data{'Num. k-points'}>1){
+	    my @temp2;shift @{$data{'evals'}};
+	    my ($set,$k)=(1,0);
+	    while(@{$data{'evals'}}){
+		my @temp1 = shift @{$data{'evals'}};
+		$k++;
+		my $wght=(split" ",$ { $data{'k-points'}}[$k-1])[0];
+		for (0..$#{$temp1[0]}) { $ { temp2[$set] }[$_]+=($wght*$temp1[0][$_]);}
+		if($k==$data{'Num. k-points'}){
+		    $k=0;
+		    @{$data{'average evals'}[$set]}=@{$temp2[$set]};
+		    $set++;
+		}
+	    }
+	    @{$data{'evals'}}=@{$data{'average evals'}};
+	    $data{'EvalSet'}=$set-1;
+	    $interval=$data{'Spin'};
+	}
+	# Unless verbose output requested, only the last set is output:
+	if(!$options{$invocation}{'v'}[0]){$FirstSet=$data{'EvalSet'}-$interval+1}
+	# TAGE SX hack:
+	if($data{"screened exchange"}&&!$options{$invocation}{'v'}[0]){
+	    $FirstSet=$data{'EvalSet'}-($data{"SX points"}*3)+1;
+	}
+	if($options{$invocation}{'debug'}[0]){print "!DGB!: Firstset = $FirstSet, Evalset = $data{'EvalSet'}, interval = $interval\n"}
+	# Loop over the sets:
+	for($FirstSet..$data{'EvalSet'}){
+	    # First find what point in the set of evals we're at:
+	    # reduce by modulo $interval.
+	    my ($partial,$a)=(0,$_);
+	    if($data{"screened exchange"}){$a-=$data{"Num. k-points"}*$data{"Spin"}*2}
+	    while($a>$interval){$a-=$interval;}
+	    print $HANDLE $evaltop;
+	    if($data{'Spin'}==2){
+		# Spin polarised:
+		# Is the current set nominally spin up or down?
+		my $spin=(($a>$interval*0.5)?2:1);
+		if($options{$invocation}{'debug'}[0]){print "!DBG! a=$a, spin=$spin\n"}
+		# How many electrons are there?
+		my @e=(split" ",$data{"Electronic levels ($spin)"});
+		my $ne=$e[0];
+		for(1..$e[1]){$ne+=$e[1+$_]}
+		# Is this an integer (near enough)?
+		my $ine=(sprintf "%4.0d",$ne);
+		if(abs($ine-$ne)>0.001){
+		    if($options{$invocation}{'debug'}[0]){print "!DBG! partial occupancy detected: $ine $ne\n";}
+		    $partial=abs($ine-$ne);		
+		}
+		# Which leaves the remainder empty:
+		my $empty=$#{$data{'evals'}[$_]}-$ne+1;
+		# If there's a cock-up, we might spot it:
+		if($empty<0){CommentOutput($HANDLE,"unexpected values in evals");}
+		# Print out the necessary:
+		if($partial){
+		    if($options{$invocation}{'debug'}[0]){print "!DBG! partial occupancy detected: $ine $ne $partial\n";}		
+		    printf $HANDLE "/partial{%d}\n",$partial;
+		}
+		printf $HANDLE "/empty{%d %d}\n",$empty,$empty;
+		print $HANDLE "/".(($spin==2)?"down":"up")."{2}\n";
+	    }else{
+		# Spin averaged:
+		my $empty; # =$#{$data{'evals'}[$_]}-$data{"Electronic levels (1)"}+1;
+		# How many electrons are there?
+#	    my @e=(split" ",$data{"Electronic levels (1)"});
+#	    my $ne=2*$e[0]; # x 2 since spin averaged!
+#	    for(1..$e[1]){$ne+=$e[1+$_]}
+		my $ne=$data{"Num. electrons"};
+		# Is this an integer (near enough)?
+		my $ine=(sprintf "%4.0d",$ne*0.5);
+		if(abs($ine-$ne*0.5)>0.001){
+		    if($options{$invocation}{'debug'}[0]){print "!DBG! partial occupancy detected: $ine $ne\n";}
+		    $partial=abs($ine*2-$ne);
+		    $ne=$ine*2;
+		}
+		# Which leaves the remainder empty:
+		$empty=$#{$data{'evals'}[$_]}-$ne*0.5+1;
+		# If there's a cock-up, we might spot it:
+		if($empty<0){CommentOutput($HANDLE,"unexpected values in evals");}
+		# Print out the necessary:
+		if($partial){
+		    if($options{$invocation}{'debug'}[0]){print "!DBG! partial occupancy detected: $ine $ne $partial\n";}		
+		    printf $HANDLE "/partial{%d}\n",$partial;
+		}
+		print $HANDLE "/empty{$empty $empty}\n";
+		print $HANDLE "/av{2}\n";
+	    }
+	    print $HANDLE "/levels{",$#{$data{'evals'}[$_]}+1,"}\n";
+	    my $c=0;
+	    for(@{$data{'evals'}[$_]}){
+		printf $HANDLE " %8.4f",$_;
+		if($c++==7){$c=0;print $HANDLE "\n"}
+	    }
+	    print $HANDLE $evalbottom;
+	    
+	}
+    }
+    if($mode eq "one" || $mode eq "allhomerend"){print $HANDLE $footer;}
+    return $file;
+}
+
+######################################################################
+#### Output the double derivitives (or REC) to file ##################
+######################################################################
+sub PrintDDSFile{
+    print "!DBG! In PrintDDSFile\n" if $options{$invocation}{'debug'}[0];
+    # Double derivitives exist?
+    if($data{'DDS'}){
+	if(OpenOutput(DDS,"new",$tag,"","Double derivitives")){print DDS $data{'DDS'}}
+    }elsif($data{'REC'}){
+	if(OpenOutput(REC,"new",$tag,"","Double derivitives restart file")){
+	    $data{'REC'}=~s/REC//g;
+	    $a=$data{'REC'}=~s/deriv/deriv/g;
+	    print REC $data{'REC'},"# Add '/ddrestart{$a}' to data file.\n";
+	}
+    }else{CommentOutput(DDS,"No derivs detected");}
+}
+
+######################################################################
+#### Output the exponent optimisation output to file #################
+######################################################################
+sub PrintEXPONSFile{
+    print "!DBG! In PrintEXPONSFile\n" if $options{$invocation}{'debug'}[0];
+    # Are there any expons data to print?
+    if($data{'ABC'}){
+	if(OpenOutput(EXPONS,"new",$tag,"","exponent optimisation output")){
+	    my@a;
+	    if($options{$invocation}{"sort"}[0]){@a=BubbleSort(@{$data{'ABC'}})}else{@a=@{$data{'ABC'}}}
+	    for(@a){
+		printf EXPONS "%4d $_\n",++$tmp;
+	    }
+	}
+    }else{CommentOutput(EXPONS,"No 'ABC's detected");}
+}
+
+######################################################################
+#### Generate an input file for DIAGDD: ##############################
+######################################################################
+sub PrintDIAGDDFile{
+    print "!DBG! In PrintDIAGDDFile\n" if $options{$invocation}{'debug'}[0];
+    # Need (1) deriv, (2) species, (3) positions
+    die "No positions found in PrintDIAGDDFile!\n" if !exists $data{'otb'};
+    die "No dds found in PrintDIAGDDFile!\n" if !exists $data{'DDS'};
+    die "No species found in PrintDIAGDDFile!\n" if !exists $data{'Species'};
+    if(OpenOutput(DIAGDD,"new",$tag,"","diagdd input file")){
+	my @species=split " ",$data{'Species'};
+	print DIAGDD "\/begin{data}\n\n\/derivs{",(join" ",@{$data{'dds'}}),"}\n\/decimals{2}\n\/mass{";
+	for(@{$data{'dds'}}){print DIAGDD " ".(1*$Atoms{$species[(split" ",$data{'otb'}[$data{'OTBSet'}][$_-1])[1]-1]}[0])}
+	print DIAGDD "}\n\/types{",(join" ",@species),"}\n\/names{";
+	for(@{$data{'dds'}}){print DIAGDD " ".($species[(split" ",$data{'otb'}[$data{'OTBSet'}][$_-1])[1]-1])}
+	print DIAGDD "}\n\/begin{dynamical}\n",$data{'DDS'},"\/end{dynamical}\n",
+	"\/begin{cluster}\n",(join"",@{$data{'otb'}[$data{'OTBSet'}]}),"\/end{cluster}\n\/end{data}\n";    
+    }
+}
+
+######################################################################
+#### Output the XBS to file ##########################################
+######################################################################
+sub PrintXBSFile{
+    die "Wrong number of arguments supplied to PrintXBSFile ($#_ @_)\n" if ($#_+1);
+    print "!DBG! In PrintXBSFile\n" if $options{$invocation}{'debug'}[0];
+    if(OpenOutput(XBS,"new",$tag,($options{$invocation}{'include'}[0]?"1-$options{$invocation}{'include'}[0]":""),"xbs set (final iteration)")){
+	my @species=(split " ",$data{'Species'});
+	# Print the atomic positions:
+	for(@ { $data{'otb'}[$data{'OTBSet'}]}){
+	    my @d=split;
+	    if($options{$invocation}{'include'}[0]){if($d[0]>$options{$invocation}{'include'}[0]){last}}
+	    printf XBS "atom %3s %10.5f%10.5f%10.5f\n",$species[$d[1]-1],@d[6..8];
+	}
+	print XBS "\n";
+	# Print the atomic types:
+	my ($grey,$dgrey)=(1,1/($#species?$#species:1));
+	for(@species){
+	    printf XBS "spec %3s %10.5f%10.5f\n",
+	    $_,$options{$invocation}{'radfudge'}[0]*$Atoms{$_}[2],$grey;
+	    $grey-=$dgrey;
+	}
+	print XBS "\n";
+	# Print the bond-lengths:
+	for$i(0..$#species){
+	    for$j($i..$#species){
+		printf XBS "bonds %3s %3s %10.5f%10.5f%10.5f%10.5f\n",
+		$species[$i],
+		$species[$j],
+		0,
+		($Atoms{$species[$i]}[1]+$Atoms{$species[$j]}[1])*$options{$invocation}{'bondfudge'}[0],
+		0.3,
+		1.0;
+	    }
+	}
+	print XBS "\ntmat  1.000  0.000  0.000  0.000  1.000  0.000  0.000  0.000  1.000\ndist    100.000\ninc      5.000\nscale   20.000\nrfac 1.00\nbfac 1.00\npos    0.000    0.000\nswitches 1 0 1 0 0 1 1 0 0\n";
+    }
+}
+
+######################################################################
+#### Output the otb to file ##########################################
+######################################################################
+sub PrintOTBFile{
+    #Input is the # of the iteration to output - if '-1' is passed
+    #then all OTB are output.
+    die "Wrong number of arguments supplied to PrintOTBFile\n" if $#_;
+    my $iter = $_[0];
+    if($iter!=-1&&($iter>$data{'OTBSet'}||$iter<1)){die "Passed an iteration number out of range ($iter) in PrintOTBFile\n"}
+    print "!DBG! In PrintOTBFile\n" if $options{$invocation}{'debug'}[0];
+    #Output all otb:
+    if($iter<0){
+	if(OpenOutput(OTB,"new",$tag,"all","All otb")){
+	    my $i=1;
+	    while($i<=$data{'OTBSet'}){
+		PrintOTB(OTB,$i);
+		++$i;
+	    }
+	}
+    }else{
+	#Output specific otb:
+	if($iter==1){if(OpenOutput(OTB,"new",$tag,"init","otb set $iter")){PrintOTB(OTB,$iter)}}
+	elsif($iter==$data{'OTBSet'}){if(OpenOutput(OTB,"new",$tag,"final","otb set $iter")){PrintOTB(OTB,$iter)}}
+	else{if(OpenOutput(OTB,"new",$tag,"Set_$iter","otb set $iter")){PrintOTB(OTB,$iter)}}
+    }
+}
+
+######################################################################
+#### Output the otb to file ##########################################
+######################################################################
+sub PrintBondCentreOTBFile{
+    #Input is the # of the iteration to output - if '-1' is passed
+    #then all OTB are output.
+    die "Wrong number of arguments supplied to PrintOTBFile\n" if $#_+1;
+    print "!DBG! In PrintBondCentreOTBFile\n" if $options{$invocation}{'debug'}[0];
+    #Output all otb:
+    if(OpenOutput(OTB,"new",$tag,"bond_centres","OTB with bond centres as atoms")){
+	if(exists $data{'Num. bcs detected'}){
+	    @{$data{otb}[$data{'OTBSet'}+1]}=@{$data{otb}[1]};
+	    my $i=$#{$data{otb}[1]}+1;@n=(split " ",$data{Species});$n=$#n+2;
+	    for(@{$data{"BC sites"}}){push @{$data{otb}[$data{OTBSet}+1]},(join " ",++$i,$n,0,0,0,0,(split)[7..9])}
+	    my $scr=$data{"Num. atoms"};
+	    $data{"Num. atoms"}+=$data{'Num. bcs detected'};
+	    PrintOTB(OTB,$data{'OTBSet'}+1);
+	    $data{"Num. atoms"}=$scr;
+	}else{
+	    # Work from the latest structure and the neighbour map:
+	    @{$data{otb}[$data{'OTBSet'}+1]}=@{$data{otb}[$data{'OTBSet'}]};
+	    my $i=$#{$data{otb}[1]}+1;@n=(split " ",$data{Species});$n=$#n+2;
+	    for(@{$data{otb}[$data{'OTBSet'}]}){
+		my @d=split;
+		for(2..5){
+		    if($d[$_]>$d[0]){
+			my @d2=(split " ",$data{otb}[$data{'OTBSet'}+1][$d[$_]-1]);
+			push @{$data{otb}[$data{'OTBSet'}+1]},
+			(join" ",++$i,$n,0,0,0,0,($d[6]+$d2[6])*.5,($d[7]+$d2[7])*.5,($d[8]+$d2[8])*.5,"\n");
+		    }
+		}
+	    }
+	    my $scr=$data{"Num. atoms"};
+	    $data{"Num. atoms"}=$#{$data{otb}[$data{'OTBSet'}+1]}+1;
+	    PrintOTB(OTB,$data{'OTBSet'}+1);
+	    $data{"Num. atoms"}=$scr;
+	}
+    }
+}
+
+######################################################################
+#### Print out the OTB lines in an appropriate format: ###############
+######################################################################
+sub PrintOTB{
+    # The input parameters are the file handle and the iteration number:
+    if($#_-1){die "Wrong number of arguments sent to PrintOTB (@_)\n";}
+    my ($handle,$iter)=@_;
+    print $handle "\%$data{Species}\n%Set no. $iter"
+	.(($iter==$data{'OTBSet'})?" (Final)":"")
+	.(($iter==1)?" (Initial)\n":"\n");
+    # Loop over the number of atoms in the cluster/cell
+    my ($n,@d)=(0,());
+    for(@{$data{'otb'}[$iter]}){
+	if($iter==1){++$n;$d[$n]=$_}
+	else{$d[(split)[0]]=$_;}
+    }
+    my $a=0;
+    while(++$a<=$data{'Num. atoms'}){
+	if($d[$a]){printf $handle (FormatOTB($d[$a]));}
+	else{printf $handle (FormatOTB($data{'otb'}[1][$a-1]));}
+    }
+}
+
+######################################################################
+#### Output the otb to file ##########################################
+######################################################################
+sub PrintREPEATFile{
+    #No input
+    print "!DBG! In PrintREPEATFile\n" if $options{$invocation}{'debug'}[0];
+    die "Wrong number of arguments supplied to PrintREPEATFile ($#_: @_)\n" if ($#_>-1);
+    if($options{$invocation}{'xrepeat'}[0]){$options{$invocation}{'erepeat'}[0]=$options{$invocation}{'xrepeat'}[0]}
+    elsif($options{$invocation}{'xrepeatlast'}[0]){$options{$invocation}{'erepeat'}[0]=$options{$invocation}{'xrepeatlast'}[0]}
+    elsif($options{$invocation}{'erepeatlast'}[0]){$options{$invocation}{'erepeat'}[0]=$options{$invocation}{'erepeatlast'}[0]}
+    die "No species detected for e/xrepeat option\n" if ($options{$invocation}{'erepeat'}[0]&&!$data{'Species'});
+    
+    print "!DBG! unit definition $data{'unit definition'}\n" if $options{$invocation}{'debug'}[0];   
+    
+    my ($x,$y,$z);
+    # Temporary set all repeats to be centred:
+    my $centre=$options{$invocation}{'centre'}[0];
+    # Repeat numbers in each lattice vector direction:
+    my @repeat;
+    if($options{$invocation}{'repeat'}[0]){@repeat=split",",$options{$invocation}{'repeat'}[0];}
+    elsif($options{$invocation}{'erepeat'}[0]){@repeat=split",",$options{$invocation}{'erepeat'}[0];}
+    else{die "Error in PrintREPEATFile: cannot generate \@repeat!";}
+    # Number of species:
+    my @species=(split" ",$data{'Species'});
+    my $ntypes=$#species+1;
+    my (@v,$f);
+    #Output repeated otb/xyz:
+    my $tail=$options{$invocation}{'repeat'}[0];$tail.=($centre?".cntrd":"");
+    if($options{$invocation}{'repeat'}[0]){
+	my $tail=$options{$invocation}{'repeat'}[0];$tail.=($centre?".cntrd":"");
+	if(!OpenOutput(RPT,"new",$tag,$tail,"Repeated unit cell (otb)")){return}
+    }else{
+	my $tail=$options{$invocation}{'erepeat'}[0];
+	$tail.=($centre?".cntrd":"");
+	$tail.=(($options{$invocation}{'xrepeatlast'}[0]||$options{$invocation}{'erepeatlast'}[0])?".last":"");
+	$f=OpenOutput(XRPT,"new",$tag,$tail,"Repeated unit cell (xyz)");
+	if(!$f){return}
+    }
+    # Print out the repeated positions: 
+    if($options{$invocation}{'repeat'}[0]||$options{$invocation}{'xrepeatlast'}[0]||$options{$invocation}{'erepeatlast'}[0]){$start=$data{'OTBSet'}}else{$start=1}
+    for $o ($start..$data{'OTBSet'}){
+	# Suggest types for the repeated cell:
+	my $ncell=0;for(@repeat){$ncell+=($_)}$ncell=($ncell+1)*$ntypes;
+	if($options{$invocation}{'repeat'}[0]){
+	    print RPT "%";
+	    for(1..$ncell){print RPT "$data{'Species'} ";}
+	    print RPT "\n";
+	}else{
+	    print XRPT ($data{'Num. atoms'}*
+			((1+$options{$invocation}{'centre'}[0])*$repeat[0]+1)*
+			((1+$options{$invocation}{'centre'}[0])*$repeat[1]+1)*
+			((1+$options{$invocation}{'centre'}[0])*$repeat[2]+1))."\nRepeated : @repeat\n";
+	}
+	# Loop over the atoms in this set:
+	for (@ { $data{'otb'}[$o] }){	  
+	    my @d=(split);
+	    my @LV=@{$data{"d-latt P"}};
+	    if(exists $data{"d-latt P $o"}){
+		@LV=@{$data{"d-latt P $o"}};
+	    }
+	    for ($x=-1*$repeat[0]*$centre;$x<=$repeat[0];$x++){  
+		for ($y=-1*$repeat[1]*$centre;$y<=$repeat[1];$y++){  
+		    for ($z=-1*$repeat[2]*$centre;$z<=$repeat[2];$z++){		
+			# OTB output:
+			if($options{$invocation}{'repeat'}[0]){
+			    if(
+				$data{"unit definition"} eq "int-p"
+				||
+				($data{"unit definition"} eq "internal"
+				 &&!$data{"restart options override-positions"})
+				){
+				@pos=(
+				    ($d[6]+$x)/($repeat[0]*(1+$centre)+1),
+				    ($d[7]+$y)/($repeat[1]*(1+$centre)+1),
+				    ($d[8]+$z)/($repeat[2]*(1+$centre)+1)
+				    );
+			    }elsif($data{"unit definition"} eq "int-c"){
+				@v=(LatticeDefinitions(
+					$data{"lattice type"},
+					$data{"lattice orient"},
+					$data{"lattice scale"},
+					1,1,1,1,1,1))[0..8];
+				@pos=(
+				    $d[6]+($x*$v[0]+$y*$v[3]+$z*$v[6]),
+				    $d[7]+($x*$v[1]+$y*$v[4]+$z*$v[7]),
+				    $d[8]+($x*$v[2]+$y*$v[5]+$z*$v[8]));
+			    }elsif($data{"unit definition"} eq "atomic"
+				   ||
+				   #Old output where all but internal coords are rescaled to atomic during output:
+				   ($data{"rescaled positions"}&&$o!=1&&($data{"unit definition"} ne "internal"))){
+				
+				@v=@LV;
+				@pos=(
+				    $d[6]+$x*$v[0]+$y*$v[3]+$z*$v[6],
+				    $d[7]+$x*$v[1]+$y*$v[4]+$z*$v[7],
+				    $d[8]+$x*$v[2]+$y*$v[5]+$z*$v[8]);
+			    }elsif($data{"unit definition"} =~ /^ang/){
+				my$a1=$const{"autoang"};
+				#Only rescale the first values (eg a data file):
+				if($o>1){$a1=1}
+				@v=@LV;
+				@pos=(
+				    $d[6]+($x*$v[0]+$y*$v[3]+$z*$v[6])*$a1,
+				    $d[7]+($x*$v[1]+$y*$v[4]+$z*$v[7])*$a1,
+				    $d[8]+($x*$v[2]+$y*$v[5]+$z*$v[8])*$a1);
+			    }elsif($data{"unit definition"} eq "relative"){
+				my$a1;
+				if((split" ",$data{"lattice params"})[0]){
+				    $a1=1/((split" ",$data{"lattice params"})[0]);
+				}else{die "Failed in lattice repeat lattice output";}
+				#Only rescale the first values (eg a data file):
+				if($o>0){$a1=1}
+				@v=@LV;
+				@pos=(
+				    $d[6]+$x*$v[0]*$a1+$y*$v[3]*$a1+$z*$v[6]*$a1,
+				    $d[7]+$x*$v[1]*$a1+$y*$v[4]*$a1+$z*$v[7]*$a1,
+				    $d[8]+$x*$v[2]*$a1+$y*$v[5]*$a1+$z*$v[8]*$a1);
+			    }elsif($data{"unit definition"}=~/^(\d+|\.\d+)/){
+				my$a1=1/$data{"unit definition"};
+				#Only rescale the first values (eg a data file):
+				if($o>0){$a1=1}
+				@v=@LV;
+				@pos=(
+				    $d[6]+$x*$v[0]*$a1+$y*$v[3]*$a1+$z*$v[6]*$a1,
+				    $d[7]+$x*$v[1]*$a1+$y*$v[4]*$a1+$z*$v[7]*$a1,
+				    $d[8]+$x*$v[2]*$a1+$y*$v[5]*$a1+$z*$v[8]*$a1);
+			    }
+			    printf RPT "%4d%4d%4d%4d%4d%4d%15.8f%15.8f%15.8f\n",
+			    ++$natomtmp,$d[1]+(abs($x)+abs($y)+abs($z))*$ntypes,$x,$y,$z,$centre,@pos;
+#			    $d[0],$d[1]+(abs($x)+abs($y)+abs($z))*$ntypes,$x,$y,$z,$centre,@pos;
+			}else{
+			    # XYZ output:
+			    my @xyz=(0,0,0);
+			    if($data{"unit definition"} eq "int-p"
+			       ||$data{"unit definition"} eq "internal"
+				){
+				@xyz=(INT2XYZ($d[6]+$x,$d[7]+$y,$d[8]+$z,@LV));
+				for(0..2){$xyz[$_]*=$const{autoang}}
+			    }elsif($data{"unit definition"} eq "int-c"){
+				my @v=@{$data{'d-latt C'}};
+				@xyz=(INT2XYZ($d[6],$d[7],$d[8],@v));
+				my@xyz1=(INT2XYZ($x,$y,$z,@LV));
+				for(0..2){$xyz[$_]=($xyz[$_]+$xyz1[$_])*$const{autoang}}
+			    }elsif($data{"unit definition"} eq "atomic"
+				   ||
+				   ($data{"rescaled positions"} && $o!=1 &&
+				    ($data{"unit definition"} ne "internal"))
+				   ||
+				   ($data{"unit definition"} eq "internal"
+				    &&
+				    $data{"restart options override-positions"}
+				   )
+				   ||
+				   ($data{"unit definition"} =~ /\d/ && $o!=1)
+				){
+				my @v=@LV;
+				@xyz=(
+				    ($d[6]+$x*$v[0]+$y*$v[3]+$z*$v[6]),
+				    ($d[7]+$x*$v[1]+$y*$v[4]+$z*$v[7]),
+				    ($d[8]+$x*$v[2]+$y*$v[5]+$z*$v[8])
+				    );	      
+				for(0..2){$xyz[$_]*=$const{"autoang"}}
+			    }elsif($data{"unit definition"} eq "relative"){
+				my$a;
+				if((split" ",$data{"lattice params"})[0]){
+				    $a=((split" ",$data{"lattice params"})[0]);
+				}else{die "Failed in lattice repeat lattice output";}
+				my @v=@LV;
+				@xyz=(
+				    ($d[6]*$a+$x*$v[0]+$y*$v[3]+$z*$v[6]),
+				    ($d[7]*$a+$x*$v[1]+$y*$v[4]+$z*$v[7]),
+				    ($d[8]*$a+$x*$v[2]+$y*$v[5]+$z*$v[8])
+				    );	      
+				for(0..2){$xyz[$_]*=$const{autoang}}
+			    }elsif($data{"unit definition"} =~/^ang/){
+				my @v=@LV;
+				for(0..8){$v[$_]*=$const{"autoang"}}
+				@xyz=(
+				    ($d[6]+$x*$v[0]+$y*$v[3]+$z*$v[6]),
+				    ($d[7]+$x*$v[1]+$y*$v[4]+$z*$v[7]),
+				    ($d[8]+$x*$v[2]+$y*$v[5]+$z*$v[8])
+				    );	      
+			    }elsif($data{"unit definition"}=~/^(\d+|\.\d+)/ && $o==1){
+				my$a1=1/$data{"unit definition"};
+				@v=@LV;
+				@xyz=(
+				    ($d[6]*$data{"unit definition"}+$x*$v[0]+$y*$v[3]+$z*$v[6]),
+				    ($d[7]*$data{"unit definition"}+$x*$v[1]+$y*$v[4]+$z*$v[7]),
+				    ($d[8]*$data{"unit definition"}+$x*$v[2]+$y*$v[5]+$z*$v[8])
+				    );	      
+				for(0..2){$xyz[$_]*=$const{"autoang"}}
+			    }
+			    print XRPT (FormatXYZ($species[$d[1]-1],@xyz));
+			}
+		    }
+		}				
+	    }
+	}
+    }
+    
+    
+    if($options{$invocation}{'xrepeat'}[0]||$options{$invocation}{'xrepeatlast'}[0]){push @{$system{'xyz'}},$f}
+}
+
+######################################################################
+#### Output the xyz to file ##########################################
+######################################################################
+sub PrintXYZFile{
+    #Input is the # of the iteration to output - if '-1' is passed
+    #then all OTB are output.
+    die "Wrong number of arguments supplied to PrintXYZFile\n" if $#_;
+    my $iter = $_[0];
+    if($iter!=-1&&($iter>$data{'OTBSet'}||$iter<1)){die "Passed an iteration number out of range ($iter) in PrintXYZFile\n"}
+    if(!exists $data{'Species'}){die "Arrived in PrintXYZFile without detecting atomic species\n"}
+    @species=split " ",$data{'Species'};
+    print "!DBG! In PrintXYZFile\n" if $options{$invocation}{'debug'}[0];
+    #Output all XYZ:
+    if($iter<0){
+	if(exists $data{'DiffPoint'} && !$options{$invocation}{v}[0]){
+	    my $f=OpenOutput(XYZ,"new",$tag,"diff","Diffusion point iterations");
+	    if(!$f){return}
+	    my $i;
+	    while(@{$data{'DiffPoint'}}){
+		$i=shift@{$data{'DiffPoint'}};
+		PrintXYZ($i);
+	    }
+	}else{
+	    my $f=OpenOutput(XYZ,"new",$tag,"all","All iterations");
+	    if(!$f){return}
+	    my $i=1;while($i<=$data{'OTBSet'}){PrintXYZ($i);++$i}
+	}
+    }else{
+	#Output specific XYZ:
+	if($iter==1){
+	    my $f=OpenOutput(XYZ,"new",$tag,"init","otb set $iter");	    
+	    if(!$f){return}
+	    PrintXYZ($iter);
+	}
+	elsif($iter==$data{'OTBSet'}){
+	    my $f=OpenOutput(XYZ,"new",$tag,"final","otb set $iter");
+	    if(!$f){return}
+	    PrintXYZ($iter);
+	}
+	else{
+	    my $f=OpenOutput(XYZ,"new",$tag,"init","otb set $iter");
+	    if(!$f){return}
+	    PrintXYZ($iter);
+	}
+    }
+    #If requested, visualise the structure:
+    if($options{$invocation}{'x'}[0]||
+       $options{$invocation}{'xlast'}[0]||
+       $options{$invocation}{'xinit'}[0]){
+	push @{$system{'xyz'}},$f;
+    }
+}
+
+######################################################################
+#### Print out the XYZ lines in an appropriate format: ###############
+######################################################################
+sub PrintXYZ{
+    my @LV=();
+    my $iter=$_[0];
+    print XYZ "$data{'Num. atoms'}\n#Set no. $iter".
+	(($iter==$data{'OTBSet'})?" (Final)":"").
+	(($iter==1)?" (Initial)\n":"\n");
+    # Loop over the number of atoms in the cluster/cell
+    my $n=0;my @d=();for(@{$data{'otb'}[$iter]}){
+	if($iter==1){$d[++$n]=$_}
+	else{$d[(split)[0]]=$_;}
+    }
+    # Specify the lattice vectors:
+#    if($iter==1){
+#	@LV=@{ $data{"d-latt P"} }
+#
+    if(exists $data{"d-latt P $iter"}){
+	@LV=@{$data{"d-latt P $iter"}};
+    }else{
+	@LV=@{ $data{"d-latt P"} }
+    }
+#    printf "#---> %d @LV (%f)\n",$iter,$data{"d-latt P $iter"}[0];
+    my $a=0;while(++$a<=$data{'Num. atoms'}){
+	if($data{"unit definition"} eq "atomic"
+	   ||
+	   ($data{"unit definition"} eq "internal"&&$data{"restart options override-positions"}&&$iter>1)
+	   ||
+	   #Old output where all but internal coords are rescaled to atomic during output:
+	   ($data{"rescaled positions"}&&$iter!=1&&($data{"unit definition"} ne "internal"))
+	   ||
+	   #Old output where all but internal coords are rescaled to atomic during output:
+	   ($iter!=1 && $data{"unit definition"}=~/\d/)
+	    ){
+	    if($d[$a]){
+		@p=((split" ",$d[$a])[1],(split" ",$d[$a])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf XYZ (FormatXYZ(@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    (split" ",$data{'otb'}[1][$a-1])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf XYZ (FormatXYZ(@p));
+	    }
+	}elsif($data{"unit definition"} eq "relative"){
+	    if($d[$a]){
+		@p=((split" ",$d[$a])[1],(split" ",$d[$a])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		if($iter==1){my$a=(split" ",$data{"lattice params"})[0];for(1..3){$p[$_]*=$a}}
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf XYZ (FormatXYZ(@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    (split" ",$data{'otb'}[1][$a-1])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		if($iter==1){my$a=(split" ",$data{"lattice params"})[0];for(1..3){$p[$_]*=$a}}
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf XYZ (FormatXYZ(@p));
+	    }
+	}elsif($data{"unit definition"}=~/^ang/){
+	    if($d[$a]){
+		@p=((split" ",$d[$a])[1],(split" ",$d[$a])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		printf XYZ (FormatXYZ(@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    (split" ",$data{'otb'}[1][$a-1])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		printf XYZ (FormatXYZ(@p));
+	    }
+	}elsif($data{"unit definition"}=~/^\d/){
+	    if($d[$a]){
+		@p=((split" ",$d[$a])[1],(split" ",$d[$a])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=($data{"unit definition"}*$const{'autoang'})}
+		printf XYZ (FormatXYZ(@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    (split" ",$data{'otb'}[1][$a-1])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=($data{"unit definition"}*$const{'autoang'})}
+		printf XYZ (FormatXYZ(@p));
+	    }
+	}elsif($data{"unit definition"} eq "int-p"||$data{"unit definition"} eq "internal"){
+	    if($d[$a]){
+		@p=(
+		    (split" ",$d[$a])[1],
+		    INT2XYZ(
+			(split" ",$d[$a])[6..8],
+			@LV
+		    )
+		    );
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf XYZ (FormatXYZ(@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    INT2XYZ(
+			(split" ",$data{'otb'}[1][$a-1])[6..8],
+			@LV
+		    )
+		    );
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf XYZ (FormatXYZ(@p));	    
+	    }
+	}elsif($data{"unit definition"} eq "int-c"){
+	    if($d[$a]){
+		@p=(
+		    (split" ",$d[$a])[1],
+		    INT2XYZ(
+			(split" ",$d[$a])[6..8],
+			@{ $data{"d-latt C"} }
+		    )
+		    );
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf XYZ (FormatXYZ(@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    INT2XYZ(
+			(split" ",$data{'otb'}[1][$a-1])[6..8],
+			@{$data{"d-latt C"}}
+		    )
+		    );
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf XYZ (FormatXYZ(@p));	    
+	    }
+	}else{
+	    die "I really shoulnd't get here!\nUnit definition: '$data{'unit definition'}'\n";
+	}
+    }
+}
+
+######################################################################
+#### Print out the XYZ version of the latest chain, or the saddle ####
+#### point structures over the optimisation ##########################
+######################################################################
+sub PrintNEBFile{
+    print "!DBG! In PrintNEBFile\n" if $options{$invocation}{'debug'}[0];
+    my $mode=$_[0];
+    if($mode eq "latest"){
+	my $f=OpenOutput(CHA,"new",$tag,"","otb set $iter");
+	if(!$f){return}
+	my$iter=$data{'NEB iter'};
+	for my $i (1..$data{"NEB nimages"}){
+	    my@d=();
+	    for my $j (0..$#{$data{"NEB images"}[$iter][$i]}){
+		my@a=(split" ",$data{'NEB images'}[$iter][$i][$j]);
+		my@e=(split" ",$data{"otb"}[1][$j]);
+		push@d,(sprintf "%4d %3d %4d %4d %4d %4d  %12.5f %12.5f %12.5f\n",@e[0..1],0,0,0,0,@a[1..3]);
+	    }
+	    &PrintNEB(\*CHA,$_,@d);
+	}
+    }elsif($mode eq "saddle"){
+	#Output all saddle structures...
+	my $f=OpenOutput(SAD,"new",$tag,"","otb set $iter");
+	if(!$f){return}
+	
+	for(0..$data{'NEB iter'}){
+	    &PrintNEB(\*SAD,$_,@{$data{'NEB saddle'}[$_]});
+	    }
+    }
+    else{die"Unknown mode passed to PrintNEBXYZ\n"}
+    #If requested, visualise the structure:
+    if($options{$invocation}{'xlatest'}[0]||
+       $options{$invocation}{'xsaddle'}[0]){
+	push @{$system{'xyz'}},$f;
+    }
+}
+    
+sub PrintNEB{
+    my @LV=();
+    my $fh=shift;
+    my $iter=$_[0];
+    my @d=@_;
+    my @species=split " ",$data{'Species'};
+    print { $fh } "$data{'Num. atoms'}\n# Structure $iter\n"; 
+
+    # Specify the lattice vectors:
+    if(exists $data{"d-latt P $iter"}){
+	@LV=@{$data{"d-latt P $iter"}};
+    }else{
+	@LV=@{ $data{"d-latt P"} }
+    }
+
+    my $a=0;while(++$a<=$data{'Num. atoms'}){
+	if($data{"unit definition"} eq "atomic"
+	   ||
+	   ($data{"unit definition"} eq "internal"&&$data{"restart options override-positions"}&&$iter>1)
+	   ||
+	   #Old output where all but internal coords are rescaled to atomic during output:
+	   ($data{"rescaled positions"}&&$iter!=1&&($data{"unit definition"} ne "internal"))
+	   ||
+	   #Old output where all but internal coords are rescaled to atomic during output:
+	   ($iter!=1 && $data{"unit definition"}=~/\d/)
+	    ){
+	    if($d[$a]){
+		@p=((split" ",$d[$a])[1],(split" ",$d[$a])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf { $fh } (FormatXYZ(@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    (split" ",$data{'otb'}[1][$a-1])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf { $fh } (FormatXYZ(@p));
+	    }
+	}elsif($data{"unit definition"} eq "relative"){
+	    if($d[$a]){
+		@p=((split" ",$d[$a])[1],(split" ",$d[$a])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		if($iter==1){my$a=(split" ",$data{"lattice params"})[0];for(1..3){$p[$_]*=$a}}
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf { $fh } (FormatXYZ(@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    (split" ",$data{'otb'}[1][$a-1])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		if($iter==1){my$a=(split" ",$data{"lattice params"})[0];for(1..3){$p[$_]*=$a}}
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf { $fh } (FormatXYZ(@p));
+	    }
+	}elsif($data{"unit definition"}=~/^ang/){
+	    if($d[$a]){
+		@p=((split" ",$d[$a])[1],(split" ",$d[$a])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		printf { $fh } (FormatXYZ(@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    (split" ",$data{'otb'}[1][$a-1])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		printf { $fh } (FormatXYZ(@p));
+	    }
+	}elsif($data{"unit definition"}=~/^\d/){
+	    if($d[$a]){
+		@p=((split" ",$d[$a])[1],(split" ",$d[$a])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=($data{"unit definition"}*$const{'autoang'})}
+		printf { $fh } (FormatXYZ(@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    (split" ",$data{'otb'}[1][$a-1])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=($data{"unit definition"}*$const{'autoang'})}
+		printf { $fh } (FormatXYZ(@p));
+	    }
+	}elsif($data{"unit definition"} eq "int-p"||$data{"unit definition"} eq "internal"){
+	    if($d[$a]){
+		@p=(
+		    (split" ",$d[$a])[1],
+		    INT2XYZ(
+			(split" ",$d[$a])[6..8],
+			@LV
+		    )
+		    );
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf { $fh } (FormatXYZ(@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    INT2XYZ(
+			(split" ",$data{'otb'}[1][$a-1])[6..8],
+			@LV
+		    )
+		    );
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf { $fh } (FormatXYZ(@p));	    
+	    }
+	}elsif($data{"unit definition"} eq "int-c"){
+	    if($d[$a]){
+		@p=(
+		    (split" ",$d[$a])[1],
+		    INT2XYZ(
+			(split" ",$d[$a])[6..8],
+			@{ $data{"d-latt C"} }
+		    )
+		    );
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf { $fh } (FormatXYZ(@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    INT2XYZ(
+			(split" ",$data{'otb'}[1][$a-1])[6..8],
+			@{$data{"d-latt C"}}
+		    )
+		    );
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf { $fh } (FormatXYZ(@p));	    
+	    }
+	}else{
+	    die "I really shoulnd't get here!\nUnit definition: '$data{'unit definition'}'\n";
+	}
+    }
+}
+
+
+######################################################################
+#### Print out the PDB lines in an appropriate format: ###############
+######################################################################
+sub PrintPDB{
+    my @LV=();
+    my $iter=$_[0];
+    # Loop over the number of atoms in the cluster/cell
+    my $n=0;my @d=();for(@{$data{'otb'}[$iter]}){
+	if($iter==1){$d[++$n]=$_}
+	else{$d[(split)[0]]=$_;}
+    }
+    # Specify the lattice vectors:
+    if(exists $data{"d-latt P $iter"}){
+	@LV=@{$data{"d-latt P $iter"}};
+    }else{
+	@LV=@{ $data{"d-latt P"} }
+    }
+    # Calculate the "a b c alpha beta gamma" values from the cartesian vectors:
+    my $aa=sqrt($LV[0]**2+$LV[1]**2+$LV[2]**2)*$const{'autoang'};
+    my $bb=sqrt($LV[3]**2+$LV[4]**2+$LV[5]**2)*$const{'autoang'};
+    my $cc=sqrt($LV[6]**2+$LV[7]**2+$LV[8]**2)*$const{'autoang'};
+    my $alpha=acos(($LV[3]*$LV[6]+$LV[4]*$LV[7]+$LV[5]*$LV[8])/$bb/$cc)*45/atan(1);
+    my $beta=acos(($LV[0]*$LV[6]+$LV[1]*$LV[7]+$LV[2]*$LV[8])/$aa/$cc)*45/atan(1);
+    my $gamma=acos(($LV[3]*$LV[0]+$LV[4]*$LV[1]+$LV[5]*$LV[2])/$bb/$aa)*45/atan(1);
+    printf PDB "CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f%11s%4d\n",
+    $aa,$bb,$cc,$alpha,$beta,$gamma,"P 1",1;
+    my $a=0;
+    while(++$a<=$data{'Num. atoms'}){
+	if($data{"unit definition"} eq "atomic"
+	   ||
+	   ($data{"unit definition"} eq "internal"&&$data{"restart options override-positions"}&&$iter>1)
+	   ||
+	   #Old output where all but internal coords are rescaled to atomic during output:
+	   ($data{"rescaled positions"}&&$iter!=1&&($data{"unit definition"} ne "internal"))
+	   ||
+	   #Old output where all but internal coords are rescaled to atomic during output:
+	   ($iter!=1 && $data{"unit definition"}=~/\d/)
+	    ){
+	    if($d[$a]){
+		@p=((split" ",$d[$a])[1],(split" ",$d[$a])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf PDB (FormatPDB($a,@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    (split" ",$data{'otb'}[1][$a-1])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf PDB (FormatPDB($a,@p));
+	    }
+	}elsif($data{"unit definition"} eq "relative"){
+	    if($d[$a]){
+		@p=((split" ",$d[$a])[1],(split" ",$d[$a])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		if($iter==1){my$a=(split" ",$data{"lattice params"})[0];for(1..3){$p[$_]*=$a}}
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf PDB (FormatPDB($a,@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    (split" ",$data{'otb'}[1][$a-1])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		if($iter==1){my$a=(split" ",$data{"lattice params"})[0];for(1..3){$p[$_]*=$a}}
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf PDB (FormatPDB($a,@p));
+	    }
+	}elsif($data{"unit definition"}=~/^ang/){
+	    if($d[$a]){
+		@p=((split" ",$d[$a])[1],(split" ",$d[$a])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		printf PDB (FormatPDB($a,@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    (split" ",$data{'otb'}[1][$a-1])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		printf PDB (FormatPDB($a,@p));
+	    }
+	}elsif($data{"unit definition"}=~/^\d/){
+	    if($d[$a]){
+		@p=((split" ",$d[$a])[1],(split" ",$d[$a])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=($data{"unit definition"}*$const{'autoang'})}
+		printf PDB (FormatPDB($a,@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    (split" ",$data{'otb'}[1][$a-1])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=($data{"unit definition"}*$const{'autoang'})}
+		printf PDB (FormatPDB($a,@p));
+	    }
+	}elsif($data{"unit definition"} eq "int-p"||$data{"unit definition"} eq "internal"){
+	    if($d[$a]){
+		@p=(
+		    (split" ",$d[$a])[1],
+		    INT2XYZ(
+			(split" ",$d[$a])[6..8],
+			@LV
+		    )
+		    );
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf PDB (FormatPDB($a,@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    INT2XYZ(
+			(split" ",$data{'otb'}[1][$a-1])[6..8],
+			@LV
+		    )
+		    );
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf PDB (FormatPDB($a,@p));	    
+	    }
+	}elsif($data{"unit definition"} eq "int-c"){
+	    if($d[$a]){
+		@p=(
+		    (split" ",$d[$a])[1],
+		    INT2XYZ(
+			(split" ",$d[$a])[6..8],
+			@{ $data{"d-latt C"} }
+		    )
+		    );
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf PDB (FormatPDB($a,@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    INT2XYZ(
+			(split" ",$data{'otb'}[1][$a-1])[6..8],
+			@{$data{"d-latt C"}}
+		    )
+		    );
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf PDB (FormatPDB($a,@p));	    
+	    }
+	}else{
+	    die "I really shoulnd't get here!\nUnit definition: '$data{'unit definition'}'\n";
+	}
+    }
+}
+
+######################################################################
+#### Output the latest.neb file ######################################
+######################################################################
+sub PrintLATESTNEB{
+    die "Wrong number of arguments supplied to PrintLATESTNEB\n" if $#_;
+    my $iter = $_[0];
+    print "!DBG! In PrintLETESTNEB\n" if $options{$invocation}{'debug'}[0];
+    #Output the final chain to a latest.neb formatted file...
+    my $f=OpenOutput(NEB,"new",$tag,"","Pass $iter");
+    if(!$f){return}
+    printf NEB "%4d\n",$data{"NEB nimages"};
+    for my $i (1..$data{"NEB nimages"}){
+	#printf NEB ">> %d\n",$#{$data{"NEB images"}[$iter][$i]};
+	for my $j (0..$#{$data{"NEB images"}[$iter][$i]}){
+	    my@d=(split" ",$data{'NEB images'}[$iter][$i][$j]);
+	    my@e=(split" ",$data{"otb"}[1][$j]);
+	    printf NEB "%4d %3d %4d %4d %4d %4d  %12.5f %12.5f %12.5f\n",@e[0..1],0,0,0,0,@d[1..3];
+	}
+	print NEB "\n";
+    }
+    return;
+}
+
+######################################################################
+#### Output the pdb to file ##########################################
+######################################################################
+sub PrintPDBFile{
+    die "Wrong number of arguments supplied to PrintPDBFile\n" if $#_;
+    my $iter = $_[0];
+    if($iter!=-1&&($iter>$data{'OTBSet'}||$iter<1)){die "Passed an iteration number out of range ($iter) in PrintPDBFile\n"}
+    if(!exists $data{'Species'}){die "Arrived in PrintPDBFile without detecting atomic species\n"}
+    @species=split " ",$data{'Species'};
+    print "!DBG! In PrintPDBFile\n" if $options{$invocation}{'debug'}[0];
+    #Output all PDB:
+    my $f=OpenOutput(PDB,"new",$tag,"final","otb set $iter");
+    if(!$f){return}
+    PrintPDB($iter);
+}
+
+######################################################################
+#### Convert a,b,c in relative to a,b,c in carts #####################
+######################################################################
+sub INT2XYZ{
+    if($#_-11){die "\a\tFatal Error - wrong number of terms ($#_!=11) passed to \"INT2XYZ\"\n@_\n"}
+    my @r=@_[0..2];
+    my @vec=@_[3..11];
+    my @xyz=(0,0,0);
+    for $a (0..2){
+	for $b (0..2){
+	    $xyz[$a]+=$vec[$a+3*$b]*$r[$b];
+	}
+    }
+    return(@xyz)
+}
+
+####   ######   #####
+#    #  #          #
+#       #####      #
+#  ###  #          #
+#    #  #          #
+####   ######     #
+
+######################################################################
+#### Get the evals from the output ###################################
+######################################################################
+sub GetEvals{
+    if($#_){die "Wrong number of parameters passed to GetEvals ($#_!=1)\n"}
+    my ($type,$esum)=($_[0],0);
+    print "!DBG! Getting evals, type = $type\n" if $options{$invocation}{'debug'}[0];
+    #While one is reading lines starting with a number, add them to
+    #the current list of evals
+    if(($type eq "evals") or ($type eq "eval") or ($type eq "unoccupied") or ($type eq "k-point")){
+	while(($_=<RES>)=~/^\s*-?\d{0,3}\.\d+/&&!eof){
+	    next if /^\s*[!%]/;
+	    if(/^\s*[\d\.\-]/){
+		push @ { $data{'evals'}[$data{'EvalSet'}] },(split);
+	    }
+	}
+    }elsif($data{"screened exchange"}&&$type eq "kpoint"){
+	my ($t,$first,$outofthree)=(0,1,0);
+	while(($_=<RES>)=~/^(\s*\d{1,3}\s|\s*-?\.?\d|\*\*\*\s+)/&&!eof){
+	    next if /^\s*[!%]/;
+	    if($_!~/\S/){last}
+	    my @e=split;
+	    if($first){if($e[0]=~/^\d+$/){$t=1}$first=0}
+	    if($t==1&&$e[0]=~/^([0-9]+|\**)$/){		
+		push @ { $data{'evals'}[$data{'EvalSet'}+$outofthree] },@e[1..$#e];
+		$outofthree++;
+		if($outofthree==3){$outofthree=0}
+	    }elsif(!$t){
+		push @ { $data{'evals'}[$data{'EvalSet'}+$outofthree] },@e;
+		$outofthree++;
+		if($outofthree==3){$outofthree=0}
+	    }
+	    if($t==1&&$e[0]=~/^-?[012]{0,1}\.\d+$/){		
+		for(@e){$esum+=$_}
+	    }
+	}	
+	$data{'EvalSet'}+=2;
+    }elsif(($type eq "kpoint") or ($type eq "min") or ($type eq "max") or ($type eq "avg")){
+	my ($t,$first)=(0,1);
+	while(($_=<RES>)=~/^(\s*\d{1,3}\s|\s*-?\.?\d|\*\*\*\s+)/&&!eof){
+	    next if /^\s*[!%]/;
+	    if($_!~/\S/){last}
+	    my @e=split;
+	    if($first){if($e[0]=~/^\d+$/){$t=1}$first=0}
+	    if($t==1&&$e[0]=~/^([0-9]+|\**)$/){		
+		push @ { $data{'evals'}[$data{'EvalSet'}] },@e[1..$#e];
+	    }elsif(!$t){
+		push @ { $data{'evals'}[$data{'EvalSet'}] },@e;
+	    }
+	    if($t==1&&$e[0]=~/^-?[012]{0,1}\.\d+$/){		
+		for(@e){$esum+=$_}
+	    }
+	}
+	if(/ALLOCATED|time/){$data{"Esum format error"}=1}
+    }
+    if($esum){push @ { $data{"esum"} },$esum}
+    if($options{$invocation}{'debug'}[0]){print "DGB: e-sum=$esum\n"}
+}
+
+######################################################################
+#### Get the OTB from the output #####################################
+######################################################################
+sub GetOTB{
+    print "!DBG! Getting OTB\n" if $options{$invocation}{'debug'}[0];
+    #While one is reading lines starting with a number, add them to
+    #the current list of atom positions    
+    while(<RES>){
+	if(/(^\s*[!%]|^\s*$)/){
+	    next;
+	}elsif(
+	    /^\s*\d+\s+\d+\s+-?\d+\s+-?\d+\s+-?\d+\s+-?\d+\s+-?(\d+\.?\d*|\d*\.\d+)\s+-?(\d+\.?\d*|\d*\.\d+)\s+-?(\d+\.?\d*|\d*\.\d+)\s*/){
+	    push @ { $data{'otb'}[$data{'OTBSet'}] },$_;
+	}elsif(
+	    #Allow for scientific notation in the positions
+	    /^\s*\d+\s+\d+\s+-?\d+\s+-?\d+\s+-?\d+\s+-?\d+\s+-?(\d+\.?\d*|\d*\.\d+)([ed][+-][0-9]+)?\s+-?(\d+\.?\d*|\d*\.\d+)([ed][+-][0-9]+)?\s+-?(\d+\.?\d*|\d*\.\d+)([ed][+-][0-9]+)?\s*/){
+	    push @ { $data{'otb'}[$data{'OTBSet'}] },$_;
+	}else{last;}
+    }
+    return @ { $data{'otb'}[$data{'OTBSet'}] } ;
+}
+
+######################################################################
+#### Get the wavefunction coeffs from the output #####################
+######################################################################
+sub GetWFN{
+    print "!DBG! Getting wavewfunction coefs\n" if $options{$invocation}{'debug'}[0];
+    #While one is reading lines starting with a number, add them to
+    #the current list
+    push @ { $data{'wfn'}[$data{'WFNcoef'}] },$_;
+    while(($_=<RES>)=~/^\s*-?(\d+\.?\d*|\d*\.\d+)\s+/){
+	if(/^\s*[!%]/){next}
+	push @ { $data{'wfn'}[$data{'WFNcoef'}] },$_;
+    }
+    return @ { $data{'wfn'}[$data{'WFNcoef'}] } ;
+}
+
+######################################################################
+#### Get the double derivitives from the output ######################
+######################################################################
+sub GetDDS{
+    print "!DBG! Getting dds\n" if $options{$invocation}{'debug'}[0];
+    #While one is reading lines starting with a number, add them to
+    #the current list
+    $data{'DDS'}.=$_;
+    while(($_=<RES>)=~/^\s*[\d\.-]/){
+	if(/^\s*[!%]/){next}
+	$data{'DDS'}.=$_}$data{'DDS'}.="\n";
+    return $data{'DDS'};
+}
+
+######################################################################
+#### Get the double derivitives from the output ######################
+######################################################################
+sub GetSpecies{
+    print "!DBG! Getting species\n" if $options{$invocation}{'debug'}[0];
+    #While one is reading lines starting with a number, add them to
+    #the current list
+    while(($_=<RES>)!~/end/&&!eof){
+	if(/^\s*[!%]/){next}
+	if(/GHOST/){$data{'Species'}.=" X "}	   
+	elsif(!/pot=/&&/\{([a-z]{1,2})/i){$data{'Species'}.=ucfirst($1)." ";}
+	elsif(/\{pot\s*=\s*[\d\.]+-([a-z]{1,2})/i){$data{'Species'}.=ucfirst($1)." ";}
+	elsif(/\{pot\s*=\s*([a-z]{1,2})/i){$data{'Species'}.=ucfirst($1)." ";}
+	elsif(/\{\d+-([a-z]{1,2})/i){$data{'Species'}.=ucfirst($1)." ";}
+#        if(/\{/&&/\s*(\S+)\s*/i){push @ { $data{'Basis'} },$1."\n";}
+        if(/\{/&&/\s*(\S.*\S)\s*$/i){push @ { $data{'Basis'} },$1."\n";}
+    }
+    chop($data{'Species'});
+    return;
+}
+
+######################################################################
+#### Get the double derivitives from the output ######################
+######################################################################
+sub Get2DD{
+    print "!DBG! Getting 2DDs\n" if $options{$invocation}{'debug'}[0];
+    #While one is reading lines starting with a number, add them to
+    #the current list
+    my %t;
+    if(($_=<RES>)=~/NUMBER OF ATOMS/&&!eof){}else{my @t=(split);$t{$t[1]}++}
+    while(($_=<RES>)=~/^\s*\d/&&!eof){
+	my @t=(split);
+	$t{$t[1]}++;
+    }
+    $data{'2DD'}=(join" ",(sort bynumber keys %t));
+    return;
+}
+
+######################################################################
+#### Get the symmetry operations from output #########################
+######################################################################
+sub GetSymmetry{
+    print "!DBG! Getting symmetry input\n" if $options{$invocation}{'debug'}[0];
+    #While one is reading lines starting with a number, add them to
+    #the current list
+    while(($_=<RES>)!~/end/&&!eof){
+	if(/^\s*[!%]/){next}
+	if(/(\/.*)/i){push @ { $data{'Symmetry input'} },$1."\n";}
+    }
+    return;
+}
+
+######################################################################
+#### Get the lattice definition from the data input ##################
+######################################################################
+sub GetLattice{
+    print "!DBG! Getting lattice data\n" if $options{$invocation}{'debug'}[0];
+    #While one is reading lines starting with a number, add them to
+    #the current list
+    while(($_=<RES>)!~/end/&&!eof){
+	if(/^\s*[!%]/){next}
+	$data{'lattice reconstruction'}.=$_;
+	if(/type\{(.*)\}/){$data{"lattice type"}=$1;}
+	if(/a0\{(.*)\}/){
+	    $data{"lattice a0"}=$1;
+	    if(!$data{"lattice params"}){
+		$data{"lattice params"}=$data{"lattice a0"}
+	    }
+	}
+	if(/sum\{(.*)\}/){$data{"lattice sum"}=$1;}
+	if(/vec\{(.*)\}/){$data{"lattice vecs"}.=" $1";}
+    }
+    return;
+}
+
+######################################################################
+#### Get the lattice definition from the data input ##################
+######################################################################
+sub GetLatticeVectors{
+    print "!DBG! Getting lattice vector from output data\n" if $options{$invocation}{'debug'}[0];
+    #While one is reading lines starting with a number, add them to
+    #the current list
+    my $type = $_[0]; # P(rimitive) or C(onventional)
+    #Sometimes (where the lattice is being detected) the data appears twice:
+    if(exists $data{"d-latt $type"}){
+	delete $data{"d-latt $type"};
+	delete $data{"r-latt $type"};
+    }
+    while(($_=<RES>)!~/end/&&!eof){
+	if(/^\s*[!%]/){next}
+	chomp;
+	my @a=(split);
+	push @ { $data{"d-latt $type"} },@a[0..2];
+	push @ { $data{"r-latt $type"} },@a[3..5];
+	if( $#{  $data{"r-latt $type"} } == 8){last}
+    }
+    return;
+}
+
+######################################################################
+#### Get the dipole matrix elements from the output ##################
+######################################################################
+sub GetDipole{
+    print "!DBG! Getting dipole matrix elements\n" if $options{$invocation}{'debug'}[0];
+    #While one is reading lines starting with a number, add them to
+    #the current list
+    $data{'Dipole'}[$data{'DipoleSet'}].=$_;
+    while(($_=<RES>)=~/^\s*\d+/&&!eof){
+	if(/^\s*[!%]/){next}
+	$data{'Dipole'}[$data{'DipoleSet'}].=$_;}
+    return;
+}
+
+######################################################################
+#### Get the BZ sampling points  #####################################
+######################################################################
+sub GetSampling{
+    print "!DBG! Getting sampling data\n" if $options{$invocation}{'debug'}[0];
+    #While one is reading lines starting with a number, add them to
+    #the current list
+    while(($_=<RES>)!~/end/&&!eof){
+	if(/^\s*([!%].*|\s*)$/){next}
+	push @ { $ data{'sampling k-points'} },$_;
+	$data{'Num. sampling k-points'}++;
+    }
+    return;
+}
+
+######################################################################
+#### Get the positions of the bond-centres ###########################
+######################################################################
+sub GetBondCentrePositions{   
+    die "Wrong number of parameters passed to 'GetBondCentrePositions': $#_ != 0\n" if $#_;
+    print "!DBG! Getting bond centre location data\n" if $options{$invocation}{'debug'}[0];
+    #While one is reading lines starting with a number, add them to
+    #the current list
+    $data{'Num. bcs detected'}=0;
+    while(<RES>){
+	if(/^\s*[!%]/){next}
+	if(!/^\s*\d/){last}
+	push @ { $ data{'BC sites'} },$_;
+	$data{'Num. bcs detected'}++;
+    }
+    return;
+}
+
+#####
+#     #  ######  #    #  ######  #####     ##    #
+#        #       ##   #  #       #    #   #  #   #
+#  ####  #####   # #  #  #####   #    #  #    #  #
+#     #  #       #  # #  #       #####   ######  #
+#     #  #       #   ##  #       #   #   #    #  #
+#####   ######  #    #  ######  #    #  #    #  ######
+
+#######
+#        #    #  #    #   ####    #####     #     ####   #    #   ####
+#        #    #  ##   #  #    #     #       #    #    #  ##   #  #
+#####    #    #  # #  #  #          #       #    #    #  # #  #   ####
+#        #    #  #  # #  #          #       #    #    #  #  # #       #
+#        #    #  #   ##  #    #     #       #    #    #  #   ##  #    #
+#         ####   #    #   ####      #       #     ####   #    #   ####
+
+sub VectorDiff{die"Error in VectorDiff ($#_!=5)\n"if($#_-5);return($_[0]-$_[3],$_[1]-$_[4],$_[2]-$_[5])}
+sub VectorLength{die"Error in VectorLength ($#_!=2)\n"if($#_-2);my $l=0;for(0..2){$l+=$_[$_]*$_[$_]}return(sqrt($l))}
+sub bynumber{$a<=>$b}
+sub alphabetically{ord(lc($a))<=>ord(lc($b))}
+sub FormatOTB{die "Error in FormatOTB" if ($#_);return (sprintf"%5d% 2d %5d %5d %5d %5d %17.10f%17.10f%17.10f\n",(split " ",$_[0]))}
+sub FormatXYZ{die "Error in FormatXYZ" if ($#_-3);return (sprintf"%2s%18.11f%18.11f%18.11f\n",@_)}
+sub FormatPDB{die "Error in FormatPDB" if ($#_-4);return (
+		  sprintf"ATOM  %5d%4s%2s%3s %1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f      %4s%2s%2s\n",
+		  $_[0], $_[1], "", "RES", "A", 1, "", @_[2..4], 1, 0, "A1  ", $_[1], 0);
+}
+sub BubbleSort{
+    my ($c,@a)=(1,@_);
+    while($c<@a){my $p=1;while($p<@a){if($a[$p-1]>$a[$p]){@a[$p-1,$p]=@a[$p,$p-1];}$p++;}$c++}
+    return @a;
+}
+sub ReverseBubbleSort{
+    my ($c,@a)=(1,@_);
+    while($c<@a){my $p=1;while($p<@a){if($a[$p-1]<$a[$p]){@a[$p-1,$p]=@a[$p,$p-1];}$p++;}$c++}
+    return @a;
+}
+sub CheckANumber{$n=$_[0];if($n=~/^-?(\d+\.?\d*|\.\d+)$/){return $n;}else{die "This is not a number at line $.: '$n'\n";}}
+sub CheckAPositiveNumber{$n=$_[0];if($n=~/^(\d+\.?\d*|\.\d+)$/){return $n;}else{die "This is not a positive number at line $.: '$n'\n";}}
+sub CheckAnInteger{$n=$_[0];if($n=~/^-?\d+$/){return $n;}else{die "This is not an integer at line $.: '$n'\n";}}
+sub CheckAPositiveInteger{$n=$_[0];if($n=~/^\d+$/){return $n;}else{die "This is not a positive integer at line $.: '$n'\n";}}
+
+
+#    #   ####   #    #  ######  #####
+#    #  #    #  ##  ##  #       #    #
+######  #    #  # ## #  #####   #    #
+#    #  #    #  #    #  #       #####
+#    #  #    #  #    #  #       #   #
+#    #   ####   #    #  ######  #    #
+
+######################################################################
+#### A suite of routines to plot eigenvalue spectra ##################
+######################################################################
+
+######################################################################
+#### The governing Homer routine that calls all subroutines: #########
+######################################################################
+sub Homer{
+    print "!DBG! In Homer\n" if $options{$invocation}{'debug'}[0];
+    die "Wrong number of arguments passed to Homer" if $#_;
+    my $file = $_[0];
+    # Set homer defaults:
+    &HomerDefaults;
+    # Read in the homer input file:
+    my $set=0;$set=&HomerInput($file);if(!$set){die "No evals found\n"}    
+    # Normalise from eV to normalised scale:
+    &HomerNormalise();
+    # Work out where the plot will go on the paper:
+    &HomerPaper();
+    # Now for the Plotting:
+    $homerpsfile=&HomerPSOutput();
+    # If invoked as Homer, give some output:
+    if($invocation eq "Homer"){print "Postscript file generated: $homerpsfile\n"}
+    #If requested, visualise the KS-levels:
+    if($options{$invocation}{'xhomer'}){push @{$system{'postscript'}},$homerpsfile}
+}
+
+######################################################################
+#### Work out in logical (normalised) units the paper dimensions: ####
+######################################################################
+sub HomerPaper{
+    # Remember that in PS the scale is 72 points per inch!
+    print "!DBG! In HomerPaper\n" if $options{$invocation}{'debug'}[0];
+    die "Wrong number of arguments passed to HomerPaper ($#_)" if ($#_+1);
+    # Work out the dimensions of the paper and graph area in cm:
+    die "Plot area does not fit on the paper\n" if (!$homerdata{landscape}&&$homerdata{paper}[0]<$homerdata{"area"}[0] or $homerdata{paper}[1]<$homerdata{"area"}[1]);
+    die "Plot area does not fit on the paper\n" if ($homerdata{landscape}&&$homerdata{paper}[0]<$homerdata{"area"}[1] or $homerdata{paper}[1]<$homerdata{"area"}[0]);
+    # Scale the paper and plot area to "points":
+    for(0..$#{$homerdata{paper}}){$homerdata{paper}[$_]*=$homerdata{"ps scale"};$homerdata{"area"}[$_]*=$homerdata{"ps scale"}}
+    # Calculate the bottom left hand point of the graph:
+    $homerdata{"ps offset"}[0]=0.5*($homerdata{paper}[0]-$homerdata{"area"}[0]);
+    $homerdata{"ps offset"}[1]=0.5*($homerdata{paper}[1]-$homerdata{"area"}[1]);
+    # Some debug output:
+    print "!DBG! paper: $homerdata{paper}[0], $homerdata{paper}[1]\n" if $options{$invocation}{'debug'}[0];
+    print "!DBG! graph: $homerdata{'area'}[0], $homerdata{'area'}[1]\n" if $options{$invocation}{'debug'}[0];
+    print "!DBG! graph: $homerdata{'area'}[0], $homerdata{'area'}[1]\n" if $options{$invocation}{'debug'}[0];
+}
+
+######################################################################
+#### Convert 'normalised' points to "point" points: ##################
+######################################################################
+sub Homer2Paper{
+    # This works on pairs of numbers on the normalised scheme:
+    my @p;
+    my $m="Wrongly formated input to Homer2Paper\n";
+    while(@_){
+	my @b;
+	for(0..1){unless(push @b,(shift)){die "$m"}}
+	for(0..1){push @p,($homerdata{"area"}[$_]*shift(@b)+$homerdata{"ps offset"}[$_])}
+    }
+    return @p;
+}
+
+######################################################################
+#### Set the font in the postscript file #############################
+######################################################################
+sub HomerSetFont{SetFont($font{$_[0]},$fontsize{$_[0]})}
+
+######################################################################
+#### Convert 'normalised' values to "point" values: ##################
+######################################################################
+sub eV2normal{
+    print "!DBG! eV2normal input @_\n" if $options{$invocation}{debug}[0];
+    my @p;
+    while(@_){$_=shift(@_)-$homerdata{emin};$_/=$homerdata{range};push @p,$_}
+    print "!DBG! eV2normal output @p\n" if $options{$invocation}{debug}[0];
+    return @p;
+}
+
+######################################################################
+#### Convert "point" values to 'normalised' values: ##################
+######################################################################
+sub normal2eV{
+    print "!DBG! normal2eV input @_\n" if $options{$invocation}{debug}[0];
+    my @p;
+    while(@_){push @p,(shift(@_)*$homerdata{range}+$homerdata{emin})}
+    print "!DBG! normal2eV output @p\n" if $options{$invocation}{debug}[0];
+    return @p;
+}
+
+######################################################################
+#### Print PS file for the Kohn-Sham plots: ##########################
+######################################################################
+sub HomerPSOutput{
+    #Remember that in PS the scale is 72 points per inch!
+    print "!DBG! In HomerPSOutput\n" if $options{$invocation}{'debug'}[0];
+    die "Wrong number of arguments passed to HomerPSOutput ($#_)" if ($#_+1);        
+    $homerpsfile=OpenOutput(HOMERPS,"new",$tag,"ps","Homer postscript output");
+    if(!$f){return}
+    my %ps=(
+	header=>"%!PS-Adobe-2.0\n%%Creator:  Homer\n%%BoundingBox: 0 0 ".(sprintf "%d %d",@{$homerdata{'paper'}})."\n%%Pages: 1\n%%CreationDate: ".localtime(time)."\n%%BeginSetup\n%%EndSetup\n%%Magnification: 1.0000\n%%EndComments\n%%BeginProlog\nsave\n%% Right justify string\n/RJ { stringwidth neg exch neg exch rmoveto } bind def\n%% Centre string\n/CS { stringwidth 2 div neg exch 2 div neg exch rmoveto } bind def\n%% Abreviations\n/F {fill} bind def\n/K {setrgbcolor} bind def\n/R {rlineto} bind def\n/L {lineto} bind def\n/M {moveto} bind def\n/N {newpath} bind def\n/S {stroke} bind def\n%%Triangles\n/UT {3 add M 5 0 R -5 7 R -5 -7 R closepath F} bind def\n/DT {3 sub M 5 0 R -5 -7 R -5 7 R closepath F} bind def\n%%Circles\n/circle {".$homerdata{sym}*.5." 0 360 arc} bind def\n%%Squares\n/square {".0.5*$homerdata{sym}." sub exch ".0.5*$homerdata{sym}." sub exch M $homerdata{sym} 0 R 0 $homerdata{sym} R -$homerdata{sym} 0 R closepath} bind def\n%%EndProlog\n%%BeginSetup\n%%EndSetup\n".$homerdata{linewidth}." setlinewidth\n",
+	landscape=>"%%Landscape jiggery-pokery:\n270 rotate\n".(sprintf "%d %d",-0.5*($homerdata{'paper'}[0]+$homerdata{'paper'}[1]),0.5*($homerdata{'paper'}[0]-$homerdata{'paper'}[1]))." translate\n%%\n",
+	footer=>"showpage\n%%Trailer\nrestore\n",
+	);
+    print HOMERPS $ps{header};
+    if($homerdata{"landscape"}){print HOMERPS $ps{landscape}}
+    # If desired, grey out the underlying bands:
+    print HOMERPS "gsave\nnewpath\n0 0 moveto\n 0 $homerdata{'paper'}[1] rlineto\n ${$homerdata{'paper'}}[0] 0 rlineto\n 0 -$homerdata{'paper'}[1] rlineto\n closepath\ngsave\n1 1 1 setrgbcolor\n fill\ngrestore\n1 1 1 setrgbcolor\n 0 setlinewidth\n stroke\ngrestore\n";
+    if($homerdata{"bands"}){
+	if(exists $homerdata{"vbmin"}){
+	    &HomerBands(&eV2normal($homerdata{"vbmin"},split" ",$homerdata{"bands"}));
+	}else{
+	    &HomerBands("a",&eV2normal(split" ",$homerdata{"bands"}));
+	}
+    }
+    HomerSetFont("ticklabel");
+    # If called via gres, need to set the homer default:
+    PlaceText(
+	-4*$fontsize{ticklabel}/$homerdata{paper}[0]-$homerdata{d}*$fontsize{ticklabel}/$homerdata{paper}[0],
+	0.5,
+	$homerdata{"energy label"},"centre centre",$fontsize{ticklabel},90);
+    if($homerdata{title}){
+	if($homerdata{subtitle}){
+	    HomerSetFont("title");    PlaceText(0.5,1.1,$homerdata{title},"centre",$fontsize{title},0);
+	    HomerSetFont("subtitle");    PlaceText(0.5,1.05,$homerdata{subtitle},"centre",$fontsize{subtitle},0);
+	}else{
+	    HomerSetFont("title");    PlaceText(0.5,1.05,$homerdata{title},"centre",$fontsize{title},0);
+	}
+    }
+    # Add the tickmarks:
+    &HomerTickMarks();
+    # Add the spectra (includeing symbols):
+    &HomerSpectra();
+    # Add any annotation:
+    if(@{$homerdata{text}}){&HomerAnnotation(@{$homerdata{text}});}
+    # Draw the frame:
+    &SetLineWidth(int(1.5*$homerdata{linewidth}));
+    DrawLine(0,0,0,1);
+    DrawLine(0,1,1,1);
+    DrawLine(1,1,1,0);
+    DrawLine(1,0,0,0);
+    &SetLineWidth($homerdata{linewidth});
+    print HOMERPS $ps{footer};
+    return $homerpsfile;
+}
+
+######################################################################
+#### Add text to the plot: ###########################################
+######################################################################
+sub HomerAnnotation{
+    print "!DBG! In HomerAnnotation\n" if $options{$invocation}{'debug'}[0];
+    die "Wrong number of arguments passed to HomerAnnotation ($#_!>=0)" if (!($#_+1));    
+    my(@text)=(@_);
+    # The location of the text is given by @_[0..1] The first term is
+    # already in normal units, and the second is in eV and must be
+    # converted.
+    for(@text){
+	my (@a);
+	(/^\s*(\S+)\s+(\S+)\s+"(.*)"/);@a=($1,$2,$3);
+	die "Wrongly formatted annotation: $_\n" if (!($#a+2));
+	PlaceText($a[0],&eV2normal($a[1]),$a[2],"centre centre",$fontsize{columnlabel},0);
+    }
+}
+
+######################################################################
+#### Add gray areas to represent the valence and conduction bands ####
+######################################################################
+sub HomerBands{
+    print "!DBG! In HomerBands\n" if $options{$invocation}{'debug'}[0];
+    die "Wrong number of arguments passed to HomerBands ($#_!=2)" if ($#_-2);    
+    my($Evmin,$Ev,$Ec)=(@_);
+    die "Band edges wrongly formated in input\n" if($Ev>$Ec || $Evmin>$Ev);
+    
+    print "!DBG! Valence band: $Evmin -- $Ev, Conduction band: $Ec +\n" if $options{$invocation}{'debug'}[0];
+    
+    if($Evmin eq "a"){DrawBox(0,0,1,$Ev)}
+    elsif($Evmin>0&&$Ev<1){DrawBox(0,$Evmin,1,$Ev)}
+    elsif($Evmin>0&&$Ev>1){DrawBox(0,$Evmin,1,1)}
+    elsif($Evmin<0&&$Ev>0){DrawBox(0,0,1,$Ev)}
+    if($Ec<1){DrawBox(0,1,1,$Ec)}
+}
+
+######################################################################
+#### Work out the tick mark spacing: #################################
+######################################################################
+sub HomerSpectra{
+    print "!DBG! In HomerSpectra\n" if $options{$invocation}{'debug'}[0];
+    die "Wrong number of arguments passed to HomerSpectra ($#_)" if ($#_+1);    
+    print "!DBG! set=$set\n" if $options{$invocation}{'debug'}[0];    
+    # Calculate the width of each spectrum and the amount of space between them:
+    if($homerdata{s}){
+	$gap=(1+1/$homerdata{s})*$set-1;
+	print "!DBG! 1/Gap=$gap\n" if $options{$invocation}{'debug'}[0];    
+	$gap=1/$gap;
+	$width=$gap/$homerdata{s}}
+    else{$gap=0;$width=1/$set}
+    if($set==0){die "Error - no sets detected for HomerSpectra\n"}
+    if($set==1){$gap=0;$width=1}
+    print "!DBG! Gap=$gap / Width=$width\n" if $options{$invocation}{'debug'}[0];    
+    
+    # Now plot the levels and add the labels:
+    HomerSetFont("columnlabel");
+    my @labels=(split"","abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
+    my (@deg);$homerdata{"tol"}/=$homerdata{range};
+    
+    # Loop over the eigenvalue sets:
+    for $s (1..$set){	
+	
+	# Do we print a dividing line?
+	if($s!=$set && (exists $homerdata{"evals down $s"}||$homerdata{"evals av $s"}) && $homerdata{dividers}){
+	    DrawDashedLine(($s*($width+$gap)-$gap*.5),0,($s*($width+$gap)-$gap*.5),1);
+	}
+	
+	#Work out where to start/stop plotting symbols:
+	my @empty=(split" ",$homerdata{"evals empty $s"});
+	my $filled=$homerdata{"evals up $s"}+$homerdata{"evals down $s"}+$homerdata{"evals av $s"};
+	
+	my $estart=$homerdata{levels}[$s][$homerdata{"evals levels $s"}-$empty[0]-$filled];
+	my $estop=$homerdata{levels}[$s][$homerdata{"evals levels $s"}-$empty[in0]+$empty[1]-1];
+	
+	if($options{$invocation}{'debug'}[0]){print "!DBG! estart \& estop: $estart $estop\n";}	
+	
+	# Work out what the label is:
+	my $l;
+	if(exists $homerdata{"evals label $s"}){
+	    $l=$homerdata{"evals label $s"};
+	}elsif(exists $homerdata{"evals updown $s"}){
+	    $l=$homerdata{"evals updown $s"};
+	}else{
+	    $l="(".(shift@labels).")";
+	}
+	
+	# Output some postscript for the label:
+	if($homerdata{"labels"} eq "bottom"  && !$updown){
+	    if(exists $homerdata{"evals label $s"}){
+		if($homerdata{"evals rotatelabel $s"}){
+		    PlaceText((($s-1)*($width+$gap)+$width*0.5)+($fontsize{columnlabel}*0.5)/$homerdata{paper}[0],
+			      0.0,$l,"right centre",$fontsize{columnlabel},90);
+		}else{
+		    PlaceText((($s-1)*($width+$gap)+$width*0.5),-2*$fontsize{columnlabel}/$homerdata{paper}[1],$l,"centre",$fontsize{columnlabel},0);
+		}
+	    }elsif(exists $homerdata{"evals updown $s"}){
+		$updown=2;
+		if($homerdata{"evals rotatelabel $s"}){
+		    PlaceText((($s-1)*($width+$gap)+$width+$gap*0.5)+($fontsize{columnlabel}*0.5)/$homerdata{paper}[0],
+			      0.0,$l,"right centre",$fontsize{columnlabel},90);
+		}else{
+		    PlaceText((($s-1)*($width+$gap)+$width+$gap*0.5),-2*$fontsize{columnlabel}/$homerdata{paper}[1],$l,"centre",$fontsize{columnlabel},0);
+		}
+	    }else{	
+		PlaceText((($s-1)*($width+$gap)+$width*0.5),-2*$fontsize{columnlabel}/$homerdata{paper}[1],$l,"centre",$fontsize{columnlabel},0);
+	    }	    
+	}
+	if($updown){$updown--}
+	
+	#Individual band shading:
+	if($homerdata{"evals bands $s"}){
+	    $xmin=($s-1)*($width+$gap);
+	    $xmax=$s*($width+$gap)-$gap;
+	    @y=&eV2normal(split" ",$homerdata{"evals bands $s"});
+	    for(0..$#y){if($y[$_]<0){$y[$_]=0}if($y[$_]>1){$y[$_]=1}}
+	    #Full valence band definition?
+	    if($#y==2){DrawBox($xmin,$y[0],$xmax,$y[1]);DrawBox($xmin,$y[2],$xmax,1);
+	    }elsif($#y==1){DrawBox($xmin,0,$xmax,$y[0]);DrawBox($xmin,$y[1],$xmax,1);
+	    }else{die "Wrong band data passed for eval band edges\n"}
+	}
+	
+	# Now for the plotting of the levels:
+	my ($current,$level);@deg=();
+	for $e (@{$homerdata{levels}[$s]}){
+	    # As a side-effect, calculate degeneracies:
+	    if($e<=$current+$homerdata{"tol"}){
+		$deg[$level].=" $e";
+	    }else{
+		$level++;$deg[$level]=$current=$e;
+	    }
+	    # If the level is in the window, draw a line:
+	    next if $e<0;
+	    last if $e>1;
+	    DrawLine(($s-1)*($width+$gap),$e,$s*($width+$gap)-$gap,$e);
+	}
+	
+	if($options{$invocation}{'debug'}[0]){
+	    print "!DBG! tol = $homerdata{'tol'}\n";
+	    for(0..$level){print "!DBG! deg[$_] = $deg[$_]\n"}
+	}
+	
+	# Now place the symbols...
+	my ($start,$stop,$nel,$b,$blast);$start=$stop=0;
+	my $stag=0.05/$set;
+	$nel=($homerdata{"evals levels $s"}-$empty[0])*(1+(exists $homerdata{"evals av $s"}))+$homerdata{"evals partial $s"};	
+	for $e (@deg){ 
+	    if($options{$invocation}{'debug'}[0]){print "!DBG! e: $e\n";}			
+	    
+	    if(!$start&&$estart&&$e=~/(^$estart| $estart | $estart$)/&&(split" ",$e)[0]>0){
+		$start--;
+		if($options{$invocation}{'debug'}[0]){print "!DBG! start: $estart $e $start\n";}	
+		
+	    }
+	    if($start&&(split " ",$e)[0]>0){$start*=-1}
+	    if($estop&&$e=~/(^$estop| $estop | $estop$)/){
+		$stop++;
+		if($options{$invocation}{'debug'}[0]){print "!DBG! stop(1): $estop $e $stop\n";}
+	    }
+	    if((split " ",$e)[0]>1){$stop++;
+				    if($options{$invocation}{'debug'}[0]){print "!DBG! stop(2): $estop $e $stop\n";}
+	    }
+	    if(!$e){ print $e;next }
+	    #Retain the last value for "staggering":
+	    $blast=$b;
+	    #Average over the 'degenerate' states:	    
+	    $b=0;@x=(split" ",$e);for$a(@x){$b+=$a}$b/=($#x+1);
+	    if($start){
+		my ($spin,$a);
+		if($homerdata{"stagger"}){
+		    if(($b-$blast)<5e-3){
+			if($nstagger==2){$nstagger=1;if($stagger<0){$stagger-=$stag}else{$stagger+=$stag}}
+			elsif($nstagger==1){$nstagger=2;$stagger*=-1}
+			elsif($nstagger==0){$nstagger=1;$stagger+=$stag}
+		    }else{
+			$nstagger=0;$stagger=0;
+		    }
+		}else{$stagger=0}
+		$a=1;
+		while($a<=($#x+1)*(1+(exists $homerdata{"evals av $s"}))){
+		    if($nel-$a<0){$spin="empty"}
+		    elsif(exists $homerdata{"evals up $s"}){$spin="up"}
+		    elsif(exists $homerdata{"evals down $s"}){$spin="down"}
+		    elsif(exists $homerdata{"evals av $s"}){$spin="av"}
+		    else{die "Yikes - error in placing symbols in HomerSpectra\n"}
+		    #If the average symbol is an arrow, alternate up and down:
+		    if($spin eq "av" && $homerdata{"filled symbol"} eq "arrow"){
+			if($AvArrow eq "up"){$AvArrow="down"}else{$AvArrow="up"}
+			$spin=$AvArrow;
+		    }
+		    if($options{$invocation}{'debug'}[0]){print "!DBG! Before PlaceSymbol:  $a, $b, $blast, ",$b-$blast,", $stagger\n"}
+		    if($b>=0 && $b<=1){
+			PlaceSymbol(
+			    ($s-1)*($width+$gap)
+			    +$width*$a/(($#x+1)*(1+(exists $homerdata{"evals av $s"}))+1)
+			    +$stagger,
+			    $b,
+			    $spin
+			    );
+		    }
+		    $a++;
+		}
+	    }
+	    $nel-=($#x+1)*(1+(exists $homerdata{"evals av $s"}));
+	    last if $stop;
+	}
+    }
+}
+
+######################################################################
+#### Work out the tick mark spacing: #################################
+######################################################################
+sub HomerTickMarks{
+    print "!DBG! In HomerTickMarks\n" if $options{$invocation}{'debug'}[0];
+    die "Wrong number of arguments passed to HomerTickMarks ($#_)" if ($#_+1);    
+    # If the tick spacing has been dictated, use it:
+    if($homerdata{ticks}){($homerdata{"major tick"},$homerdata{"minor tick"})=(split " ",$homerdata{ticks})}
+    # ...else generate a sensible scheme based on the range:
+    else{
+	print "!DBG! range = $homerdata{range} eV\n" if $options{$invocation}{'debug'}[0];	
+	$homerdata{"major tick"}=$homerdata{"minor tick"}=10**((int(log(2*$homerdata{range})/log(10)))-1);$homerdata{"minor tick"}*=0.2;
+    }
+    # Where is the lowest major and minor tick mark?
+    if($homerdata{emin}>0){
+	$homerdata{"first minor tick"}=int(($homerdata{emin}-0.00001)/$homerdata{"minor tick"}+1)*$homerdata{"minor tick"};
+	$homerdata{"first major tick"}=int(($homerdata{emin}-0.00001)/$homerdata{"major tick"}+1)*$homerdata{"major tick"};
+    }else{
+	$homerdata{"first minor tick"}=int(($homerdata{emin}-0.00001)/$homerdata{"minor tick"})*$homerdata{"minor tick"};
+	$homerdata{"first major tick"}=int(($homerdata{emin}-0.00001)/$homerdata{"major tick"})*$homerdata{"major tick"};
+    }
+    print "!DBG! ticks: $homerdata{'major tick'} $homerdata{'minor tick'} eV\n" if $options{$invocation}{'debug'}[0];	
+    print "!DBG! first ticks: $homerdata{'first major tick'} $homerdata{'first minor tick'} eV\n" if $options{$invocation}{'debug'}[0];	
+    
+    # Now we must convert these numbers to the "normalised" scheme:
+    $homerdata{"major tick"}/=$homerdata{range};
+    $homerdata{"minor tick"}/=$homerdata{range};
+    ($homerdata{"first major tick"})=(eV2normal($homerdata{"first major tick"}));
+    ($homerdata{"first minor tick"})=(eV2normal($homerdata{"first minor tick"}));
+    print "!DBG! ticks: $homerdata{'major tick'} $homerdata{'minor tick'} eV\n" if $options{$invocation}{'debug'}[0];	
+    print "!DBG! first ticks: $homerdata{'first major tick'} $homerdata{'first minor tick'} eV\n" if $options{$invocation}{'debug'}[0];	
+    
+    # Now do the postscript bit:
+    # Minor ticks:
+    
+    my $y=$homerdata{'first minor tick'};
+    while($y<=1.000000001){DrawLine(0,$y,-0.01,$y);DrawLine(1,$y,1.01,$y);$y+=$homerdata{"minor tick"}}
+    
+    # Major ticks:
+    HomerSetFont("ticklabel");
+    $y=$homerdata{'first major tick'};
+    while($y<=1.000000001){
+	DrawLine(0,$y,-0.02,$y);
+	DrawLine(1,$y,1.02,$y);
+	PlaceText(-0.03,$y,(sprintf "%5.$homerdata{d}f",normal2eV($y)),"right centre",$fontsize{ticklabel},0);
+	$y+=$homerdata{"major tick"}
+    }
+}
+
+######################################################################
+#### Work out the eV max and min after shifts and rescale: ###########
+######################################################################
+sub HomerNormalise{
+    print "!DBG! In HomerNormalise\n" if $options{$invocation}{'debug'}[0];
+    die "Wrong number of arguments passed to HomerNormalise ($#_)" if ($#_+1);    
+    # The energy range can be forced by the input:
+    if($homerdata{world}){($homerdata{emin},$homerdata{emax})=(split" ",$homerdata{world})}
+    # ... else work it out...
+    else{($homerdata{emin},$homerdata{emax})=(10000000,-10000000)}
+    # Loop over the levels to obtain the min, max and hence the range:
+    for(1..$set){
+	if($homerdata{"align"}){
+	    #The alignment may be from the previous set if spin polarised:
+	    my $last=$_-1;
+	    my $next=$_+1;
+	    if(exists $homerdata{"evals up $_"}&& exists $homerdata{"evals down $next"}){
+		$align=0.5*($homerdata{levels}[$_][$homerdata{"align"}-1]+$homerdata{levels}[$next][$homerdata{"align"}-1])
+	    }elsif(exists $homerdata{"evals down $_"}&& exists $homerdata{"evals up $last"}){
+		# Do nothing :)
+	}else{$align=$homerdata{levels}[$_][$homerdata{"align"}-1]}
+	    for $e (0..$#{$homerdata{levels}[$_]}){$homerdata{levels}[$_][$e]-=$align}
+	}else{
+	    for $e (0..$#{$homerdata{levels}[$_]}){$homerdata{levels}[$_][$e]+=($homerdata{"evals shift $_"}+$homerdata{"shift"})}
+	}
+	
+	if(!$homerdata{world}){
+	    $homerdata{emin}=(($homerdata{levels}[$_][0]<$homerdata{emin})?$homerdata{levels}[$_][0]:$homerdata{emin});
+	    $homerdata{emax}=(($homerdata{levels}[$_][$#{$homerdata{levels}[$_]}]>$homerdata{emax})?$homerdata{levels}[$_][$#{$homerdata{levels}[$_]}]:$homerdata{emax});
+	    printf "!DBG! %4d%10.5f%10.5f%10.5f%10.5f%10.5f\n",$_,$homerdata{levels}[$_][0],$homerdata{levels}[$_][$#{$homerdata{levels}[$_]}],$homerdata{"evals shift $_"},$homerdata{emin},$homerdata{emax} if $options{$invocation}{'debug'}[0];
+	}
+    }
+    $homerdata{range}=$homerdata{emax}-$homerdata{emin};
+    
+    # The range is then increased by some fudge factor so that the top
+    # and bottom levels can be seen:
+    if(!$homerdata{world}){
+	$homerdata{emin}=$homerdata{emin}-$homerdata{range}*$homerdata{w};
+	$homerdata{emax}=$homerdata{emax}+$homerdata{range}*$homerdata{w};
+	$homerdata{range}*=(1+2*$homerdata{w});
+	printf "!DBG! %10.5f%10.5f%10.5f%10.5f\n",$homerdata{w},$homerdata{emin},$homerdata{emax},$homerdata{range} if $options{$invocation}{'debug'}[0];
+    }    
+    
+    # Now loop over the levels again to produce a normalised set:
+    for $s (1..$set){
+	@{$homerdata{levels}[$s]}=eV2normal(@{$homerdata{levels}[$s]});
+    }
+}
+
+######################################################################
+#### Read in the input and build the homerdata hash: #################
+######################################################################
+sub HomerInput{
+    print "!DBG! In HomerInput\n" if $options{$invocation}{'debug'}[0];
+    die "Wrong number of arguments passed to homer" if $#_;
+    my $file = $_[0];my ($levels,$evals)=(0,0);
+    $set=0;
+    OpenInput($file);
+    # Just in case we get here from gres we need to start the line counter again...
+    $.=0;
+    # Now, all the input file options MUST be here so that we can check for errors...
+    while(<RES>){
+	chomp;
+	next if /(^\s*$|^\s*%)/;
+	last if /\/end\{data\}/;
+	if($.==1){if(!/\/begin\{data\}/){die "Error in homer input: first line should be /begin{data}!\nFound $_\n"}else{next}}
+	if(/\//){$levels=0}
+	if($levels){CheckEvals($_);push @{$homerdata{levels}[$set]},(split);next} 
+	if(/\/begin\{evals\}/){
+	    $set++;
+	    if($options{"Homer"}{"rep"}[0]){$spo=$set+1}else{$spo=0}
+	    $evals=1;
+	    next;
+	}
+	if(/\/end\{evals\}/){
+	    $evals=0;
+	    if($spo){
+		for(sort keys %homerdata){
+		    if(/^(evals.*\s)$set$/){
+			my $tmp=$1;
+			$tmp=~s/ up/ down/;
+#			print "$_ -> $tag$spo: $homerdata{$_}\n";
+			$homerdata{"$tmp$spo"}=$homerdata{$_};
+		    }
+		}
+		@{$homerdata{levels}[$spo]}=@{$homerdata{levels}[$set]};
+		$set++;
+	    }
+	    next;
+	}
+	if( $evals && /\/levels\{(.*)\}/){CheckAPositiveInteger($1);$homerdata{"evals levels $set"}=$1;$levels=1;next}
+	if( $evals && /\/bands\{(.*\s+.*)\}/){for(split" ",$1){CheckANumber($_)}$homerdata{"evals bands $set"}=$1;next}
+	if( $evals && /\/up\{(.*)\}/){CheckAPositiveInteger($1);$homerdata{"evals up $set"}=$1;$spo=0;next}
+	if( $evals && /\/down\{(.*)\}/){CheckAPositiveInteger($1);$homerdata{"evals down $set"}=$1;$spo=0;next}
+	if( $evals && /\/av\{(.*)\}/){
+	    CheckAPositiveInteger($1);
+	    if($spo){
+		$homerdata{"evals up $set"}=$1;
+	    }else{
+		$homerdata{"evals av $set"}=$1;
+	    }
+	    next}
+	if( $evals && /\/shift\{(.*)\}/){
+	    CheckANumber($1);
+	    $homerdata{"evals shift $set"}=$1;
+	    next;
+	}
+	if( $evals && /\/label\{(.*)\}/){$homerdata{"evals label $set"}=$1;next}
+	if( $evals && /\/updown\{(.*)\}/){$homerdata{"evals updown $set"}=$1;next}
+	if( $evals && /\/partial\{(.*)\}/){CheckAPositiveInteger($1);$homerdata{"evals partial $set"}=$1;next}
+	if( $evals && /\/empty\{(.*\s+.*)\}/){for(split" ",$1){CheckAPositiveInteger($_)}$homerdata{"evals empty $set"}=$1;next}
+	if( $evals && /\/rotatelabel/){$homerdata{"evals rotatelabel $set"}=1;next}
+	if(!$evals && /\/align\{(.*)\}/){CheckAPositiveInteger($1);$homerdata{"align"}=$1;next}
+	if(!$evals && /\/shift\{(.*)\}/){CheckANumber($1);$homerdata{"shift"}=$1;next}
+	if(!$evals && /\/title\{(.*)\}/){$homerdata{"title"}=$1;next}
+	if(!$evals && /\/subtitle\{(.*)\}/){$homerdata{"subtitle"}=$1;next}
+	if(!$evals && /\/energy label\{(.*)\}/){$homerdata{"energy label"}=$1;next}
+	if(!$evals && /\/average symbol\{(square|circle)\}/){$homerdata{"filled symbol"}=$homerdata{"empty symbol"}=$1;next}
+	if(!$evals && /\/average symbol\{(arrow)\}/){$homerdata{"filled symbol"}=$1;next}
+	if(!$evals && /\/empty symbol\{(square|circle)\}/){$homerdata{"empty symbol"}=$1;next}
+	if(!$evals && /\/stagger/){$homerdata{"stagger"}++;next}
+	if(!$evals && /\/filled symbol\{(square|circle)\}/){$homerdata{"filled symbol"}=$1;next}
+	if( !$evals &&/\/tickfontsize\{(.*)\}/){$fontsize{"ticklabel"}=$1;next}
+	if( !$evals &&/\/labelfontsize\{(.*)\}/){$fontsize{"columnlabel"}=$1;next}
+	if( !$evals &&/\/titlefontsize\{(.*)\}/){$fontsize{"title"}=$1;next}
+	if( !$evals &&/\/subtitlefontsize\{(.*)\}/){$fontsize{"subtitle"}=$1;next}
+	if(!$evals && /\/world\{(.*\s+.*)\}/){for(split" ",$1){CheckANumber($_)}$homerdata{"world"}=$1;next}
+	if(!$evals && /\/tol\{(.*)\}/){CheckAPositiveNumber($1);$homerdata{"tol"}=$1;next}
+	if(!$evals && /\/symbol size\{(.*)\}/){CheckAPositiveInteger($1);$homerdata{"sym"}=$1;next}
+	if(!$evals && /\/decimals\{(.*)\}/){CheckAPositiveInteger($1);$homerdata{"d"}=$1;next}
+	if(!$evals && /\/white space\{(.*)\}/){CheckAPositiveNumber($1);$homerdata{"w"}=$1*0.01;next}
+	if(!$evals && /\/landscape/){$homerdata{"landscape"}=1;next}
+	if(!$evals && /\/gap space\{(.*)\}/){CheckAPositiveNumber($1);$homerdata{"s"}=$1*0.01;next}
+	if(!$evals && /\/ticks\{(.*\s+.*)\}/){for(split" ",$1){CheckAPositiveNumber($_)}$homerdata{"ticks"}=$1;next}
+	if(!$evals && /\/paper\{(.*\s+.*)\}/){for(split" ",$1){CheckAPositiveNumber($_)}@{$homerdata{"paper"}}=(split" ",$1);next}
+	if(!$evals && /\/area\{(.*\s+.*)\}/){for(split" ",$1){CheckAPositiveNumber($_)}@{$homerdata{"area"}}=(split" ",$1);next}
+	if(!$evals && /\/labels\{(bottom|none)\}/){$homerdata{"labels"}=$1;next}
+	if(!$evals && /\/bands\{(.*\s+.*)\}/){for(split" ",$1){CheckANumber($_)}$homerdata{"bands"}=$1;next}
+	if(!$evals && /\/VBmin\{(.*)\}/){CheckANumber($1);$homerdata{"vbmin"}=$1;next}
+	if(!$evals && /\/linewidth\{(.*)\}/){CheckAPositiveInteger($1);$homerdata{"linewidth"}=$1;next}
+	if(!$evals && /\/dividers/){$homerdata{"dividers"}=1;next}
+	if(!$evals && /\/text\{(.*\s+.*\s+".*"\s*)\}/){
+	    @d=(split" ",$1);CheckAPositiveNumber($d[0]);CheckANumber($d[1]);push @{$homerdata{"text"}},$1;next
+	}
+	die "Error in Homer input: $_\n";
+    }
+    
+    #
+    if($options{$invocation}{debug}[0]){
+	for $a (0..$set){
+	    for $b (sort keys %homerdata){
+		if($b=~/\s$a/){
+		    print "$b: $homerdata{$b}\n";
+		}
+	    }	
+	    print "\n";
+	}
+    }
+    #Now make sure that the "EVALS" are sorted, and that there are the expected number of them:
+    for(1..$set){
+	my@b=sort bynumber @{$homerdata{levels}[$_]};
+	@{$homerdata{levels}[$_]}=@b;
+	my $d=$homerdata{"evals levels $_"}-$#b-1;
+	if($options{$invocation}{debug}[0]){print "!DBG! $#b ",$homerdata{"evals levels $_"},"\n"}
+	if($d>0){die ("Fewer levels ($d) read in than expected in set $_")}
+	elsif($d<0){$d=-$d;die ("More levels ($d) read in than expected in set $_")}
+    }
+    
+    if($options{$invocation}{debug}[0]){print "!DBG! Homerdata hash:\n";for(sort keys %homerdata){print "    $_: $homerdata{$_}\n"}}
+    return($set);
+}
+
+######################################################################
+#### Check that each element in the Evals lists are numbers... #######
+######################################################################
+sub CheckEvals{@t=split " ",$_[0];for(@t){CheckANumber($_)}}
+
+######################################################################
+#### Set the default values for Homer plots: #########################
+######################################################################
+sub HomerDefaults{
+    %font=(
+	title=>"/Bold-Times-Roman",
+	subtitle=>"/Italic-Times-Roman",
+	ticklabel=>"/Times-Roman",
+	columnlabel=>"/Times-Roman"
+	);
+    %fontsize=(
+	title=>32,
+	subtitle=>24,
+	ticklabel=>16,
+	columnlabel=>24
+	);
+    %homerdata=(
+	"linewidth"=>1,
+	"filled symbol"=>"square",
+	"stagger"=>0,
+	"empty symbol"=>"square",
+	"ps scale"=>72/2.54,
+	"tol"=>0,
+	"title"=>"",
+	"subtitle"=>"",
+	"energy label"=>"Energy (eV)",
+	"paper"=>[21,29.7],
+	"area"=>[12,20],
+	"d"=>1,
+	"w"=>.05,
+	"s"=>.05,
+	"sym"=>9,
+	"labels"=>"bottom"
+	);
+    
+    if($invocation eq "Homer"){
+	if($options{$invocation}{area}[0]){@{$homerdata{area}}=(split ",",$Options{$invocation}{area}[0])}
+	if(exists $options{$invocation}{d}){$homerdata{d}=$options{$invocation}{d}[0];}
+	if(exists $options{$invocation}{l}){$homerdata{linewidth}=$options{$invocation}{l}[0];}
+	if($options{$invocation}{paper}[0]){@{$homerdata{paper}}=(split ",",$options{$invocation}{paper}[0])}
+	if(exists $options{$invocation}{s}){$homerdata{s}=$options{$invocation}{s}[0]/100;}
+	if(exists $options{$invocation}{w}){$homerdata{w}=$options{$invocation}{w}[0]/100;}
+	if(exists $options{$invocation}{sym}){$homerdata{sym}=$options{$invocation}{sym}[0];}
+    }
+    
+}
+
+
+######   #####
+#     # #     #
+#     # #
+######   #####
+#             #
+#       #     #
+#        #####
+
+#####    ####   #    #   #####     #    #    #  ######   ####
+#    #  #    #  #    #     #       #    ##   #  #       #
+#    #  #    #  #    #     #       #    # #  #  #####    ####
+#####   #    #  #    #     #       #    #  # #  #            #
+#   #   #    #  #    #     #       #    #   ##  #       #    #
+#    #   ####    ####      #       #    #    #  ######   ####
+
+######################################################################
+#### Draw a line from (x1,y1) to (x2,y2): ############################
+######################################################################
+sub SetLineWidth{printf HOMERPS "$_[0] setlinewidth\n"}
+sub DrawLine{printf HOMERPS "N %10.5f %10.5f M %10.5f %10.5f L S\n",&Homer2Paper(@_)}
+sub DrawDashedLine{printf HOMERPS "[5] 2 setdash\nN %10.5f %10.5f M %10.5f %10.5f L S\n[] 0 setdash\n",&Homer2Paper(@_)}
+sub DrawBox{
+    my @a=&Homer2Paper(@_);
+    printf HOMERPS "N %10.5f %10.5f M 0 %10.5f R %10.5f 0 R 0 %10.5f R closepath 0.75 setgray F .0 setgray S\n",
+    @a[0..1],$a[3]-$a[1],$a[2]-$a[0],$a[1]-$a[3];
+}
+sub SetFont{print HOMERPS "N $_[0] findfont $_[1] scalefont setfont\n"}
+sub PlaceText{
+    # Arguments: (x,y,string,justification,textsize,rotation angle)
+    if($#_-5){die "Wrong number of arguments supplied to PlaceText ($#_!=5)\n";}
+    my ($x,$y,$value,$justify,$textsize,$rotation)=(&Homer2Paper(@_[0..1]),@_[2..5]);
+    if($options{$invocation}{'debug'}[0]){printf "!DBG! VALUE $value -> "}
+    if($value=~/^\s*(-0.0+)/){$value=(sprintf "%5.$homerdata{d}f",0.0)}
+    if($options{$invocation}{'debug'}[0]){printf "$value\n"}
+    my $text="($value) ";
+    if($justify=~/ centre$/){$y-=$textsize/4}
+    if($justify=~/^right/){$text.="RJ "}
+    elsif($justify=~/^centre/){$text.="CS "}
+    elsif($justify=~/^left/){}
+    else{die "Error: justification in PlaceText ($justify)\n"}
+    printf HOMERPS "N %d %d M %5.2f rotate %s (%s) show %5.2f rotate\n",$x,$y,$rotation,$text,$value,-1*$rotation;
+}
+sub PlaceSymbol{ 
+    # Arguments: (x,y,spin) 
+    if($#_-2){die "Wrong number of arguments supplied to PlaceSymbol ($#_!=2)\n";}
+    my ($x,$y,$spin) = (Homer2Paper(@_[0..1]),$_[2]);
+    printf HOMERPS "N %10.5f %10.5f",$x,$y;    
+    if($spin eq "up" or $spin eq "down"){
+	printf HOMERPS "%s %10.5f %10.5f M %10.5f %10.5f L S\n",
+	(($spin eq "up")?" UT S\nN ":" DT S\nN "),$x,$y+(($spin eq "up")?3:-3),$x,$y+(($spin eq "up")?-7:7);
+    }elsif($spin eq "av"){
+	print HOMERPS " $homerdata{'filled symbol'} gsave 0 setgray F grestore gsave 0 setlinewidth S grestore\n";
+    }elsif($spin eq "empty"){
+	print HOMERPS " $homerdata{'empty symbol'} gsave 1 setgray F grestore S\n";
+    }else{
+	die "Eh? spin = '$spin'\t";
+    }
+}
+
+######################################################################
+#### Versio 57+ lattice definitions ##################################
+######################################################################
+
+sub LatticeDefinitions{
+    #Up to six parameters to define the lattice:
+    my $type=$_[0];
+    my $orient=$_[1]-1;
+    my @scale=(split" ",$_[2]);
+    
+    if(!$#scale){$scale[1]=$scale[2]=$scale[0]}
+    
+    my @p=@_[3..$#_];
+    
+    my %primitive=(
+	"cub-p" => [$p[0],0,0,
+		    0,$p[0],0,
+		    0,0,$p[0]],
+	"cub-i" => [-0.5*$p[0],0.5*$p[0],0.5*$p[0],
+		    0.5*$p[0],-0.5*$p[0],0.5*$p[0],
+		    0.5*$p[0],0.5*$p[0],-0.5*$p[0]],
+	"cub-f" => [0.5*$p[0],0.5*$p[0],0,
+		    0,0.5*$p[0],0.5*$p[0],
+		    0.5*$p[0],0,0.5*$p[0]],
+	"tet-p" => [$p[0],0,0,
+		    0,$p[0],0,
+		    0,0,$p[1],
+		    0.5*$p[0],0.5*$p[0],0,
+		    -0.5*$p[0],0.5*$p[0],0,
+		    0,0,$p[1]],
+	"tet-i" => [-0.5*$p[0],0.5*$p[0],0.5*$p[1],
+		    0.5*$p[0],-0.5*$p[0],0.5*$p[1],
+		    0.5*$p[0],0.5*$p[0],-0.5*$p[1],
+		    -0.5*$p[0],0,0.5*$p[1],
+		    0.5*$p[0],0,0.5*$p[1],
+		    0,-0.5*$p[0],-0.5*$p[1]],
+	"ort-p" => [$p[0],0,0,
+		    0,$p[1],0,
+		    0,0,$p[2]],
+	"ort-i" => [-0.5*$p[0],0.5*$p[1],0.5*$p[2],
+		    0.5*$p[0],-0.5*$p[1],0.5*$p[2],
+		    0.5*$p[0],0.5*$p[1],-0.5*$p[2]],
+	"ort-c" => [0.5*$p[0],0.5*$p[1],0,
+		    -0.5*$p[0],0.5*$p[1],0,
+		    0,0,$p[2]],
+	"ort-f" => [0.5*$p[0],0.5*$p[1],0,
+		    0.5*$p[0],0,0.5*$p[2],
+		    0,0.5*$p[1],0.5*$p[2]],
+	"mon-p" => [$p[0],0,0,
+		    0,$p[1],0,
+		    $p[2]*sin($p[3]),0,$p[2]*cos($p[3])],
+	"mon-c" => [0.5*$p[0],-0.5*$p[1],0,
+		    0.5*$p[0],0.5*$p[1],0,
+		    $p[2]*sin($p[3]),0,$p[2]*cos($p[3])],
+	"trc-p" => [$p[0],0,0,
+		    $p[1],$p[2],0,
+		    $p[3],$p[4],$p[5]],
+	"trg-r" => [
+	    $p[0],$p[1],$p[1],
+	    $p[1],$p[0],$p[1],
+	    $p[1],$p[1],$p[0],
+	    $p[1],0,$p[0],
+	    -0.5*$p[1],0.5*sqrt(3)*$p[1],$p[0],
+	    -0.5*$p[1],-0.5*sqrt(3)*$p[1],$p[0],
+	    $p[0]*sin($p[1]),0,$p[0]*cos($p[1]),
+	    -0.5*$p[0]*sin($p[1]),0.5*sqrt(3)*$p[0]*sin($p[1]),$p[0]*cos($p[1]),
+	    -0.5*$p[0]*sin($p[1]),-0.5*sqrt(3)*$p[0]*sin($p[1]),$p[0]*cos($p[1]),
+	    $p[0]*(1+$p[1]),$p[0]*$p[1],$p[0]*$p[1],
+	    $p[0]*$p[1],$p[0]*(1+$p[1]),$p[0]*$p[1],
+	    $p[0]*$p[1],$p[0]*$p[1],$p[0]*(1+$p[1])
+	],
+	"hex-p" => [
+	    $p[0],0,0,
+	    -0.5*$p[0],0.5*sqrt(3)*$p[0],0,
+	    0,0,$p[1],
+	    0.5*$p[0],-0.5*sqrt(3)*$p[0],0,
+	    0.5*$p[0],0.5*sqrt(3)*$p[0],0,
+	    0,0,$p[1]
+	]
+	);
+    my %conventional=(
+	"cub-p" => [$p[0],0,0,
+		    0,$p[0],0,
+		    0,0,$p[0]],
+	"cub-i" => [$p[0],0,0,
+		    0,$p[0],0,
+		    0,0,$p[0]],
+	"cub-f" => [$p[0],0,0,
+		    0,$p[0],0,
+		    0,0,$p[0]],
+	"tet-p" => [$p[0],0,0,
+		    0,$p[0],0,
+		    0,0,$p[1],
+		    $p[0],0,0,
+		    0,$p[0],0,
+		    0,0,$p[1]],
+	"tet-i" => [$p[0],0,0,
+		    0,$p[0],0,
+		    0,0,$p[1],
+		    $p[0],0,0,
+		    0,$p[0],0,
+		    0,0,$p[1]],
+	"ort-p" => [$p[0],0,0,
+		    0,$p[1],0,
+		    0,0,$p[2]],
+	"ort-i" => [$p[0],0,0,
+		    0,$p[1],0,
+		    0,0,$p[2]],
+	"ort-c" => [$p[0],0,0,
+		    0,$p[1],0,
+		    0,0,$p[2]],
+	"ort-f" => [$p[0],0,0,
+		    0,$p[1],0,
+		    0,0,$p[2]],
+	"mon-p" => [$p[0],0,0,
+		    0,$p[1],0,
+		    $p[2]*sin($p[3]),0,$p[2]*cos($p[3])],
+	"mon-c" => [$p[0],0,0,
+		    0,$p[1],0,
+		    $p[2]*sin($p[3]),0,$p[2]*cos($p[3])],
+	"trc-p" => [$p[0],0,0,
+		    $p[1],$p[2],0,
+		    $p[3],$p[4],$p[5]],
+	"trg-r" => [
+	    $p[0],$p[1],$p[1],
+	    $p[1],$p[0],$p[1],
+	    $p[1],$p[1],$p[0],
+	    $p[1],0,$p[0],
+	    -0.5*$p[1],0.5*sqrt(3)*$p[1],$p[0],
+	    -0.5*$p[1],-0.5*sqrt(3)*$p[1],$p[0],
+	    $p[0]*sin($p[1]),0,$p[0]*cos($p[1]),
+	    -0.5*$p[0]*sin($p[1]),0.5*sqrt(3)*$p[0]*sin($p[1]),$p[0]*cos($p[1]),
+	    -0.5*$p[0]*sin($p[1]),-0.5*sqrt(3)*$p[0]*sin($p[1]),$p[0]*cos($p[1]),
+	    $p[0]*(1+$p[1]),$p[0]*$p[1],$p[0]*$p[1],
+	    $p[0]*$p[1],$p[0]*(1+$p[1]),$p[0]*$p[1],
+	    $p[0]*$p[1],$p[0]*$p[1],$p[0]*(1+$p[1])
+	],
+	"hex-p" => [
+	    $p[0],0,0,
+	    -0.5*$p[0],0.5*sqrt(3)*$p[0],0,
+	    0,0,$p[1],
+	    0.5*$p[0],-0.5*sqrt(3)*$p[0],0,
+	    0.5*$p[0],0.5*sqrt(3)*$p[0],0,
+	    0,0,$p[1]
+	]
+	);
+    
+    #Pre-v57 definitions:
+    @{ $primitive{"fcc"} }=(0.5*$p[0],0.5*$p[0],0,
+			    0.5*$p[0],0,0.5*$p[0],
+			    0,0.5*$p[0],0.5*$p[0]);
+    @{ $conventional{"fcc"} }=(0.5*$p[0],0.5*$p[0],0,
+			       0.5*$p[0],0,0.5*$p[0],
+			       0,0.5*$p[0],0.5*$p[0]);
+    @{ $primitive{"bcc"} }=@{ $primitive{"cub-i"} };
+    @{ $conventional{"bcc"} }=@{ $primitive{"cub-i"} };
+    @{ $primitive{"cubic"} }=@{ $primitive{"cub-p"} };
+    @{ $conventional{"cubic"} }=@{ $primitive{"cub-p"} };
+    @{ $primitive{"hex"} }=@{ $primitive{"hex-p"} }[0..8];
+    #Turn "c/a" into "c":
+    ${ $primitive{"hex"} }[8]*=$p[0];
+    @{ $conventional{"hex"} }=@{ $primitive{"cub-p"} }[0..8];
+    @{ $primitive{"rhomb"} }=(sqrt(3)*0.5*$p[0],-0.5*$p[0],0,
+			      sqrt(3)*0.5*$p[0],0.5*$p[0],0,
+    			      0,0,$p[1]*$p[0]);
+    @{ $conventional{"rhomb"} }=(sqrt(3)*0.5*$p[0],-0.5*$p[0],0,
+				 sqrt(3)*0.5*$p[0],0.5*$p[0],0,
+				 0,0,$p[1]*$p[0]);
+    
+    
+    my @vec=(@{$primitive{"$type"}}[(0+$orient*9)..(8+$orient*9)],@{$conventional{"$type"}}[(0+$orient*9)..(8+$orient*9)]);
+    
+    #Now apply the scaling:
+    for $a (0..2){for $b (0..2){$vec[$b+$a*3]*=$scale[$a]}}
+    
+    return @vec;
+    
+}
