@@ -35,7 +35,7 @@ regGridPlot [options] [grid_vectors_input_file]
 Specifies the vectors & their repeats defining the grid.
 The file is delimited by whitespace and has the format:
 
-If no input file is specified the default input file  from io_params will be used. This file is user editable (advanced).
+If no input file is specified the default input file from io_params will be used. This file is user editable (advanced: see ./low_level_scripts/python/io_params.py).
 
 Repeats_A(int) A_x(float) A_y(float) A_z(float)
 Repeats_B(int) B_x(float) B_y(float) B_z(float)

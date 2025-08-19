@@ -6,7 +6,7 @@
 
 TODO Add further description here
 
-If no grid_vectors_input_file is specified the default input file from io_params will be used. This file is user editable (advanced).
+If no grid_vectors_input_file is specified the default input file from io_params will be used. This file is user editable (advanced: see ./low_level_scripts/python/io_params.py).
 
 [options]
 -v, --verbose: Enables verbose output.
