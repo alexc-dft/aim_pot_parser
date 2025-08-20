@@ -35,7 +35,7 @@ None
 
 import argparse
 import sys
-import os
+from pathlib import Path
 import numpy as np
 import common_io as cio
 
@@ -84,7 +84,7 @@ def read_commmand_line() -> str:
     input_filename = args.grid_vectors_input_file
 
     # Check provided file is valid
-    if not os.path.isfile(input_filename):
+    if not Path(input_filename).is_file():
         raise FileNotFoundError(f"no such file - '{input_filename}'")
 
     if verbose_output:
@@ -109,7 +109,7 @@ def write_pot_file(repeats: object, vectors: object) -> None:
 
     # Open an outfile in cwd
     # (N.B. this is the directory potfileGen was called from, not where it lives)
-    outpath = os.getcwd() + cio.POT_OUTPUT_FILENAME
+    outpath = Path.cwd() / cio.POT_OUTPUT_FILENAME
 
     if verbose_output:
         print(f"Writing output to file: {outpath}\n")

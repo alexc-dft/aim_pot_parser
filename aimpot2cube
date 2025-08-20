@@ -44,7 +44,7 @@ None
 
 import argparse
 import sys
-import os
+from pathlib import Path
 import numpy as np
 import common_io  as cio
 import fnmatch
@@ -100,9 +100,9 @@ def read_commmand_line() -> str:
     grid_vec_infile = args.grid_vectors_input_file
 
     # Check provided files are valid
-    if not os.path.isfile(aimpro_infile):
+    if not Path(aimpro_infile).is_file():
         raise FileNotFoundError(f"no such file - '{aimpro_infile}'")
-    if not os.path.isfile(grid_vec_infile):
+    if not Path(grid_vec_infile).is_file():
         raise FileNotFoundError(f"no such file - '{grid_vec_infile}'")
 
     # Check if AIMPRO file has correct naming convention, warn if not
@@ -204,7 +204,8 @@ def write_cube_file(aimpro_output_file: str, grid_vectors_input_file: str, num_a
 
     # Open an outfile in cwd
     # (N.B. this is the directory aimpot2cube was called from, not were it lives)
-    outpath = os.getcwd() + "/" + aimpro_output_file + cio.CUBE_OUTPUT_FILENAME
+    cube_output_file = aimpro_output_file + cio.CUBE_OUTPUT_FILENAME
+    outpath = Path.cwd() / cube_output_file
 
     if verbose_output:
         print(f"Writing output to file: {outpath}\n")

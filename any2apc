@@ -36,7 +36,7 @@ As these are depreciated this is not expected to be a frequent issue, however, e
 import subprocess
 import argparse
 import fnmatch
-import os
+from pathlib import Path
 
 # Module development info
 VERSION_NUMBER = "0.2"
@@ -45,11 +45,11 @@ AUTHORS = "Alex Christison"
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
 # Perl script path details
-PERL_PATH = os.path.dirname(__file__) + "/low_level_scripts/perl"
-CGRES_PATH = PERL_PATH + "/cgres"
-CINSERTOTB_PATH = PERL_PATH + "/cInsertOTB"
-COTB2INTP_PATH = PERL_PATH + "/cotb2intp"
-COTB2INTC_PATH = PERL_PATH + "/cotb2intc"
+PERL_PATH = Path(__file__).resolve().parent  / "low_level_scripts" / "perl" # !!!Note __file__ isn't always safe, e.g. in non-local imported modules!!!
+CGRES_PATH = PERL_PATH / "cgres"
+CINSERTOTB_PATH = PERL_PATH / "cInsertOTB"
+COTB2INTP_PATH = PERL_PATH / "cotb2intp"
+COTB2INTC_PATH = PERL_PATH / "cotb2intc"
 
 def read_commmand_line() -> str:
     """Gets input filename,dat_file must follow the dat.xxx file name convention
@@ -103,7 +103,7 @@ def read_commmand_line() -> str:
     do_intc = args.intc
 
     # Check provided file is valid
-    if not os.path.isfile(input_filename):
+    if not Path(input_filename).is_file():
         raise FileNotFoundError(f"no such file - '{input_filename}'")
 
     # Check if AIMPRO dat file has correct naming convention, error if not
@@ -126,11 +126,11 @@ def convert_to_atomic(input_file: str) -> None:
     """
 
     # Ensure we are able to create the xyz & otb files we temporarily need, backup exisitng ones and inform user
-    if (os.path.isfile(f"xyz.{input_file}.init")):
+    if Path(f"xyz.{input_file}.init").is_file():
         subprocess.run(f"mv xyz.{input_file}.init xyz.{input_file}.init.bak", shell=True, check=True)
         print(f"Warning: exisitng xyz.{input_file}.init moved to xyz.{input_file}.init.bak\n")
 
-    if (os.path.isfile(f"otb.xyz.{input_file}.init")):
+    if Path(f"otb.xyz.{input_file}.init").is_file():
         subprocess.run(f"mv otb.xyz.{input_file}.init otb.xyz.{input_file}.init.bak", shell=True, check=True)
         print(f"Warning: exisitng otb.xyz.{input_file}.init moved to otb.xyz.{input_file}.init.bak\n")
 

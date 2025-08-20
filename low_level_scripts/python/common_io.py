@@ -10,7 +10,7 @@ Known issues:
 None
 """
 
-import os
+from pathlib import Path
 import numpy as np
 
 # Module development info
@@ -21,10 +21,11 @@ COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
 # Filename constants
 
-DEFAULT_POT_INPUT_FILENAME = os.path.dirname(__file__) +  "/plot_input/default.in" # Define filepath relative to script location
+# Define filepath relative to script location
+DEFAULT_POT_INPUT_FILENAME = Path(__file__).resolve().parents[2]  / "plot_input" / "default.in" # !!!Note __file__ isn't always safe, e.g. in non-local imported modules!!!
 
 # Regular Grid Plotter output file
-POT_OUTPUT_FILENAME = "/pot_file"
+POT_OUTPUT_FILENAME = "pot_file"
 
 # aimpot2cube passer output file
 CUBE_OUTPUT_FILENAME = ".cube"
