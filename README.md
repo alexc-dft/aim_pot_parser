@@ -43,7 +43,7 @@ The output pot_file is written to the current working directory
 Specifies the vectors & their repeats defining the grid.  
 The file is delimited by whitespace and has the format:
 
-If no grid vectors input file is specified the default input file from io_params will be used. This file is user editable (advanced: see ./low_level_scripts/python/io_params.py).
+If no grid vectors input file is specified the default input file from common_io will be used. This file is user editable (advanced: see ./low_level_scripts/python/common_io.py).
 
 Repeats_A(int) A_x(float) A_y(float) A_z(float)  
 Repeats_B(int) B_x(float) B_y(float) B_z(float)  

@@ -10,7 +10,7 @@ AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/
 
 The output pot_file is written to the current working directory
 
-If no input file is specified the default input file from io_params will be used. This file is user editable (advanced: see ./low_level_scripts/python/io_params.py).
+If no input file is specified the default input file from common_io will be used. This file is user editable (advanced: see ./low_level_scripts/python/common_io.py).
 
 [options]
 -h, --help: display help dialogue
@@ -37,7 +37,7 @@ import argparse
 import sys
 import os
 import numpy as np
-import io_params
+import common_io as cio
 
 # Module development info
 VERSION_NUMBER = "0.1"
@@ -46,7 +46,7 @@ AUTHORS = "Alex Christison"
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
 def read_commmand_line() -> str:
-    """Gets input filename.
+    """Gets input filename
 
     If no input file is provided in command line the default input file is used.
 
@@ -76,8 +76,8 @@ def read_commmand_line() -> str:
 
     parser.add_argument("grid_vectors_input_file",
                         nargs = "?",
-                        default = io_params.DEFAULT_POT_INPUT_FILENAME,
-                        help = f"grid vectors input file, if none specified the default input file is used: {io_params.DEFAULT_POT_INPUT_FILENAME}")
+                        default = cio.DEFAULT_POT_INPUT_FILENAME,
+                        help = f"grid vectors input file, if none specified the default input file is used: {cio.DEFAULT_POT_INPUT_FILENAME}")
 
     args = parser.parse_args()
     verbose_output = args.verbose
@@ -93,78 +93,12 @@ def read_commmand_line() -> str:
 
     return input_filename
 
-def read_grid_vectors_infile(grid_vec_infile: str) -> object:
-    """Reads grid vectors from input file.
-
-    The grid of points is regenerated to validate the points in the AIMPRO output.
-
-
-    Args:
-        grid_vec_infile: Grid vectors input filename/path.
-
-    Returns:
-        repeats: number of repeats of each vector.
-        vectors: grid vectors.
-
-    Raises:
-        Errors & exits with message if incorrect input file format detected.
-        Errors & exits with message if incorrect input values are detected.
-    """
-
-    # Define lists to store vectors & their repeats
-    repeats = np.zeros([3], dtype=int)
-    vectors = np.zeros([3, 3])
-
-    # Read in input file
-    with open(grid_vec_infile,"r") as infile:
-        # Split into rows
-        raw_input = infile.read().splitlines()
-
-    if len(raw_input) != 3:
-        raise Exception(f"incorrect input file format - {input_filename} must have only 3 rows")
-
-    index = 0
-    for row in raw_input:
-
-        # Split in individual items
-        split_row = row.split()
-
-        if len(split_row) != 4:
-            raise Exception(f"incorrect input file format - {input_filename} must have only 4 columns")
-
-        # Cast repeats to integer and add to numpy array
-        split_row[0] = int(split_row[0])
-        repeats[index] = np.array(split_row[0])
-
-        # Map vectors to floats and add to numpy array
-        split_row[1:4] = map(float,split_row[1:4])
-        vectors[index, :] = np.array(split_row[1:4])
-
-        # Increment index
-        index+=1
-
-    # Error checking to ensure input values are valid
-    if any(repeats < 1):
-        raise ValueError(f"repeats values in {grid_vec_infile} must be >= 1")
-    if np.any(vectors < 0.0):
-        raise ValueError(f"grid vector values in {grid_vec_infile} must be > 0.0")
-
-    if verbose_output:
-        print("Input data:\n")
-        for i in range(len(repeats)):
-            print("{rep:5d} {vec_a:12.6f} {vec_b:12.6f} {vec_c:12.6f}"
-                  .format(rep = repeats[i],vec_a = vectors[i, 0],
-                          vec_b = vectors[i, 1], vec_c = vectors[i, 2]))
-        print("\n")
-
-    return repeats, vectors
-
 def write_pot_file(repeats: object, vectors: object) -> None:
-    """Generates and writes out AIMPRO pot_file.
+    """Generates and writes out AIMPRO pot_file
 
     Args:
-        repeats: number of repeats of each vector.
-        vectors: grid vectors.
+        repeats: number of repeats of each vector
+        vectors: grid vectors
 
     Returns:
         None
@@ -175,7 +109,7 @@ def write_pot_file(repeats: object, vectors: object) -> None:
 
     # Open an outfile in cwd
     # (N.B. this is the directory regGridPlot was called from, not where it lives)
-    outpath = os.getcwd() + io_params.POT_OUTPUT_FILENAME
+    outpath = os.getcwd() + cio.POT_OUTPUT_FILENAME
 
     if verbose_output:
         print(f"Writing output to file: {outpath}\n")
@@ -214,7 +148,16 @@ def main() -> None:
     filename = read_commmand_line()
 
     # Get repeats and vectors from input file
-    rep, vec = read_grid_vectors_infile(filename)
+    rep, vec = cio.read_grid_vectors(filename)
+
+    # Write out grid vectors input if verbose_output enabled
+    if verbose_output:
+        print("Input grid vector data:\n")
+        for i in range(len(rep)):
+            print("{repeats:5d} {vec_a:12.6f} {vec_b:12.6f} {vec_c:12.6f}"
+                  .format(repeats = rep[i],vec_a = vec[i, 0],
+                          vec_b = vec[i, 1], vec_c = vec[i, 2]))
+        print("\n")
 
     # Write grid using vectors & their repeats
     write_pot_file(rep, vec)
