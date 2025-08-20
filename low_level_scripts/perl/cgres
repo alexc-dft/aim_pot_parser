@@ -1,9 +1,8 @@
 #!/usr/bin/perl
-
-# Copyright (c) J.P. Goss 2024 All Rights Reserved.
-
 use Math::Trig;
 require 5;
+
+# Copyright (c) J.P. Goss 2024 All Rights Reserved.
 
 #Always start with the defaults:
 &Defaults;
@@ -209,6 +208,7 @@ sub Defaults{
     #File roots that are recognised:
     %root=(
 	'PDB'=>'pdb',
+	'CELL'=>'cell',
 	'SAD'=>'xyz.saddle',
 	'CHA'=>'xyz.latest',
 	'NEB'=>'latest',
@@ -234,7 +234,7 @@ sub Defaults{
 	'angtoau'  => 1.88972598857892320310,
 	'autoang'  => 0.529177249,
 	'rateconst'=> 1063056.42795046,
-	'version'  => "6.2n Nov 2016"
+	'version'  => "6.2o April 2025"
 	);
     #Atomic species data:
     # - Each entry is [mass, coval rad, vdw rad]
@@ -369,7 +369,7 @@ sub Defaults{
 	    "over"      => [0,   "bin", "Override file preservation",                                     1],
 	    "q"         => [2,   "va1", "Quiet level \# (0-4) (larger numbers provide more output)",      1],
 	    "r"         => [0,   "bin", "Evaluate rates for dipole transitions",                          0],
-	    "repeat"    => [0,   "va3", "Repeat a unit cell (otb) in each lattice direction (3 integers)",1],
+	    "repeat"    => [0,   "va3", "Repeat a unit cell (otb) in each lattice direction (3 integers) (use -anal subsequently for neighbour map)",1],
 	    "R"         => [0,   "bin", "Reconstruct data file from results file",                        1],
 	    "Rlast"     => [0,   "bin", "Reconstruct data file from results file - use last otb",         1],
 	    "NEB"       => [0,   "bin", "Reconstruct latest.neb file from results file",                  1],
@@ -383,6 +383,7 @@ sub Defaults{
 	    "wo"        => ['',  "va1", "Working directory for all output files",                         1],
 	    "x"         => [0,   "bin", "Generate xyz animation and open in viewer",                      1],
 	    "pdb"       => [0,,  "bin", "Generate pdb structure",                                         1],
+	    "cell"      => [0,,  "bin", "Generate a .cell structure",                                     1],
 	    "x2o"       => [0,   "bin", "Generate otb from single xyz file",                              1],
 	    "xyz"       => [0,   "va1", "Set xyz viewer command",                                         1],
 	    "xbs"       => [0,   "bin", "Output final positions in xbs format",                           1],
@@ -453,7 +454,7 @@ sub setXYZviewer{
 	"2 xmakemol"=>" -f",
 	"3 xmol"    =>" -readFormat xyz",
 	"4 rasmol"  =>" -xyz",
-	"1 jmol"    =>" -g 565x525"
+	"1 jmol"    =>" "
 	);
     #Assume the worst:
     $options{$invocation}{'xyz'}[0]="NONE";
@@ -513,6 +514,7 @@ sub Invocation{
     ##############################################
     if($0 =~ /(\/|^)new_gres/){$invocation="gres"}
     if($0 =~ /(\/|^)aimgres/){$invocation="gres"}
+    if($0 =~ /(\/|^)cgres/){$invocation="gres"}
     ##############################################
     die "Don't know how to run '$0'\n" if !$invocation;
 }
@@ -1347,6 +1349,7 @@ sub Output{
     if($options{$invocation}{'diagdd'}[0]){&PrintDIAGDDFile();}
     if($options{$invocation}{'e'}[0]||$options{$invocation}{'x'}[0]){&PrintXYZFile(-1);}
     if($options{$invocation}{'pdb'}[0]){&PrintPDBFile($data{'OTBSet'});}
+    if($options{$invocation}{'cell'}[0]){&PrintCELLFile($data{'OTBSet'});}
     if($options{$invocation}{'einit'}[0]||$options{$invocation}{'xinit'}[0]){&PrintXYZFile(1);}
     if($options{$invocation}{'elast'}[0]||$options{$invocation}{'xlast'}[0]){&PrintXYZFile($data{'OTBSet'});}
     if($options{$invocation}{'esaddle'}[0]||$options{$invocation}{'xsaddle'}[0]){&PrintNEBFile('saddle');}
@@ -2088,6 +2091,9 @@ sub PrintREPEATFile{
 		    for ($z=-1*$repeat[2]*$centre;$z<=$repeat[2];$z++){		
 			# OTB output:
 			if($options{$invocation}{'repeat'}[0]){
+			    #Quick hack null neighbours array used here, -anal option can calculate for neighbours map
+			    #TODO add neighbours map calculation to this routine
+			    @null_neigh=(0,0,0,0);
 			    if(
 				$data{"unit definition"} eq "int-p"
 				||
@@ -2150,9 +2156,8 @@ sub PrintREPEATFile{
 				    $d[7]+$x*$v[1]*$a1+$y*$v[4]*$a1+$z*$v[7]*$a1,
 				    $d[8]+$x*$v[2]*$a1+$y*$v[5]*$a1+$z*$v[8]*$a1);
 			    }
-			    printf RPT "%4d%4d%4d%4d%4d%4d%15.8f%15.8f%15.8f\n",
-			    ++$natomtmp,$d[1]+(abs($x)+abs($y)+abs($z))*$ntypes,$x,$y,$z,$centre,@pos;
-#			    $d[0],$d[1]+(abs($x)+abs($y)+abs($z))*$ntypes,$x,$y,$z,$centre,@pos;
+			    #Quick hack null neighbours array used here, -anal option can calculate for neighbours map
+			    print RPT (FormatOTB(join" ",(++$natomtmp),$d[1],@null_neigh,@pos));
 			}else{
 			    # XYZ output:
 			    my @xyz=(0,0,0);
@@ -2222,8 +2227,8 @@ sub PrintREPEATFile{
 	    }
 	}
     }
-    
-    
+
+
     if($options{$invocation}{'xrepeat'}[0]||$options{$invocation}{'xrepeatlast'}[0]){push @{$system{'xyz'}},$f}
 }
 
@@ -2603,12 +2608,15 @@ sub PrintPDB{
 	@LV=@{ $data{"d-latt P"} }
     }
     # Calculate the "a b c alpha beta gamma" values from the cartesian vectors:
-    my $aa=sqrt($LV[0]**2+$LV[1]**2+$LV[2]**2)*$const{'autoang'};
-    my $bb=sqrt($LV[3]**2+$LV[4]**2+$LV[5]**2)*$const{'autoang'};
-    my $cc=sqrt($LV[6]**2+$LV[7]**2+$LV[8]**2)*$const{'autoang'};
+    my $aa=sqrt($LV[0]**2+$LV[1]**2+$LV[2]**2);
+    my $bb=sqrt($LV[3]**2+$LV[4]**2+$LV[5]**2);
+    my $cc=sqrt($LV[6]**2+$LV[7]**2+$LV[8]**2);
     my $alpha=acos(($LV[3]*$LV[6]+$LV[4]*$LV[7]+$LV[5]*$LV[8])/$bb/$cc)*45/atan(1);
     my $beta=acos(($LV[0]*$LV[6]+$LV[1]*$LV[7]+$LV[2]*$LV[8])/$aa/$cc)*45/atan(1);
     my $gamma=acos(($LV[3]*$LV[0]+$LV[4]*$LV[1]+$LV[5]*$LV[2])/$bb/$aa)*45/atan(1);
+    $aa=$aa*$const{'autoang'};
+    $bb=$bb*$const{'autoang'};
+    $cc=$cc*$const{'autoang'};
     printf PDB "CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f%11s%4d\n",
     $aa,$bb,$cc,$alpha,$beta,$gamma,"P 1",1;
     my $a=0;
@@ -2727,6 +2735,146 @@ sub PrintPDB{
 }
 
 ######################################################################
+#### Print out the CELL lines in an appropriate format:
+######################################################################
+sub PrintCELL{
+    my @LV=();
+    my $iter=$_[0];
+    # Loop over the number of atoms in the cluster/cell
+    my $n=0;my @d=();for(@{$data{'otb'}[$iter]}){
+	if($iter==1){$d[++$n]=$_}
+	else{$d[(split)[0]]=$_;}
+    }
+    # Specify the lattice vectors:
+    if(exists $data{"d-latt P $iter"}){
+	@LV=@{$data{"d-latt P $iter"}};
+    }else{
+	@LV=@{ $data{"d-latt P"} }
+    }
+    # Write out cartesian vectors:
+    printf CELL "%%BLOCK LATTICE_CART\n";
+    printf CELL "%18.11f%18.11f%18.11f\n",$LV[0]*$const{'autoang'},$LV[1]*$const{'autoang'},$LV[2]*$const{'autoang'};
+    printf CELL "%18.11f%18.11f%18.11f\n",$LV[3]*$const{'autoang'},$LV[4]*$const{'autoang'},$LV[5]*$const{'autoang'};
+    printf CELL "%18.11f%18.11f%18.11f\n",$LV[6]*$const{'autoang'},$LV[7]*$const{'autoang'},$LV[8]*$const{'autoang'};
+	printf CELL "%%ENDBLOCK LATTICE_CART\n\n";
+    my $a=0;
+	printf CELL "%%BLOCK POSITIONS_ABS\n";
+    while(++$a<=$data{'Num. atoms'}){
+	if($data{"unit definition"} eq "atomic"
+	   ||
+	   ($data{"unit definition"} eq "internal"&&$data{"restart options override-positions"}&&$iter>1)
+	   ||
+	   #Old output where all but internal coords are rescaled to atomic during output:
+	   ($data{"rescaled positions"}&&$iter!=1&&($data{"unit definition"} ne "internal"))
+	   ||
+	   #Old output where all but internal coords are rescaled to atomic during output:
+	   ($iter!=1 && $data{"unit definition"}=~/\d/)
+	    ){
+	    if($d[$a]){
+		@p=((split" ",$d[$a])[1],(split" ",$d[$a])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf CELL (FormatCELL($a,@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    (split" ",$data{'otb'}[1][$a-1])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf CELL (FormatCELL($a,@p));
+	    }
+	}elsif($data{"unit definition"} eq "relative"){
+	    if($d[$a]){
+		@p=((split" ",$d[$a])[1],(split" ",$d[$a])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		if($iter==1){my$a=(split" ",$data{"lattice params"})[0];for(1..3){$p[$_]*=$a}}
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf CELL (FormatCELL($a,@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    (split" ",$data{'otb'}[1][$a-1])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		if($iter==1){my$a=(split" ",$data{"lattice params"})[0];for(1..3){$p[$_]*=$a}}
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf CELL (FormatCELL($a,@p));
+	    }
+	}elsif($data{"unit definition"}=~/^ang/){
+	    if($d[$a]){
+		@p=((split" ",$d[$a])[1],(split" ",$d[$a])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		printf CELL (FormatCELL($a,@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    (split" ",$data{'otb'}[1][$a-1])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		printf CELL (FormatCELL($a,@p));
+	    }
+	}elsif($data{"unit definition"}=~/^\d/){
+	    if($d[$a]){
+		@p=((split" ",$d[$a])[1],(split" ",$d[$a])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=($data{"unit definition"}*$const{'autoang'})}
+		printf CELL (FormatCELL($a,@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    (split" ",$data{'otb'}[1][$a-1])[6..8]);
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=($data{"unit definition"}*$const{'autoang'})}
+		printf CELL (FormatCELL($a,@p));
+	    }
+	}elsif($data{"unit definition"} eq "int-p"||$data{"unit definition"} eq "internal"){
+	    if($d[$a]){
+		@p=(
+		    (split" ",$d[$a])[1],
+		    INT2XYZ(
+			(split" ",$d[$a])[6..8],
+			@LV
+		    )
+		    );
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf CELL (FormatCELL($a,@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    INT2XYZ(
+			(split" ",$data{'otb'}[1][$a-1])[6..8],
+			@LV
+		    )
+		    );
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf CELL (FormatCELL($a,@p));
+	    }
+	}elsif($data{"unit definition"} eq "int-c"){
+	    if($d[$a]){
+		@p=(
+		    (split" ",$d[$a])[1],
+		    INT2XYZ(
+			(split" ",$d[$a])[6..8],
+			@{ $data{"d-latt C"} }
+		    )
+		    );
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf CELL (FormatCELL($a,@p));
+	    }else{
+		@p=((split" ",$data{'otb'}[1][$a-1])[1],
+		    INT2XYZ(
+			(split" ",$data{'otb'}[1][$a-1])[6..8],
+			@{$data{"d-latt C"}}
+		    )
+		    );
+		$p[0]=$species[$p[0]-1];
+		for(1..3){$p[$_]*=$const{'autoang'}}
+		printf CELL (FormatCELL($a,@p));
+	    }
+	}else{
+	    die "I really shoulnd't get here!\nUnit definition: '$data{'unit definition'}'\n";
+	}
+    }
+	printf CELL "%%ENDBLOCK POSITIONS_ABS\n";
+}
+
+######################################################################
 #### Output the latest.neb file ######################################
 ######################################################################
 sub PrintLATESTNEB{
@@ -2763,6 +2911,22 @@ sub PrintPDBFile{
     my $f=OpenOutput(PDB,"new",$tag,"final","otb set $iter");
     if(!$f){return}
     PrintPDB($iter);
+}
+
+######################################################################
+#### Output the cell to file #########################################
+######################################################################
+sub PrintCELLFile{
+    die "Wrong number of arguments supplied to PrintCELLFile\n" if $#_;
+    my $iter = $_[0];
+    if($iter!=-1&&($iter>$data{'OTBSet'}||$iter<1)){die "Passed an iteration number out of range ($iter) in PrintCELLFile\n"}
+    if(!exists $data{'Species'}){die "Arrived in PrintCELLFile without detecting atomic species\n"}
+    @species=split " ",$data{'Species'};
+    print "!DBG! In PrintCELLFile\n" if $options{$invocation}{'debug'}[0];
+    #Output all CELL:
+    my $f=OpenOutput(CELL,"new",$tag,"final","otb set $iter");
+    if(!$f){return}
+    PrintCELL($iter);
 }
 
 ######################################################################
@@ -3064,11 +3228,15 @@ sub VectorDiff{die"Error in VectorDiff ($#_!=5)\n"if($#_-5);return($_[0]-$_[3],$
 sub VectorLength{die"Error in VectorLength ($#_!=2)\n"if($#_-2);my $l=0;for(0..2){$l+=$_[$_]*$_[$_]}return(sqrt($l))}
 sub bynumber{$a<=>$b}
 sub alphabetically{ord(lc($a))<=>ord(lc($b))}
-sub FormatOTB{die "Error in FormatOTB" if ($#_);return (sprintf"%5d% 2d %5d %5d %5d %5d %17.10f%17.10f%17.10f\n",(split " ",$_[0]))}
+sub FormatOTB{die "Error in FormatOTB" if ($#_);return (sprintf"%4d%2d%5d%5d%5d%5d%17.10f%17.10f%17.10f\n",(split " ",$_[0]))}
 sub FormatXYZ{die "Error in FormatXYZ" if ($#_-3);return (sprintf"%2s%18.11f%18.11f%18.11f\n",@_)}
 sub FormatPDB{die "Error in FormatPDB" if ($#_-4);return (
 		  sprintf"ATOM  %5d%4s%2s%3s %1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f      %4s%2s%2s\n",
 		  $_[0], $_[1], "", "RES", "A", 1, "", @_[2..4], 1, 0, "A1  ", $_[1], 0);
+}
+sub FormatCELL{die "Error in FormatCELL" if ($#_-4);return (
+		  sprintf"%6s%18.11f%18.11f%18.11f\n",
+		  $_[1], @_[2..4]);
 }
 sub BubbleSort{
     my ($c,@a)=(1,@_);

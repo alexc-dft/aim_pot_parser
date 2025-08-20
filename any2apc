@@ -42,7 +42,7 @@ COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
 # Perl script path details
 PERL_PATH = os.path.dirname(__file__) + "/low_level_scripts/perl"
-GRES_PATH = PERL_PATH + "/gres"
+CGRES_PATH = PERL_PATH + "/cgres"
 CINSERTOTB_PATH = PERL_PATH + "/cInsertOTB"
 COTB2INTP_PATH = PERL_PATH + "/cotb2intp"
 COTB2INTC_PATH = PERL_PATH + "/cotb2intc"
@@ -66,7 +66,7 @@ def read_commmand_line() -> str:
     parser = argparse.ArgumentParser(
                     prog = "any2atomic",
                     formatter_class=argparse.RawDescriptionHelpFormatter,
-                    description = "Converts atom positions in an AIMPRO dat file (dat_file) from any reference frame to atomic using gres & InsertOTB.\n\nAtom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html\n\ngres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html\nInsertOTB : https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html\n(Copyright (c) J.P. Goss 2015, 2024 All Rights Reserved.)",
+                    description = "Converts atom positions in an AIMPRO dat file (dat_file) from any reference frame to atomic using gres & InsertOTB.\n\nAtom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html\n\ngres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html\nInsertOTB : https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html\notb2intp: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/DataFiles.html\n(Copyright (c) J.P. Goss 2024, 2015, 2011 All Rights Reserved.)",
                     epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.")
 
     parser.add_argument("-rb", "--retain_bak",
@@ -122,25 +122,25 @@ def convert_to_atomic(input_file: str) -> None:
     """
 
     # Ensure we are able to create the xyz & otb files we temporarily need, backup exisitng ones and inform user
-    if (os.path.isfile(f"xyz.{input_file}.all")):
-        subprocess.run(f"mv xyz.{input_file}.all xyz.{input_file}.all.bak", shell=True, check=True)
-        print(f"Warning: exisitng xyz.{input_file}.all moved to xyz.{input_file}.all.bak\n")
+    if (os.path.isfile(f"xyz.{input_file}.init")):
+        subprocess.run(f"mv xyz.{input_file}.init xyz.{input_file}.init.bak", shell=True, check=True)
+        print(f"Warning: exisitng xyz.{input_file}.init moved to xyz.{input_file}.init.bak\n")
 
-    if (os.path.isfile(f"otb.xyz.{input_file}.all")):
-        subprocess.run(f"mv otb.xyz.{input_file}.all otb.xyz.{input_file}.all.bak", shell=True, check=True)
-        print(f"Warning: exisitng otb.xyz.{input_file}.all moved to otb.xyz.{input_file}.all.bak\n")
+    if (os.path.isfile(f"otb.xyz.{input_file}.init")):
+        subprocess.run(f"mv otb.xyz.{input_file}.init otb.xyz.{input_file}.init.bak", shell=True, check=True)
+        print(f"Warning: exisitng otb.xyz.{input_file}.init moved to otb.xyz.{input_file}.init.bak\n")
 
     # Backup input dat file
     subprocess.run(f"cp {input_file} {input_file}.bak", shell=True, check=True)
 
     # Convert dat file to xyz
-    subprocess.run(f"{GRES_PATH} -e {input_file} 1> /dev/null", shell=True, check=True)
+    subprocess.run(f"{CGRES_PATH} -einit {input_file} 1> /dev/null", shell=True, check=True)
 
     # Convert xyz to otb, positions are now in atomic
-    subprocess.run(f"{GRES_PATH} -x2o xyz.{input_file}.all 1> /dev/null", shell=True, check=True)
+    subprocess.run(f"{CGRES_PATH} -x2o xyz.{input_file}.init 1> /dev/null", shell=True, check=True)
 
     # Insert positions into original dat file
-    subprocess.run(f"{CINSERTOTB_PATH} otb.xyz.{input_file}.all {input_file}.bak > {input_file}", shell=True, check=True)
+    subprocess.run(f"{CINSERTOTB_PATH} otb.xyz.{input_file}.init {input_file}.bak > {input_file}", shell=True, check=True)
 
     # Change reference setting in positions to atomic
     subprocess.run(f"sed -i 's/begin\\[.*\\]{{positions}}/begin\\[atomic\\]{{positions}}/g' {input_file}", shell=True, check=True)
@@ -189,7 +189,7 @@ def convert_to_atomic(input_file: str) -> None:
         subprocess.run(f"mv {input_file}_tmp {input_file}", shell=True, check=True)
 
     # Remove temporary xyz & otb files
-    subprocess.run(f"rm xyz.{input_file}.all  otb.xyz.{input_file}.all", shell=True, check=True)
+    subprocess.run(f"rm xyz.{input_file}.init  otb.xyz.{input_file}.init", shell=True, check=True)
 
     # if global retain_bak not flag set, delete bacupk dat file (dat_file.bak)
     if not retain_bak:
