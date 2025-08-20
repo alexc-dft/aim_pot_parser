@@ -4,7 +4,10 @@
 
 This module stores the I/O parameters for the aim_pot_parser repo.
 
-These can be user reconfigured - recommened only for advanced users.
+These can be user reconfigured - recommended only for advanced users.
+
+Known issues:
+None
 """
 
 import os

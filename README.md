@@ -54,6 +54,9 @@ Vector compoment values must be >= 0.0.
 
 Floats are in 12.6 format.
 
+Known issues:  
+None  
+
 # any2apc usage
 any2apc [options] (--atomic | --intp | --intc) dat_file
 
@@ -80,6 +83,10 @@ The above options are mutually exclusive and required.
 
 dat_file  
 AIMPRO dat file, this must follow the dat.xxx file name convention
+
+Known issues:  
+The script is unable to account for depreciated definitions of the lattice parameters (e.g. a0=...) due to limitations of otb2intp.  
+As these are depreciated this is not expected to be a frequent issue, however, example files in the docs still use the a0 definition so care must be taken to change a0= to params= in lattice{} if using these.  
 
 # AIMPRO dat file & job docs
 
@@ -108,3 +115,6 @@ The standard AIMPRO output file
 See above.
 
 NOTE: this file must be the same as the one used by regGridPlot
+
+Known issues:  
+None  
