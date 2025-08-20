@@ -21,12 +21,12 @@ The output pot_file is written to the current working directory
 
 # Overall usage workflow
 
-1. Generate a pot_file using regGridPlot
+1. Generate a pot_file using potfileGen
 2. Use any2apc --atomic to convert atom postions in dat file to the atomic units reference frame
 3. Run a potential job in the AIMPRO code (atomic positons MUST be defined in au)
 4. Use aimpot2cube to pass AIMPRO results into .cube format
 
-# regGridPlot usage
+# potfileGen usage
 regGridPlot [options] [grid_vectors_input_file]
 
 This script plots a regular grid in the required format for the potential job in the AIMPRO code.
@@ -114,7 +114,7 @@ The standard AIMPRO output file
 [grid_vectors_input_file]  
 See above.
 
-NOTE: this file must be the same as the one used by regGridPlot
+NOTE: this file must be the same as the one used by potfileGen
 
 Known issues:  
 None  

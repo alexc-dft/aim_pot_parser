@@ -2,7 +2,7 @@
 
 # Copyright (c) A Christison 2025 All Rights Reserved.
 
-"""Regular Grid Plotter: regGridPlot [options] [grid_vectors_input_file]
+"""pot_file generator: potfileGen [options] [grid_vectors_input_file]
 
 This script plots a regular grid in the required format for the potential job in the AIMPRO code.
 
@@ -65,7 +65,7 @@ def read_commmand_line() -> str:
     global verbose_output
 
     parser = argparse.ArgumentParser(
-                    prog = "regGridPlot",
+                    prog = "potfileGen",
                     formatter_class=argparse.RawDescriptionHelpFormatter,
                     description = "Plot a regular grid for the AIMPRO potential job.\n\nAIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html",
                     epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.")
@@ -108,7 +108,7 @@ def write_pot_file(repeats: object, vectors: object) -> None:
     """
 
     # Open an outfile in cwd
-    # (N.B. this is the directory regGridPlot was called from, not where it lives)
+    # (N.B. this is the directory potfileGen was called from, not where it lives)
     outpath = os.getcwd() + cio.POT_OUTPUT_FILENAME
 
     if verbose_output:

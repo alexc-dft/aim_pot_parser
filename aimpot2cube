@@ -25,7 +25,7 @@ Atom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restri
 
 [grid_vectors_input_file]
 
-NOTE: this file must be the same as the one used by regGridPlot
+NOTE: this file must be the same as the one used by potfileGen
 
 If no grid_vectors_input_file is specified the default input file from common_io will be used. This file is user editable (advanced: see ./low_level_scripts/python/common_io.py).
 
