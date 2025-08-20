@@ -112,7 +112,7 @@ def read_commmand_line() -> str:
 
     return input_filename
 
-def convert_to_atomic(input_file: str) -> None:
+def convert_atomic_positions(input_file: str) -> None:
     """Converts positions in AIMPRO dat file to atomic
 
     Args:
@@ -224,8 +224,8 @@ def main() -> None:
     # Read cmd line for input file
     filename = read_commmand_line()
 
-    # Convert positions in dat_file to atomic
-    convert_to_atomic(filename)
+    # Convert positions in dat_file to specified reference frame
+    convert_atomic_positions(filename)
 
 if __name__ == "__main__":
     main()
