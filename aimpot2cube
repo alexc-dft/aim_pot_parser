@@ -27,7 +27,7 @@ Atom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restri
 
 NOTE: this file must be the same as the one used by regGridPlot
 
-If no grid_vectors_input_file is specified the default input file from io_params will be used. This file is user editable (advanced: see ./low_level_scripts/python/io_params.py).
+If no grid_vectors_input_file is specified the default input file from common_io will be used. This file is user editable (advanced: see ./low_level_scripts/python/common_io.py).
 
 Specifies the vectors & their repeats defining the grid.
 The file is delimited by whitespace and has the format:
@@ -46,10 +46,8 @@ import argparse
 import sys
 import os
 import numpy as np
-import io_params
-import pandas as pd
+import common_io  as cio
 import fnmatch
-import regGridPlot as rgp
 
 # Module development info
 VERSION_NUMBER = "0.1"
@@ -93,12 +91,12 @@ def read_commmand_line() -> str:
 
     parser.add_argument("grid_vectors_input_file",
                         nargs = "?",
-                        default = io_params.DEFAULT_POT_INPUT_FILENAME,
-                        help = f"input file, if none specified the default input file is used: {io_params.DEFAULT_POT_INPUT_FILENAME}")
+                        default = cio.DEFAULT_POT_INPUT_FILENAME,
+                        help = f"input file, if none specified the default input file is used: {cio.DEFAULT_POT_INPUT_FILENAME}")
 
     args = parser.parse_args()
     verbose_output = args.verbose
-    aimpro_infile = aimpro_output_file
+    aimpro_infile = args.aimpro_output_file[0]
     grid_vec_infile = args.grid_vectors_input_file
 
     # Check provided files are valid
@@ -115,16 +113,53 @@ def read_commmand_line() -> str:
         print("Verbose output on.\n")
         print(f"Input file: {grid_vec_infile}\n")
 
-    return grid_vec_infile
+    return grid_vec_infile, aimpro_infile
 
-def read_aimpro_infile(aim_file_name: str) -> object:
-    """Generates and writes out pot_file.cube .
+def generate_grid_points(repeats: object, vectors: object) -> object:
+    """Generates the pot_file grid points and adds adds them to a numpy array.
 
     Args:
-        aim_filename: AIMPRO poential job output file name
+        repeats: number of repeats of each vector
+        vectors: grid vectors
 
     Returns:
-        TODO: Add rest
+        grid_points: numpy array of generated grid points
+
+    Raises:
+        None
+    """
+
+    # Get required array length
+    num_grid_points = np.prod(repeats)
+    grid_points = np.zeros((num_grid_points, 3))
+
+    # Declare  row counter
+    row_count = 0
+
+    for ia in range(0, repeats[0]):
+        for ib in range(0, repeats[1]):
+            for ic in range(0, repeats[2]):
+
+                # Calculate grid point and add to array
+                grid_points[row_count, :] = ia * vectors[0, :] \
+                                    + ib * vectors[1, :] \
+                                    + ic * vectors[2, :]
+                # Increment row counter
+                row_count+=1
+
+    return grid_points
+
+def read_aimpro_infile(aimpro_output_file: str) -> object:
+    """Read AIMPRO output fule and extracts required data
+
+    Args:
+        aimpro_output_file: AIMPRO potential job output file name
+
+    Returns:
+        num_atoms: integer number of atoms (omiting ghost atoms)
+        species_list: list of species symbols
+        atom_pos: atom positions in au (omiting ghost atoms)
+        potental_values: sum of teh 3 potenial values from aimpro_output_file
 
     Raises:
         None
@@ -136,17 +171,29 @@ def read_aimpro_infile(aim_file_name: str) -> object:
 
     # TODO Check gridpoints from AIMPRO file match those from provided grid vectors input file (to precisions dictated by the AIMPRO output) if not, error out
 
-    # TODO replace atom type enumerator with chemical symbol from psuedoes (index 1 = 1st in species list etc) - error check for 1.x Hydrogen, omit GHOST atoms and give prinout to update user, count number of GHOSTs
+    # TODO replace atom type enumerator with chemical symbol from psuedoes (index 1 = 1st in species list etc) - error check for 1.x Hydrogen, omit GHOST atoms and give prinout to update user, count number of GHOSTs, strip GHOSTs from atom positions and species list
 
     # TODO Update total number of atoms as new_tot = tot - num_GHOSTs
 
-def write_cube_file() -> None:
+    num_atoms = 0
+    species_list = [""]
+    atom_pos = np.zeros(3)
+    potental_values = np.zeros((3, 3))
+
+    return num_atoms, species_list, atom_pos, potental_values
+
+def write_cube_file(aimpro_output_file: str, grid_vectors_input_file: str, num_atoms: int, species_list: list, atom_pos: object, potental_values: object, repeats: object, vectors: object) -> None:
     """Generates and writes out pot_file.cube .
 
     Args:
-        repeats: number of repeats of each vector.
-        vectors: grid vectors.
-        TODO: add rest number of atoms, values etc.
+        aimpro_output_file: AIMPRO potential job output file name
+        grid_vectors_input_file: Grid vectors input filename/path
+        num_atoms: integer number of atoms (omiting ghost atoms)
+        species_list: list of species symbols
+        atom_pos: atom positions in au (omiting ghost atoms)
+        potental_values: sum of teh 3 potenial values from aimpro_output_file
+        repeats: number of repeats of each vector
+        vectors: grid vectors
 
     Returns:
         None
@@ -156,8 +203,8 @@ def write_cube_file() -> None:
     """
 
     # Open an outfile in cwd
-    # (N.B. this is the directory regGridPlot was called from, not where it lives)
-    outpath = os.getcwd() + io_params.CUBE_OUTPUT_FILENAME
+    # (N.B. this is the directory aimpot2cube was called from, not were it lives)
+    outpath = os.getcwd() + "/" + aimpro_output_file + cio.CUBE_OUTPUT_FILENAME
 
     if verbose_output:
         print(f"Writing output to file: {outpath}\n")
@@ -166,8 +213,8 @@ def write_cube_file() -> None:
     with open(outpath,"w") as outfile:
 
         # Fill the required comment lines in .cube file
-        outfile.write("Cubefile created from AIMPRO output using aimpot2cube parser - Copyright (c) A Christison 2025 All Rights Reserved.\n")
-        outfile.write("Contains the total potential on a voxelised mapping of the specified grid.\n")
+        outfile.write("Cubefile created from AIMPRO output using aimpot2cube parser: Copyright (c) A Christison 2025 All Rights Reserved.\n")
+        outfile.write(f"Contains the total potential from {aimpro_output_file} on a voxelised mapping of the grid specified in {grid_vectors_input_file}.\n")
 
         # TODO Add writing of output file here
 
@@ -182,17 +229,16 @@ def main() -> None:
     gv_infile, aim_infile = read_commmand_line()
 
     # Get repeats, vectors and generate grid points dataframe from grid vectors input file
-    rep, vec = rgp.read_grid_vectors_infile(gv_infile)
+    rep, vec = cio.read_grid_vectors(gv_infile)
 
     # Generate grid points from grid vectors, used later to valadate grid in AIMPRO input file
     pts = generate_grid_points(rep,vec)
-    #TODO *****[first priority] move generation of grid points in regGridPlot to a seperate routine, then move generate_grid_points and read_grid_vectors_infile to a seperate script that both regGridPlot & aimpot2cube impot****** -> regGridPlot becomes version 2.0
 
     # Read in AIMPRO file and extract required data
-    read_aimpro_infile(aim_infile)
+    natoms, species, atpos, pots = read_aimpro_infile(aim_infile)
 
     # Write cube file
-    write_cube_file()
+    write_cube_file(aim_infile, gv_infile, natoms, species, atpos, pots, rep, vec)
 
 if __name__ == "__main__":
     main()
