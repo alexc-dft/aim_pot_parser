@@ -2,9 +2,9 @@
 
 # Copyright (c) A Christison 2025 All Rights Reserved.
 
-"""any2atomic [options] (--atomic | --intp | --intc) dat_file
+"""any2any [options] (--atomic | --intp | --intc | --angstroms | --scale SCALE) dat_file
 
-This script converts AIMRPO atomic positions using any reference frame to either atomic, int-p or int-c based on user selection, using Jon Goss's gres & InsertOTB Perl scripts.
+This script converts AIMRPO atomic positions using any reference frame to any other reference frame based on user selection, using Jon Goss's gres, InsertOTB & otb2intp Perl scripts.
 
 Atom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html
 
@@ -18,10 +18,13 @@ otb2intp: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/DataFiles.html
 -h, --help: display help dialogue
 -rb, --retain_bak: Retains backup copy of datafile (dat_file.bak)
 
-(--atomic | --intp | --intc)
--a, --atomic: convert to atomic reference frame
+(--atomic | --intp | --intc | --angstroms | --scale SCALE)
+-au, --atomic: convert to atomic reference frame
 -p, --intp: convert to int-p reference frame
 -c, --intc: convert to int-c reference frame
+-ang, --angstroms: convert to angstroms reference frame
+-s SCALE, --scale SCALE
+                convert to atomic reference frame, scaled by provided float value SCALE
 
 The above options are mutually exclusive and required.
 
@@ -37,10 +40,12 @@ import subprocess
 import argparse
 import fnmatch
 from pathlib import Path
+import methods as meth
+import const
 
 # Module development info
-VERSION_NUMBER = "0.2"
-VERSION_DATE = "19/08/2025"
+VERSION_NUMBER = "0.3"
+VERSION_DATE = "20/08/2025"
 AUTHORS = "Alex Christison"
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
@@ -65,12 +70,12 @@ def read_commmand_line() -> str:
         Errors & exits with message if AIMPRO output file does not match conventional AIM.sh.o* format.
     """
 
-    global retain_bak, do_atomic, do_intp, do_intc
+    global retain_bak, do_atomic, do_intp, do_intc, do_ang, do_scale_val
 
     parser = argparse.ArgumentParser(
-                    prog = "any2atomic",
+                    prog = "any2any",
                     formatter_class=argparse.RawDescriptionHelpFormatter,
-                    description = "Converts atom positions in an AIMPRO dat file (dat_file) from any reference frame to atomic using gres & InsertOTB.\n\nAtom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html\n\ngres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html\nInsertOTB : https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html\notb2intp: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/DataFiles.html\n(Copyright (c) J.P. Goss 2024, 2015, 2011 All Rights Reserved.)",
+                    description = "Converts atom positions in an AIMPRO dat file (dat_file) from any reference frame to any other using gres, InsertOTB & otb2intp.\n\nAtom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html\n\ngres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html\nInsertOTB : https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html\notb2intp: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/DataFiles.html\n(Copyright (c) J.P. Goss 2024, 2015, 2011 All Rights Reserved.)",
                     epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.")
 
     parser.add_argument("-rb", "--retain_bak",
@@ -79,7 +84,7 @@ def read_commmand_line() -> str:
 
     group = parser.add_mutually_exclusive_group(required=True)
 
-    group.add_argument("-a", "--atomic",
+    group.add_argument("-au", "--atomic",
                         action = "store_true",
                         help = "convert to atomic reference frame")
 
@@ -91,16 +96,34 @@ def read_commmand_line() -> str:
                         action = "store_true",
                         help = "convert to int-c reference frame")
 
+    group.add_argument("-ang", "--angstroms",
+                        action = "store_true",
+                        help = "convert to angstroms reference frame")
+
+    group.add_argument("-s", "--scale",
+                        action = "store",
+                        type=float,
+                        default = False,
+                        help = "convert to atomic reference frame, scaled by provided float value SCALE")
+
     parser.add_argument("dat_file",
                         nargs = 1,
                         help = f"AIMPRO dat file, must follow the dat.xxx file name convention")
 
     args = parser.parse_args()
     retain_bak = args.retain_bak
-    input_filename = args.dat_file[0]
+    # input_filename = args.dat_file[0]
     do_atomic = args.atomic
     do_intp = args.intp
     do_intc = args.intc
+    do_ang = args.angstroms
+
+    # Stores both boolean flag & scale factor value as non-zero floats return True in boolean operations
+    do_scale_val = args.scale
+
+    # Check scale value isn't zero, if all do flags are false then scale = 0 must have been provided
+    if not do_atomic and not do_intp and not do_intc and not do_ang and not do_scale_val:
+        raise ValueError("user provded SCALE value cannot be 0.0")
 
     # Check provided file is valid
     if not Path(input_filename).is_file():
@@ -134,6 +157,7 @@ def convert_atomic_positions(input_file: str) -> None:
         subprocess.run(f"mv otb.xyz.{input_file}.init otb.xyz.{input_file}.init.bak", shell=True, check=True)
         print(f"Warning: exisitng otb.xyz.{input_file}.init moved to otb.xyz.{input_file}.init.bak\n")
 
+
     # Backup input dat file
     subprocess.run(f"cp {input_file} {input_file}.bak", shell=True, check=True)
 
@@ -143,11 +167,44 @@ def convert_atomic_positions(input_file: str) -> None:
     # Convert xyz to otb, positions are now in atomic
     subprocess.run(f"{CGRES_PATH} -x2o xyz.{input_file}.init 1> /dev/null", shell=True, check=True)
 
+    # Rescaling needed in the following cases
+    if do_ang or do_scale_val:
+
+        # Read in otb values, they will be in the atomic reference frame
+        species_str, species_index, nneigbour_map, atom_pos = meth.read_otb(f"otb.xyz.{input_file}.init")
+
+        # Rescale positions
+        if do_ang:
+            # Rescale
+            atom_pos *= const.BOHR2ANG
+
+        elif do_scale_val:
+            # Rescale
+            atom_pos *= do_scale_val
+
+        # Write out rescaled otb
+        meth.write_otb(f"otb.xyz.{input_file}.init", species_str, species_index, nneigbour_map, atom_pos)
+
+
     # Insert positions into original dat file
     subprocess.run(f"{CINSERTOTB_PATH} otb.xyz.{input_file}.init {input_file}.bak > {input_file}", shell=True, check=True)
 
-    # Change reference setting in positions to atomic
-    subprocess.run(f"sed -i 's/begin\\[.*\\]{{positions}}/begin\\[atomic\\]{{positions}}/g' {input_file}", shell=True, check=True)
+    # Reference frame changes
+    if do_atomic or do_intp or do_intc:
+
+        # Change reference setting in positions to atomic
+        subprocess.run(f"sed -i 's/begin\\[.*\\]{{positions}}/begin\\[atomic\\]{{positions}}/g' {input_file}", shell=True, check=True)
+
+    elif do_ang:
+
+        # Change reference setting in positions to angstroms
+        subprocess.run(f"sed -i 's/begin\\[.*\\]{{positions}}/begin\\[ang\\]{{positions}}/g' {input_file}", shell=True, check=True)
+
+    elif do_scale_val:
+
+        # Change reference setting in positions to the value of do_scale_val
+        subprocess.run(f"sed -i 's/begin\\[.*\\]{{positions}}/begin\\[{do_scale_val}\\]{{positions}}/g' {input_file}", shell=True, check=True)
+
 
     # More steps to do if using internal coordinates
     if do_intp or do_intc:
@@ -212,6 +269,10 @@ def convert_atomic_positions(input_file: str) -> None:
         coord_str = "int-p"
     elif do_intc:
         coord_str = "int-c"
+    elif do_ang:
+        coord_str = "angstroms"
+    elif do_scale_val:
+        coord_str = "scaled atomic"
     else:
         # We shouldn't ever reach here!
         text = "ERROR!"

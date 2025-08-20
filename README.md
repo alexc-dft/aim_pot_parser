@@ -22,7 +22,7 @@ The output pot_file is written to the current working directory
 # Overall usage workflow
 
 1. Generate a pot_file using potfileGen
-2. Use any2apc --atomic to convert atom postions in dat file to the atomic units reference frame
+2. Use any2any --atomic to convert atom postions in dat file to the atomic units reference frame
 3. Run a potential job in the AIMPRO code (atomic positons MUST be defined in au)
 4. Use aimpot2cube to pass AIMPRO results into .cube format
 
@@ -57,14 +57,14 @@ Floats are in 12.6 format.
 Known issues:  
 None  
 
-# any2apc usage
-any2apc [options] (--atomic | --intp | --intc) dat_file
+# any2any usage  
+any2any [options] (--atomic | --intp | --intc | --angstroms | --scale SCALE) dat_file  
 
-This script converts AIMRPO atomic positions using any reference frame to either atomic, int-p or int-c based on user selection, using Jon Goss's gres & InsertOTB Perl scripts.
+This script converts AIMRPO atomic positions using any reference frame to any other reference frame based on user selection, using Jon Goss's gres, InsertOTB & otb2intp Perl scripts.  
 
-Atom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html
+Atom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html  
 
-Perl scripts  
+Perl scripts
 gres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html  
 InsertOTB: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html  
 otb2intp: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/DataFiles.html  
@@ -74,15 +74,18 @@ otb2intp: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/DataFiles.html
 -h, --help: display help dialogue  
 -rb, --retain_bak: Retains backup copy of datafile (dat_file.bak)  
 
-(--atomic | --intp | --intc)  
--a, --atomic: convert to atomic reference frame  
+(--atomic | --intp | --intc | --angstroms | --scale SCALE)  
+-au, --atomic: convert to atomic reference frame  
 -p, --intp: convert to int-p reference frame  
--c, --intc: convert to int-c reference frame
+-c, --intc: convert to int-c reference frame  
+-ang, --angstroms: convert to angstroms reference frame  
+-s SCALE, --scale SCALE  
+                convert to atomic reference frame, scaled by provided float value SCALE  
 
-The above options are mutually exclusive and required.
+The above options are mutually exclusive and required.  
 
 dat_file  
-AIMPRO dat file, this must follow the dat.xxx file name convention
+AIMPRO dat file, this must follow the dat.xxx file name convention  
 
 Known issues:  
 The script is unable to account for depreciated definitions of the lattice parameters (e.g. a0=...) due to limitations of otb2intp.  
@@ -92,7 +95,7 @@ As these are depreciated this is not expected to be a frequent issue, however, e
 
 The atomic positions in the potential job MUST be defined in au i.e. begin[atomic]{positions} MUST be specified.
 
-any2apc --atomic can be used to convert the atom positions in a dat file to the atomic reference frame from any other reference frame.
+any2any --atomic can be used to convert the atom positions in a dat file to the atomic reference frame from any other reference frame.
 
 Atom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html  
 Potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html
