@@ -145,10 +145,10 @@ def convert_atomic_positions(input_file: str) -> None:
         None
 
     Raises:
-        None
+        Warns if the files it needs to create already exist & backs up the existing ones
     """
 
-    # Ensure we are able to create the xyz & otb files we temporarily need, backup exisitng ones and inform user
+    # Ensure we are able to create the xyz & otb files we temporarily need, backup exisiting ones and inform user
     if Path(f"xyz.{input_file}.init").is_file():
         subprocess.run(f"mv xyz.{input_file}.init xyz.{input_file}.init.bak", shell=True, check=True)
         print(f"Warning: exisiting xyz.{input_file}.init moved to xyz.{input_file}.init.bak\n")
