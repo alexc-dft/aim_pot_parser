@@ -12,6 +12,7 @@ None
 
 from pathlib import Path
 import numpy as np
+from typing import Optional
 
 # Module development info
 VERSION_NUMBER = "0.1"
@@ -32,7 +33,7 @@ CUBE_OUTPUT_FILENAME = ".cube"
 
 # AIMPRO parser shared I/O routines
 
-def read_grid_vectors(grid_vectors_input_file: str) -> tuple[object, object]:
+def read_grid_vectors(grid_vectors_input_file: str, verbose_output: Optional[bool] = False) -> tuple[object, object]:
     """Reads grid vectors an repeats from input file
 
     The grid of points is regenerated to validate the points in the AIMPRO output.
@@ -40,6 +41,7 @@ def read_grid_vectors(grid_vectors_input_file: str) -> tuple[object, object]:
 
     Args:
         grid_vectors_input_file: Grid vectors input filename/path
+        verbose_output (Optional, , default False): turns on verbose output mode
 
     Returns:
         repeats: number of repeats of each vector
@@ -87,5 +89,14 @@ def read_grid_vectors(grid_vectors_input_file: str) -> tuple[object, object]:
         raise ValueError(f"repeats values in {grid_vectors_input_file} must be >= 1")
     if np.any(vectors < 0.0):
         raise ValueError(f"grid vector values in {grid_vectors_input_file} must be > 0.0")
+
+    # Write out grid vectors input if verbose_output enabled
+    if verbose_output:
+        print("Input grid vector data:\n")
+        for i in range(len(repeats)):
+            print("{rep:5d} {vec_a:12.6f} {vec_b:12.6f} {vec_c:12.6f}"
+                  .format(rep = repeats[i],vec_a = vectors[i, 0],
+                          vec_b = vectors[i, 1], vec_c = vectors[i, 2]))
+        print("\n")
 
     return repeats, vectors

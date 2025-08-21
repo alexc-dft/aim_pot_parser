@@ -148,16 +148,7 @@ def main() -> None:
     filename = read_commmand_line()
 
     # Get repeats and vectors from input file
-    rep, vec = cio.read_grid_vectors(filename)
-
-    # Write out grid vectors input if verbose_output enabled
-    if verbose_output:
-        print("Input grid vector data:\n")
-        for i in range(len(rep)):
-            print("{repeats:5d} {vec_a:12.6f} {vec_b:12.6f} {vec_c:12.6f}"
-                  .format(repeats = rep[i],vec_a = vec[i, 0],
-                          vec_b = vec[i, 1], vec_c = vec[i, 2]))
-        print("\n")
+    rep, vec = cio.read_grid_vectors(filename, verbose_output)
 
     # Write grid using vectors & their repeats
     write_pot_file(rep, vec)

@@ -230,7 +230,7 @@ def main() -> None:
     gv_infile, aim_infile = read_commmand_line()
 
     # Get repeats, vectors and generate grid points dataframe from grid vectors input file
-    rep, vec = cio.read_grid_vectors(gv_infile)
+    rep, vec = cio.read_grid_vectors(gv_infile, verbose_output)
 
     # Generate grid points from grid vectors, used later to valadate grid in AIMPRO input file
     pts = generate_grid_points(rep,vec)
