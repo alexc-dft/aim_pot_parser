@@ -16,20 +16,8 @@ require 5;
 &ProcessSwitches;
 
 #Special cases:
-if($invocation eq "o2x"||$options{$invocation}{'o2x'}[0]){&o2x($files[0]);&Exit()}
-elsif($invocation eq "x2o"||$options{$invocation}{'x2o'}[0]){&x2o($files[0]);&Exit()}
-elsif($options{$invocation}{'scale'}[0]){&scale($files[0],1);&Exit()}
-elsif($options{$invocation}{'iscale'}[0]){&scale($files[0],-1);&Exit()}
-elsif($invocation eq "analysis"||$options{$invocation}{'anal'}[0]){&anal($files[0]);&Exit()}
-elsif($invocation eq "Homer"){&Homer($files[0]);&Exit()}
+if($invocation eq "x2o"||$options{$invocation}{'x2o'}[0]){&x2o($files[0]);&Exit()}
 elsif($invocation eq "gres"){
-    
-    # Have we been asked to do something other than analyse dat/res files?
-    if($options{$invocation}{'c'}[0]){&CleanUpDirectory;&Exit}
-    
-    #If we're accumulating Homer data...
-    if($options{$invocation}{"allhomer"}[0]){$allhomerdata=OpenOutput(ALLHOMER,"force new","all",($options{$invocation}{'average'}[0]?"k-av":""),"accumulated homer input file")}
-    
     
     # Then for each file, get the appropriate information:
     for $file (@files){
@@ -207,26 +195,7 @@ sub Defaults{
     $error=0;
     #File roots that are recognised:
     %root=(
-	'PDB'=>'pdb',
-	'CELL'=>'cell',
-	'SAD'=>'xyz.saddle',
-	'CHA'=>'xyz.latest',
-	'NEB'=>'latest',
-	'ANL'=>'anl',
-	'DAT'=>'dat',
-	'DDS'=>'dds',
-	'DIAGDD'=>'diagdd',
-	'EXPONS' => 'exp',
-	'ALLHOMER' => 'hom',
-	'HOMER' => 'hom',
-	'HOMERPS' => '',
 	'OTB'=>'otb',
-	'SCA'=>'',
-	'REC'=>'ddrestart',
-	'RPT'=>'rpt',
-	'WFN'=>'wfn',
-	'XBS'=>'xbs',
-	'XRPT'=>'xyz.rpt',
 	'XYZ'=>'xyz'
 	);
     #Constants:
@@ -333,72 +302,8 @@ sub Defaults{
     %options=(
 	gres => {
 	    "USAGE"     => [-1,  "bin", "gres <options> <files>",                                         1],
-	    "allhomer"  => [0,   "bin", "Generate  single homer input for multiple res files",            1],
-	    "anal"      => [0,   "bin", "Analysis of neighbour map for single otb file",                  1],
-	    "average"   => [0,   "bin", "Output homer file with average over k-points",                   1],
-	    "b"         => [0,   "bin", "Band file output with homer option",                             0],
-	    "bond"      => [0,   "bin", "Generate otb with bond-centres as atoms (works on OTB input)",   1],
-	    "bondfudge" => [2.0, "va1", "Multiplicitive factor for xbs bonds (default=2)",                1],
-	    "c"         => [0,   "bin", "Clean up the current directory - rm xyz, otb, etc files",        1],
-	    "centre"    => [0,   "bin", "When repeating unit cell, repeat in both directions",            1],
-	    "d"         => [0,   "bin", "Get the double derivative matrix",                               1],
-	    "D"         => [0,   "bin", "Get the eigenvalues and dipole matrix elements",                 0],
-	    "debug"     => [0,   "bin", "Debugging output switched on",                                   1],
-	    "diagdd"    => [0,   "bin", "Generate input file for diagdd",                                 1],
-	    "e"         => [0,   "bin", "Get atomic positions for xyz animations",                        1],
 	    "einit"     => [0,   "bin", "Get initial xyz structure",                                      1],
-	    "elast"     => [0,   "bin", "Get final xyz structure",                                        1],
-	    "xsaddle"   => [0,   "bin", "Get and open an xyz animation of saddle point NEB optimisation", 1],
-	    "xlatest"   => [0,   "bin", "Get and open an xyz animation of latest NEB chain (latest.xyz)", 1],
-	    "esaddle"   => [0,   "bin", "Get xyz animation of the NEB saddle point optimisation",         1],
-	    "elatest"   => [0,   "bin", "Get xyz animation of the NEB latest chain (latest.xyz)",         1],
-	    "erepeat"   => [0,   "va3", "Repeat a unit cell (xyz) in each lattice direction (3 integers)",1],
-	    "erepeatlast"=> [0,   "va3", "Repeat unit cell (xyz) in lattice drctns (3 integers), last structure",      1],
-	    "expons"    => [0,   "bin", "Get sorted list from exponent optimisation",                     1],
-	    "h"         => [0,   "bin", "Help information",                                               1],
-	    "homer"     => [0,   "bin", "Generate input file to be read into Homer(tm)",                  1],
-	    "homerps"   => [0,   "bin", "Generate Homer input file and PS via Homer(tm)",                 1],
-	    "homo"      => [0,   "bin", "Detect and output the homo (and lumo) evals",                    0],
-	    "include"   => [0,   "va1", "Output the first \# atoms of the final positions in xbs format", 1],
-	    "iscale"    => [0,   "va1", "Scale a single otb file by 1/this factor",                       1],
-	    "n"         => [1.0, "va1", "Refractive index (C: 2.36, Si:3.46)",                            0],
-	    "o"         => [0,   "bin", "Get atomic positions in `OTB' format (-v -> 1st & last iters)",  1],
-	    "o2x"       => [0,   "bin", "o2x emulation -- may be used in conjunction with -s",            1],
-	    "oinit"     => [0,   "bin", "Output initial iteration OTB",                                   1],
-	    "olast"     => [0,   "bin", "Output final iteration OTB",                                     1],
-	    "over"      => [0,   "bin", "Override file preservation",                                     1],
-	    "q"         => [2,   "va1", "Quiet level \# (0-4) (larger numbers provide more output)",      1],
-	    "r"         => [0,   "bin", "Evaluate rates for dipole transitions",                          0],
-	    "repeat"    => [0,   "va3", "Repeat a unit cell (otb) in each lattice direction (3 integers) (use -anal subsequently for neighbour map)",1],
-	    "R"         => [0,   "bin", "Reconstruct data file from results file",                        1],
-	    "Rlast"     => [0,   "bin", "Reconstruct data file from results file - use last otb",         1],
-	    "NEB"       => [0,   "bin", "Reconstruct latest.neb file from results file",                  1],
-	    "radfudge"  => [0.5, "va1", "Multiplicitive factor for xbs atom radii (default=0.5)",         1],
-	    "s"         => [0,   "va1", "Species for o2x emulation",                                      1],
-	    "sort"      => [0,   "bin", "Sort expons data by energy",                                     1],
-	    "scale"     => [0,   "va1", "Scale a single otb file by this factor",                         1],
-	    "v"         => [0,   "bin", "Verbose output",                                                 1],
-	    "V"         => [0,   "bin", "Version info",                                                   1],
-	    "wf"        => [0,   "bin", "Get wavefunction coefficients",                                  1],
-	    "wo"        => ['',  "va1", "Working directory for all output files",                         1],
-	    "x"         => [0,   "bin", "Generate xyz animation and open in viewer",                      1],
-	    "pdb"       => [0,,  "bin", "Generate pdb structure",                                         1],
-	    "cell"      => [0,,  "bin", "Generate a .cell structure",                                     1],
 	    "x2o"       => [0,   "bin", "Generate otb from single xyz file",                              1],
-	    "xyz"       => [0,   "va1", "Set xyz viewer command",                                         1],
-	    "xbs"       => [0,   "bin", "Output final positions in xbs format",                           1],
-	    "xhomer"    => [0,   "bin", "Generate Homer input file and PS via Homer(tm) and view",        1],
-	    "xinit"     => [0,   "bin", "Generate xyz of initial structure and open in viewer",           1],
-	    "xrepeat"   => [0,   "va3", "Repeat & open xyz repeated in each direction (3 integers)",      1],
-	    "xrepeatlast"=> [0,   "va3", "Repeat & open xyz repeated in each direction (3 integers), final structure",      1],
-	    "xlast"     => [0,   "bin", "Generate xyz of final structure and open in viewer",             1]
-	},
-	o2x => {
-	    "USAGE"     => [-1,  "bin", "o2x <-s \"C Si ...\"> file.otb",                                 1],
-	    "debug"     => [0,   "bin", "Debugging output switched on",                                   1],
-	    "h"         => [0,   "bin", "Help information",                                               1],
-	    "s"         => [0,   "va1", "Atomic species",                                                 1],
-	    "over"      => [0,   "bin", "Overwrite existing files",                                       1]
 	},
 	x2o => {
 	    "USAGE"     => [-1,  "bin", "x2o file.xyz",                                                   1],
@@ -407,100 +312,11 @@ sub Defaults{
 	    "h"         => [0,   "bin", "Help information",                                               1],
 	    "over"      => [0,   "bin", "Overwrite existing files",                                       1]
 	},
-	analysis => {
-	    "USAGE"     => [-1,  "bin", "analysis file.otb",                                              1],
-	    "debug"     => [0,   "bin", "Debugging output switched on",                                   1],
-	    "h"         => [0,   "bin", "Help information",                                               1],
-	    "over"      => [0,   "bin", "Overwrite existing files",                                       1],
-	    "bondfudge" => [2.0, "va1", "Multiplicitive fudge factor for bond lengths (default=2)",       1],
-	    "s"         => [0,   "va1", "Atomic species",                                                 1]
-	},
-	Homer => {
-	    "USAGE"     => [-1,  "bin", "Homer <input.file>",                                             1],
-	    "area"      => [0,   "va2","Graph plot area (default 12x20cm) excluding labels",              1],
-	    "debug"     => [0,   "bin", "Debugging output switched on",                                   1],
-	    "h"         => [0,   "bin", "Help information",                                               1],
-	    "sym"       => [9,   "va1", "Symbol size in points (default=9pt)",                            1],
-	    "paper"     => [0,   "va2", "Paper size (default a4=21x29.7cm)",                              1],
-	    "w"         => [5,   "va1", "White space above and below levels (default = 5%)",              1],
-	    "s"         => [5,   "va1", "White space between spectra (default = 5%)",                     1],
-	    "l"         => [1,   "va1", "Linewidth (default = 1)",                                        1],
-	    "d"         => [1,   "va1", "Decimal places (default = 1)",                                   1],
-	    "rep"       => [0,   "bin", "Replicate av to plot up & down",                                 1],
-	    "over"      => [0,   "bin", "Overwrite existing files",                                       1]
-	}	      
 	);
     
     #How have I been invoked?
     &Invocation;
     
-    #Set XYZ & PS viewing software:
-    &setXYZviewer;
-    &setPSviewer;
-    
-}
-
-######################################################################
-#### Look for the available software for viewing xyz data ############
-######################################################################
-sub setXYZviewer{
-    local(%progs);
-    #Listed here are the known packages for visualisation, along with 
-    #the options required for XYZ format input.  The index preceding
-    #the program name indicates the order of preference should a platform
-    #have more that one available option.
-    %progs=(
-	"5 minimol" =>" ",
-	"2 xmakemol"=>" -f",
-	"3 xmol"    =>" -readFormat xyz",
-	"4 rasmol"  =>" -xyz",
-	"1 jmol"    =>" "
-	);
-    #Assume the worst:
-    $options{$invocation}{'xyz'}[0]="NONE";
-    #Look for the program on the machine and return the complete 
-    #command line:
-    for(sort keys %progs){
-	($p)=/^\d (.*)/;
-	open T, "which $p|";
-	if(($t)=($t=<T>)=~/^(\/.*)\n$/){
-	    $options{$invocation}{'xyz'}[0]=$t.$progs{$_};
-	    last;
-	}
-	close T;
-    }
-}
-
-######################################################################
-#### Look for the available software for viewing ps data #############
-######################################################################
-sub setPSviewer{
-    local(%progs);
-    #Listed here are the known packages for visualisation.
-    #The index preceding
-    #the program name indicates the order of preference should a platform
-    #have more that one available option.
-    %progs=(
-	"5 gv" =>" ",
-	"2 ghostview" =>" ",
-	"3 ggv" =>" ",
-	"4 evince" =>" ",
-	"1 display" =>" ",
-	"6 ghostscript" =>" "
-	);
-    #Assume the worst:
-    $options{$invocation}{'postscript'}[0]="NONE";
-    #Look for the program on the machine and return the complete 
-    #command line:
-    for(sort keys %progs){
-	($p)=/^\d (.*)/;
-	open T, "which $p|";
-	if(($t)=($t=<T>)=~/^(\/.*)\n$/){
-	    $options{$invocation}{'postscript'}[0]=$t.$progs{$_};
-	    last;
-	}
-	close T;
-    }
 }
 
 ######################################################################
@@ -512,8 +328,6 @@ sub Invocation{
     ##############################################
     ############### QUICK HACK: ##################
     ##############################################
-    if($0 =~ /(\/|^)new_gres/){$invocation="gres"}
-    if($0 =~ /(\/|^)aimgres/){$invocation="gres"}
     if($0 =~ /(\/|^)rgres/){$invocation="gres"}
     ##############################################
     die "Don't know how to run '$0'\n" if !$invocation;
@@ -1764,6 +1578,8 @@ sub GetLatticeVectors{
     }
     return;
 }
+
+sub bynumber{$a<=>$b}
 
 sub FormatOTB{die "Error in FormatOTB" if ($#_);return (sprintf"%4d%2d%5d%5d%5d%5d%17.10f%17.10f%17.10f\n",(split " ",$_[0]))}
 sub FormatXYZ{die "Error in FormatXYZ" if ($#_-3);return (sprintf"%2s%18.11f%18.11f%18.11f\n",@_)}

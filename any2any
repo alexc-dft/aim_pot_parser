@@ -51,7 +51,7 @@ COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
 # Perl script path details
 PERL_PATH = Path(__file__).resolve().parent  / "low_level_scripts" / "perl" # !!!Note __file__ isn't always safe, e.g. in non-local imported modules!!!
-CGRES_PATH = PERL_PATH / "cgres"
+CGRES_PATH = PERL_PATH / "rgres"
 CINSERTOTB_PATH = PERL_PATH / "cInsertOTB"
 COTB2INTP_PATH = PERL_PATH / "cotb2intp"
 COTB2INTC_PATH = PERL_PATH / "cotb2intc"
