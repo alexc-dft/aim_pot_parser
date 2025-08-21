@@ -57,7 +57,7 @@ def read_grid_vectors(grid_vectors_input_file: str) -> tuple[object, object]:
     # Read in input file
     with open(grid_vectors_input_file,"r") as infile:
         # Split into rows
-        raw_input = infile.read().splitlines()
+        raw_input = infile.readlines()
 
     if len(raw_input) != 3:
         raise Exception(f"incorrect input file format - {input_filename} must have only 3 rows")
