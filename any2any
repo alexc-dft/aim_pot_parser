@@ -171,7 +171,7 @@ def convert_atomic_positions(input_file: str) -> None:
     if do_ang or do_scale_val:
 
         # Read in otb values, they will be in the atomic reference frame
-        species_str, species_index, nneigbour_map, atom_pos = meth.read_otb(f"otb.xyz.{input_file}.init")
+        species_string, species_index, nneigbour_map, atom_positions = meth.read_otb(f"otb.xyz.{input_file}.init")
 
         # Rescale positions
         if do_ang:
@@ -183,7 +183,7 @@ def convert_atomic_positions(input_file: str) -> None:
             atom_pos *= do_scale_val
 
         # Write out rescaled otb
-        meth.write_otb(f"otb.xyz.{input_file}.init", species_str, species_index, nneigbour_map, atom_pos)
+        meth.write_otb(f"otb.xyz.{input_file}.init", species_string, species_index, nneigbour_map, atom_positions)
 
 
     # Insert positions into original dat file
