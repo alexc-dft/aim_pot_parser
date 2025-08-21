@@ -112,7 +112,7 @@ def read_commmand_line() -> str:
 
     args = parser.parse_args()
     retain_bak = args.retain_bak
-    # input_filename = args.dat_file[0]
+    input_filename = args.dat_file[0]
     do_atomic = args.atomic
     do_intp = args.intp
     do_intc = args.intc
@@ -151,11 +151,11 @@ def convert_atomic_positions(input_file: str) -> None:
     # Ensure we are able to create the xyz & otb files we temporarily need, backup exisitng ones and inform user
     if Path(f"xyz.{input_file}.init").is_file():
         subprocess.run(f"mv xyz.{input_file}.init xyz.{input_file}.init.bak", shell=True, check=True)
-        print(f"Warning: exisitng xyz.{input_file}.init moved to xyz.{input_file}.init.bak\n")
+        print(f"Warning: exisiting xyz.{input_file}.init moved to xyz.{input_file}.init.bak\n")
 
     if Path(f"otb.xyz.{input_file}.init").is_file():
         subprocess.run(f"mv otb.xyz.{input_file}.init otb.xyz.{input_file}.init.bak", shell=True, check=True)
-        print(f"Warning: exisitng otb.xyz.{input_file}.init moved to otb.xyz.{input_file}.init.bak\n")
+        print(f"Warning: exisiting otb.xyz.{input_file}.init moved to otb.xyz.{input_file}.init.bak\n")
 
 
     # Backup input dat file
@@ -171,19 +171,20 @@ def convert_atomic_positions(input_file: str) -> None:
     if do_ang or do_scale_val:
 
         # Read in otb values, they will be in the atomic reference frame
-        species_string, species_index, nneigbour_map, atom_positions = meth.read_otb(f"otb.xyz.{input_file}.init")
+        species_index, nneigbour_map, atom_positions, species_string = meth.read_otb(f"otb.xyz.{input_file}.init")
+
 
         # Rescale positions
         if do_ang:
             # Rescale
-            atom_pos *= const.BOHR2ANG
+            atom_positions *= const.BOHR2ANG
 
         elif do_scale_val:
             # Rescale
-            atom_pos *= do_scale_val
+            atom_positions *= do_scale_val
 
         # Write out rescaled otb
-        meth.write_otb(f"otb.xyz.{input_file}.init", species_string, species_index, nneigbour_map, atom_positions)
+        meth.write_otb(f"otb.xyz.{input_file}.init", species_index, nneigbour_map, atom_positions, species_string)
 
 
     # Insert positions into original dat file
