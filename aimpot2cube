@@ -55,7 +55,7 @@ VERSION_DATE = "15/08/2025"
 AUTHORS = "Alex Christison"
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
-def read_commmand_line() -> str:
+def read_commmand_line() -> tuple[str, str]:
     """Gets input filename(s).
 
     If no input file is provided in command line the default input file is used.
@@ -149,7 +149,7 @@ def generate_grid_points(repeats: object, vectors: object) -> object:
 
     return grid_points
 
-def read_aimpro_infile(aimpro_output_file: str) -> object:
+def read_aimpro_infile(aimpro_output_file: str) -> tuple[int, list, object, object]:
     """Read AIMPRO output fule and extracts required data
 
     Args:

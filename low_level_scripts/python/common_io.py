@@ -32,7 +32,7 @@ CUBE_OUTPUT_FILENAME = ".cube"
 
 # AIMPRO parser shared I/O routines
 
-def read_grid_vectors(grid_vectors_input_file: str) -> object:
+def read_grid_vectors(grid_vectors_input_file: str) -> tuple[object, object]:
     """Reads grid vectors an repeats from input file
 
     The grid of points is regenerated to validate the points in the AIMPRO output.
