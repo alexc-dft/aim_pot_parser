@@ -51,8 +51,8 @@ def read_grid_vectors(grid_vectors_input_file: str) -> tuple[object, object]:
     """
 
     # Define lists to store vectors & their repeats
-    repeats = np.zeros([3], dtype=int)
-    vectors = np.zeros([3, 3])
+    repeats = np.zeros((3), dtype=int)
+    vectors = np.zeros((3, 3))
 
     # Read in input file
     with open(grid_vectors_input_file,"r") as infile:
