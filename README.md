@@ -58,7 +58,7 @@ Known issues:
 None  
 
 # any2any usage  
-any2any [options] (--atomic | --intp | --intc | --angstroms | --scale SCALE) dat_file  
+any2any [options] (--atomic | --intp | --intc | --angstroms) dat_file  
 
 This script converts AIMRPO atomic positions using any reference frame to any other reference frame based on user selection, using Jon Goss's gres, InsertOTB & otb2intp Perl scripts.  
 
@@ -74,13 +74,11 @@ otb2intp: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/DataFiles.html
 -h, --help: display help dialogue  
 -rb, --retain_bak: Retains backup copy of datafile (dat_file.bak)  
 
-(--atomic | --intp | --intc | --angstroms | --scale SCALE)  
+(--atomic | --intp | --intc | --angstroms)  
 -au, --atomic: convert to atomic reference frame  
 -p, --intp: convert to int-p reference frame  
 -c, --intc: convert to int-c reference frame  
 -ang, --angstroms: convert to angstroms reference frame  
--s SCALE, --scale SCALE  
-                convert to atomic reference frame, scaled by provided float value SCALE  
 
 The above options are mutually exclusive and required.  
 
