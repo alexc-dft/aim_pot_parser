@@ -231,8 +231,8 @@ sub Defaults{
 	);
     #Constants:
     %const=(
-	'angtoau'  => 1.88972598857892320310,
-	'autoang'  => 0.529177249,
+	'angtoau'  => 1.889726126,
+	'autoang'  => 0.529177210544,
 	'rateconst'=> 1063056.42795046,
 	'version'  => "6.2o April 2025"
 	);
