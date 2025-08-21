@@ -47,12 +47,19 @@ from pathlib import Path
 import numpy as np
 import common_io  as cio
 import fnmatch
+import subprocess
+import methods as m
+import const as c
 
 # Module development info
 VERSION_NUMBER = "0.1"
 VERSION_DATE = "15/08/2025"
 AUTHORS = "Alex Christison"
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
+
+# Perl script path details
+PERL_PATH = Path(__file__).resolve().parent  / "low_level_scripts" / "perl" # !!!Note __file__ isn't always safe, e.g. in non-local imported modules!!!
+RGRES_PATH = PERL_PATH / "rgres"
 
 def read_commmand_line() -> tuple[str, str]:
     """Gets input filename(s).
@@ -149,7 +156,7 @@ def generate_grid_points(repeats: object, vectors: object) -> object:
     return grid_points
 
 def read_aimpro_infile(aimpro_output_file: str) -> tuple[int, list, object, object]:
-    """Read AIMPRO output fule and extracts required data
+    """Reads AIMPRO output file and extracts required data
 
     Args:
         aimpro_output_file: AIMPRO potential job output file name
@@ -158,11 +165,14 @@ def read_aimpro_infile(aimpro_output_file: str) -> tuple[int, list, object, obje
         num_atoms: integer number of atoms (omiting ghost atoms)
         species_list: list of species symbols
         atom_pos: atom positions in au (omiting ghost atoms)
-        potental_values: sum of teh 3 potenial values from aimpro_output_file
+        potental_values: sum of the 3 potenial values from aimpro_output_file
 
     Raises:
         None
     """
+
+    # Get species index list and atom positions in atomic units
+    species_index, atom_positions = get_atom_positions(aimpro_output_file)
 
     # TODO Read file in line by line and extract required quantities, error if not a potential job
 
@@ -176,10 +186,53 @@ def read_aimpro_infile(aimpro_output_file: str) -> tuple[int, list, object, obje
 
     num_atoms = 0
     species_list = [""]
-    atom_pos = np.zeros(3)
     potental_values = np.zeros((3, 3))
 
-    return num_atoms, species_list, atom_pos, potental_values
+    return num_atoms, species_list, atom_positions, potental_values
+
+def get_atom_positions(aim_file: str) -> tuple[object, object]:
+    """Uses Jon Gos's gres on the backend to extract atom positions in atomic units and the species index list.
+
+    gres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html
+    (Copyright (c) J.P. Goss 2024 All Rights Reserved.)
+
+    Args:
+        aim_file: AIMPRO output filename
+
+    Returns:
+        species_ind: array of species indexs (column 2 of OTB)
+        atom_pos: atom positions in au (columns 5-9 of OTB)
+
+    Raises:
+        Warns if the files it needs to create already exist & backs up the existing ones
+    """
+
+    # Ensure we are able to create the xyz & otb files we temporarily need, backup exisiting ones and inform user
+    if Path(f"xyz.{aim_file}.init").is_file():
+        subprocess.run(f"mv xyz.{aim_file}.init xyz.{aim_file}.init.bak", shell=True, check=True)
+        print(f"Warning: exisiting xyz.{aim_file}.init moved to xyz.{aim_file}.init.bak\n")
+
+    if Path(f"otb.xyz.{aim_file}.init").is_file():
+        subprocess.run(f"mv otb.xyz.{aim_file}.init otb.xyz.{aim_file}.init.bak", shell=True, check=True)
+        print(f"Warning: exisiting otb.xyz.{aim_file}.init moved to otb.xyz.{aim_file}.init.bak\n")
+
+    # Convert dat file to xyz
+    subprocess.run(f"{RGRES_PATH} -einit {aim_file} 1> /dev/null", shell=True, check=True)
+
+    # Convert xyz to otb, positions are now in atomic
+    subprocess.run(f"{RGRES_PATH} -x2o xyz.{aim_file}.init 1> /dev/null", shell=True, check=True)
+
+    # Read in otb values, they will be in the atomic reference frame
+    result = m.read_otb(f"otb.xyz.{aim_file}.init")
+
+    # Only need species_index and atom positions
+    species_ind = result[0]
+    atom_pos = result[2]
+
+    # Remove temporary xyz & otb files
+    subprocess.run(f"rm xyz.{aim_file}.init  otb.xyz.{aim_file}.init", shell=True, check=True)
+
+    return species_ind, atom_pos
 
 def write_cube_file(aimpro_output_file: str, grid_vectors_input_file: str, num_atoms: int, species_list: list, atom_pos: object, potental_values: object, repeats: object, vectors: object) -> None:
     """Generates and writes out pot_file.cube .
@@ -214,7 +267,7 @@ def write_cube_file(aimpro_output_file: str, grid_vectors_input_file: str, num_a
 
         # Fill the required comment lines in .cube file
         outfile.write("Cubefile created from AIMPRO output using aimpot2cube parser: Copyright (c) A Christison 2025 All Rights Reserved.\n")
-        outfile.write(f"Contains the total potential from {aimpro_output_file} on a voxelised mapping of the grid specified in {grid_vectors_input_file}.\n")
+        outfile.write(f"Contains the total potential from {aimpro_output_file} on a voxelised mapping of the grid specified in {grid_vectors_input_file}\n")
 
         # TODO Add writing of output file here
 
