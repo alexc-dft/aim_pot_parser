@@ -16,7 +16,7 @@ exit;
 ######################################################################
 sub BuildNewDataFile{
     open OUT, ">otb.intp" or die;
-    if(@species){print OUT "%".(join" ",@species)."\n";}
+    if(@species){print OUT "% ".(join" ",@species)."\n";}
     print OUT "$pos2";
     print STDERR "Written int-p positional otb to otb.intp\n";
 }
