@@ -2,7 +2,7 @@
 
 # Copyright (c) A Christison 2025 All Rights Reserved.
 
-"""any2any [options] (--atomic | --intp | --intc | --angstroms | --scale SCALE) dat_file
+"""any2any [options] (--atomic | --intp | --intc | --angstroms) dat_file
 
 This script converts AIMRPO atomic positions using any reference frame to any other reference frame based on user selection, using Jon Goss's gres, InsertOTB & otb2intp Perl scripts.
 
@@ -18,13 +18,11 @@ otb2intp: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/DataFiles.html
 -h, --help: display help dialogue
 -rb, --retain_bak: Retains backup copy of datafile (dat_file.bak)
 
-(--atomic | --intp | --intc | --angstroms | --scale SCALE)
+(--atomic | --intp | --intc | --angstroms)
 -au, --atomic: convert to atomic reference frame
 -p, --intp: convert to int-p reference frame
 -c, --intc: convert to int-c reference frame
 -ang, --angstroms: convert to angstroms reference frame
--s SCALE, --scale SCALE
-                convert to atomic reference frame, scaled by provided float value SCALE
 
 The above options are mutually exclusive and required.
 
@@ -100,11 +98,12 @@ def read_commmand_line() -> str:
                         action = "store_true",
                         help = "convert to angstroms reference frame")
 
-    group.add_argument("-s", "--scale",
-                        action = "store",
-                        type=float,
-                        default = False,
-                        help = "convert to atomic reference frame, scaled by provided float value SCALE")
+    # Scale option disabled due to gres -einit bug
+    # group.add_argument("-s", "--scale",
+    #                     action = "store",
+    #                     type=float,
+    #                     default = False,
+    #                     help = "convert to atomic reference frame, scaled by provided float value SCALE")
 
     parser.add_argument("dat_file",
                         nargs = 1,
@@ -119,7 +118,9 @@ def read_commmand_line() -> str:
     do_ang = args.angstroms
 
     # Stores both boolean flag & scale factor value as non-zero floats return True in boolean operations
-    do_scale_val = args.scale
+    # Scale option disabled due to gres -einit bug
+    # do_scale_val = args.scale
+    do_scale_val = False
 
     # Check scale value isn't zero, if all do flags are false then scale = 0 must have been provided
     if not do_atomic and not do_intp and not do_intc and not do_ang and not do_scale_val:
