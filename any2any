@@ -51,7 +51,7 @@ COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
 # Perl script path details
 PERL_PATH = Path(__file__).resolve().parent  / "low_level_scripts" / "perl" # !!!Note __file__ isn't always safe, e.g. in non-local imported modules!!!
-CGRES_PATH = PERL_PATH / "rgres"
+RGRES_PATH = PERL_PATH / "rgres"
 CINSERTOTB_PATH = PERL_PATH / "cInsertOTB"
 COTB2INTP_PATH = PERL_PATH / "cotb2intp"
 COTB2INTC_PATH = PERL_PATH / "cotb2intc"
@@ -162,10 +162,10 @@ def convert_atomic_positions(input_file: str) -> None:
     subprocess.run(f"cp {input_file} {input_file}.bak", shell=True, check=True)
 
     # Convert dat file to xyz
-    subprocess.run(f"{CGRES_PATH} -einit {input_file} 1> /dev/null", shell=True, check=True)
+    subprocess.run(f"{RGRES_PATH} -einit {input_file} 1> /dev/null", shell=True, check=True)
 
     # Convert xyz to otb, positions are now in atomic
-    subprocess.run(f"{CGRES_PATH} -x2o xyz.{input_file}.init 1> /dev/null", shell=True, check=True)
+    subprocess.run(f"{RGRES_PATH} -x2o xyz.{input_file}.init 1> /dev/null", shell=True, check=True)
 
     # Rescaling needed in the following cases
     if do_ang or do_scale_val:
