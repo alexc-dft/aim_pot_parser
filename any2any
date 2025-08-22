@@ -2,9 +2,9 @@
 
 # Copyright (c) A Christison 2025 All Rights Reserved.
 
-"""any2any [options] (--atomic | --intp | --intc | --angstroms) dat_file
+"""apac2apac [options] (--atomic | --intp | --angstroms | --intc) dat_file
 
-This script converts AIMRPO atomic positions using any reference frame to any other reference frame based on user selection, using Jon Goss's gres, InsertOTB & otb2intp Perl scripts.
+This script converts AIMRPO atomic positions using any valid selection of reference frame to any other any valid selection of reference frame based on user selection, using Jon Goss's gres, InsertOTB & otb2intp Perl scripts.
 
 Atom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html
 
@@ -21,8 +21,9 @@ otb2intp: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/DataFiles.html
 (--atomic | --intp | --intc | --angstroms)
 -au, --atomic: convert to atomic reference frame
 -p, --intp: convert to int-p reference frame
--c, --intc: convert to int-c reference frame
 -ang, --angstroms: convert to angstroms reference frame
+-c, --intc: convert to int-c reference frame
+
 
 The above options are mutually exclusive and required.
 
@@ -32,6 +33,8 @@ AIMPRO dat file, this must follow the dat.xxx file name convention
 Known issues:
 The script is unable to account for depreciated definitions of the lattice parameters (e.g. a0=...) due to limitations of otb2intp.
 As these are depreciated this is not expected to be a frequent issue, however, example files in the docs still use the a0 definition so care must be taken to change a0= to params= in lattice{} if using these.
+
+Due to limitations of gres -einit this script is unable to convert to/from the scaled atomic reference frame.
 """
 
 import subprocess
@@ -40,6 +43,7 @@ import fnmatch
 from pathlib import Path
 import methods as m
 import const as c
+import re
 
 # Module development info
 VERSION_NUMBER = "0.3"
@@ -71,7 +75,7 @@ def read_commmand_line() -> str:
     global retain_bak, do_atomic, do_intp, do_intc, do_ang, do_scale_val
 
     parser = argparse.ArgumentParser(
-                    prog = "any2any",
+                    prog = "apac2apac",
                     formatter_class=argparse.RawDescriptionHelpFormatter,
                     description = "Converts atom positions in an AIMPRO dat file (dat_file) from any reference frame to any other using gres, InsertOTB & otb2intp.\n\nAtom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html\n\ngres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html\nInsertOTB : https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html\notb2intp: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/DataFiles.html\n(Copyright (c) J.P. Goss 2024, 2015, 2011 All Rights Reserved.)",
                     epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.")
@@ -90,13 +94,13 @@ def read_commmand_line() -> str:
                         action = "store_true",
                         help = "convert to int-p reference frame")
 
-    group.add_argument("-c", "--intc",
-                        action = "store_true",
-                        help = "convert to int-c reference frame")
-
     group.add_argument("-ang", "--angstroms",
                         action = "store_true",
                         help = "convert to angstroms reference frame")
+
+    group.add_argument("-c", "--intc",
+                        action = "store_true",
+                        help = "convert to int-c reference frame")
 
     # Scale option disabled due to gres -einit bug
     # group.add_argument("-s", "--scale",
@@ -114,8 +118,8 @@ def read_commmand_line() -> str:
     input_filename = args.dat_file[0]
     do_atomic = args.atomic
     do_intp = args.intp
-    do_intc = args.intc
     do_ang = args.angstroms
+    do_intc = args.intc
 
     # Stores both boolean flag & scale factor value as non-zero floats return True in boolean operations
     # Scale option disabled due to gres -einit bug
@@ -133,6 +137,12 @@ def read_commmand_line() -> str:
     # Check if AIMPRO dat file has correct naming convention, error if not
     if not fnmatch.fnmatch(input_filename ,"dat") or fnmatch.fnmatch(input_filename ,"dat.*"):
         raise Exception(f"incorrect file name convention - {input_filename} filename does not match AIMPRO dat file naming convention (dat.XXX)")
+
+    # Check we are not in scaled atomic reference frame
+    with open(input_filename,"r") as infile:
+        for line in infile:
+            if re.search(c.RE_SCALE_POSLINE_START, line):
+                raise Exception(f"incorrect input format in {input_filename} - unable to convert coordinates that are in the scaled atomic reference frame")
 
     return input_filename
 

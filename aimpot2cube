@@ -119,6 +119,12 @@ def read_commmand_line() -> tuple[str, str]:
         print("Verbose output on.\n")
         print(f"Input file: {grid_vec_infile}\n")
 
+    # Check we are not in scaled atomic reference frame
+    with open(aimpro_infile,"r") as infile:
+        for line in infile:
+            if re.search(c.RE_SCALE_POSLINE_START, line):
+                raise Exception(f"incorrect input format in {aimpro_infile} - unable to convert coordinates that are in the scaled atomic reference frame")
+
     return grid_vec_infile, aimpro_infile
 
 def generate_grid_points(repeats: object, vectors: object) -> object:
