@@ -222,7 +222,7 @@ def read_aimpro_infile(aimpro_output_file: str, grid_vectors_input_file: str,  r
         num_atoms: integer number of atoms (omiting ghost atoms)
         species_list: list of species symbols
         atom_pos: atom positions in au (omiting ghost atoms)
-        potental_values: sum of the 3 potenial values from aimpro_output_file
+        potential_values: sum of the 3 potential values from aimpro_output_file
 
     Raises:
         Errors and exits if species with partial protons detected
@@ -230,26 +230,20 @@ def read_aimpro_infile(aimpro_output_file: str, grid_vectors_input_file: str,  r
         Errors and exits if grid points in AIMPRO file don't match the regenerated grid points from the grid vectors file
     """
 
-    # TODO Read file in line by line and extract required quantities, error if not a potential job
-
-    #TODO required quantities - Number of atoms, scale, atom positions & reference (au only - error if not), atom types from psuedoes, potential data (sum of all 3 contributions) - ensure to populate data structure in the same order that data was written in to preserve indices - regex potentials label, then read in as many lines as num_grid_points (np.prod(repeats) specifies?
-
-    # TODO Check gridpoints from AIMPRO file match those from provided grid vectors input file (to precisions dictated by the AIMPRO output) if not, error out
-
-    # TODO replace atom type enumerator with chemical symbol from psuedoes (index 1 = 1st in species list etc) - error check for 1.x Hydrogen, omit GHOST atoms and give prinout to update user, count number of GHOSTs, strip GHOSTs from atom positions and species list
-
     # Initalise proton num array
     species_proton_num_list = []
 
     # Initalise flags and values for the potential job
-    potental_job_run = False
+    potential_job_run = False
     in_potential_output = False
+    ghost_species_found = False
 
     expected_lines_of_pot = np.prod(repeats)
     pot_count = 0
 
     aim_grid_points = np.zeros((expected_lines_of_pot, 3))
-    aim_pot_values = np.zeros((expected_lines_of_pot))
+    aim_pot_values = np.zeros((expected_lines_of_pot, 1))
+
 
     # Open AIMPRO file, read line by line and extract data
     with open(aimpro_output_file,"r") as infile:
@@ -263,9 +257,11 @@ def read_aimpro_infile(aimpro_output_file: str, grid_vectors_input_file: str,  r
             if re.search(c.RE_SCALE_POSLINE_START, line):
                 raise Exception(f"incorrect input format in {aimpro_infile} - unable to convert coordinates that are in the scaled atomic reference frame")
 
+            partial_protons_search = re.search(c.RE_PARTIAL_PROTONS, line)
+
             # Error if species with partial protons detected
-            if re.search(c.RE_PARTIAL_PROTONS, line):
-                raise Exception(f"unphysical input in {aimpro_output_file} - unable to parse Hydrogen species with partial protons")
+            if partial_protons_search:
+                raise Exception(f"unphysical input in {aimpro_output_file} - unable to parse {partial_protons_search.group(2)} species with unphysical partial protons: {partial_protons_search.group(1)}")
 
             species_search = re.search(c.RE_SPECIES_EXTRACT, line)
             ghost_search = re.search(c.RE_GHOST, line)
@@ -280,20 +276,21 @@ def read_aimpro_infile(aimpro_output_file: str, grid_vectors_input_file: str,  r
 
             if ghost_search:
                 species_proton_num_list.append(int(ghost_search.group(1)))
+                ghost_species_found = True
 
                 if verbose_output:
                     print(f"Species of type {ghost_search.group(2)} detected\n")
 
-            # Set flags to True to indicate this was a potential job, and we are in the potental region
-            if not potental_job_run and not in_potential_output and pot_header_search:
-                potental_job_run = True
+            # Set flags to True to indicate this was a potential job, and we are in the potential region
+            if not potential_job_run and not in_potential_output and pot_header_search:
+                potential_job_run = True
                 in_potential_output = True
                 continue
 
-            # We are in the potenial region, so record data
+            # We are in the potential region, so record data
             if in_potential_output:
 
-                # If we have already read in as many lines of potenial as we expect, check that the next line is empty.
+                # If we have already read in as many lines of potential as we expect, check that the next line is empty.
                 # If it isn't there is more data than we are expecting and something has gone wrong
                 if pot_count == expected_lines_of_pot:
 
@@ -301,40 +298,83 @@ def read_aimpro_infile(aimpro_output_file: str, grid_vectors_input_file: str,  r
                         in_potential_output = False
                         continue
                     else:
-                        raise Exception(f"more potenial output detected in {aimpro_output_file} than expected from {grid_vectors_input_file} - are you sure {grid_vectors_input_file} is the correct file?")
+                        raise Exception(f"more potential output detected in {aimpro_output_file} than expected from {grid_vectors_input_file} - are you sure {grid_vectors_input_file} is the correct file?")
+
+                # Save grid points and all potential contributions (Columns 1-6)
+                split_line = line.split()
+
+                # Map to floats
+                split_line[1:7] = map(float, split_line[1:7])
+
+                # Save positions
+                aim_grid_points[pot_count] = np.array(split_line[1:4])
+
+                # Save total potential, this will be in eV)
+                aim_pot_values[pot_count] = np.sum(np.array(split_line[4:7]))
 
                 # Increment count of number of lines we have read in
                 pot_count+=1
 
+    # Error if we haven't detected a potential job run, looks like AIMPRO file wasn't a potential job output
+    if not potential_job_run:
+        raise Exception(f"no potential output detected in {aimpro_output_file} - are you sure it is an AIMPRO potential job output?")
 
-    # Error if we haven't detected a potental job run, looks like AIMPRO file wasn't a potenial job output
-    if not potental_job_run:
-        raise Exception(f"no potenial output detected in {aimpro_output_file} - are you sure it is an AIMPRO potential job output?")
+    # Validate grid points, tols chosen according to truncation error in .4f format in AIMPRO outfile
+    if not np.allclose(aim_grid_points, validation_grid_points, rtol=1e-4, atol=1e-6):
+        raise ValueError(f"Grid points in {aimpro_output_file} don't match those from {grid_vectors_input_file} - are you sure they are both using the same grid vectors?")
 
-    print(species_proton_num_list)
+    if verbose_output:
+        print(f"Grid points in {aimpro_output_file} validated\n")
+
+
+    # Reshape potental values so they are in the order dictated by teh number of repeats of our grid vectors
+    potential_values = aim_pot_values.reshape(repeats[0],repeats[1],repeats[2])
 
     # Get species index list and atom positions in atomic units
     species_index, atom_positions = get_atom_positions(aimpro_output_file)
 
-    # Remove ghost atoms
+    # If we have ghost atoms, remove them from atomic positions
+    if ghost_species_found:
+
+        # Get index of ghost species, correcting OBO error due to OTB indexes
+        ghost_index = species_proton_num_list.index(0)+1
+
+        # Initalise incrementor
+        i = 0
+        for element in species_index:
+            if element == ghost_index:
+
+                # Delete element corresponding to ghost atom (end 0 signifies to delete row)
+                species_index = np.delete(species_index, i, 0)
+                atom_positions = np.delete(atom_positions, i, 0)
+
+                # Inform user, correcting OBO error due to OTB indexes
+                if verbose_output:
+                    print(f"GHOST atom at atom index {i+1} omitted\n")
+
+            # Increment
+            i+=1
 
     # Now that we have removed any ghost atoms, we can count how many atoms we have
     num_atoms = atom_positions.shape[0]
 
-    potental_values = np.zeros((3, 3))
+    # Map species index to species proton number, subtrackting one to correct for OBO error due to OTB indexes
+    indexed_species_pn_list = []
+    for element in species_index:
+        indexed_species_pn_list.append(species_proton_num_list[element.item()-1])
 
-    return num_atoms, species_proton_num_list, atom_positions, potental_values
+    return num_atoms, indexed_species_pn_list, atom_positions, potential_values
 
-def write_cube_file(aimpro_output_file: str, grid_vectors_input_file: str, num_atoms: int, species_proton_num_list: object, atom_pos: object, potental_values: object, repeats: object, vectors: object) -> None:
+def write_cube_file(aimpro_output_file: str, grid_vectors_input_file: str, num_atoms: int, indexed_species_pn_list: object, atom_pos: object, potential_values: object, repeats: object, vectors: object) -> None:
     """Generates and writes out pot_file.cube .
 
     Args:
         aimpro_output_file: AIMPRO potential job output file name
         grid_vectors_input_file: Grid vectors input filename/path
         num_atoms: integer number of atoms (omiting ghost atoms)
-        species_proton_num_list: list of species symbols proton numbers (omiting ghost atoms)
+        indexed_species_pn_list: list of species proton numbers in the same order as the atomic positions (omiting ghost atoms)
         atom_pos: atom positions in au (omiting ghost atoms)
-        potental_values: sum of the 3 potenial values from aimpro_output_file
+        potential_values: sum of the 3 potential values from aimpro_output_file
         repeats: number of repeats of each grid defining vector
         vectors: grid vectors
 
@@ -379,10 +419,10 @@ def main() -> None:
     pts = generate_grid_points(rep,vec)
 
     # Read in AIMPRO file and extract required data
-    natoms, species_pn, atpos, pots = read_aimpro_infile(aim_infile, gv_infile, rep, pts)
+    natoms, ind_species_pn, atpos, pots = read_aimpro_infile(aim_infile, gv_infile, rep, pts)
 
     # Write cube file
-    write_cube_file(aim_infile, gv_infile, natoms, species_pn, atpos, pots, rep, vec)
+    write_cube_file(aim_infile, gv_infile, natoms, ind_species_pn, atpos, pots, rep, vec)
 
 if __name__ == "__main__":
     main()
