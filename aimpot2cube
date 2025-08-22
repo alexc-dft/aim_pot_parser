@@ -175,7 +175,7 @@ def get_atom_positions(aim_file: str) -> tuple[object, object]:
         aim_file: AIMPRO output filename
 
     Returns:
-        species_ind: array of species indexs (column 2 of OTB)
+        species_ind: array of species indexes (column 2 of OTB)
         atom_pos: atom positions in au (columns 5-9 of OTB)
 
     Raises:
@@ -219,9 +219,9 @@ def read_aimpro_infile(aimpro_output_file: str, grid_vectors_input_file: str,  r
         repeats: number of repeats of each grid defining vector
 
     Returns:
-        num_atoms: integer number of atoms (omiting ghost atoms)
+        num_atoms: integer number of atoms (omitting ghost atoms)
         species_list: list of species symbols
-        atom_pos: atom positions in au (omiting ghost atoms)
+        atom_pos: atom positions in au (omitting ghost atoms)
         potential_values: sum of the 3 potential values from aimpro_output_file
 
     Raises:
@@ -230,10 +230,10 @@ def read_aimpro_infile(aimpro_output_file: str, grid_vectors_input_file: str,  r
         Errors and exits if grid points in AIMPRO file don't match the regenerated grid points from the grid vectors file
     """
 
-    # Initalise proton num array
+    # Initialise proton num array
     species_proton_num_list = []
 
-    # Initalise flags and values for the potential job
+    # Initialise flags and values for the potential job
     potential_job_run = False
     in_potential_output = False
     ghost_species_found = False
@@ -327,7 +327,7 @@ def read_aimpro_infile(aimpro_output_file: str, grid_vectors_input_file: str,  r
         print(f"Grid points in {aimpro_output_file} validated\n")
 
 
-    # Reshape potental values so they are in the order dictated by teh number of repeats of our grid vectors
+    # Reshape potential values so they are in the order dictated by teh number of repeats of our grid vectors
     potential_values = aim_pot_values.reshape(repeats[0],repeats[1],repeats[2])
 
     # Get species index list and atom positions in atomic units
@@ -339,7 +339,7 @@ def read_aimpro_infile(aimpro_output_file: str, grid_vectors_input_file: str,  r
         # Get index of ghost species, correcting OBO error due to OTB indexes
         ghost_index = species_proton_num_list.index(0)+1
 
-        # Initalise incrementor
+        # Initialise incrementor
         i = 0
         for element in species_index:
             if element == ghost_index:
@@ -358,7 +358,7 @@ def read_aimpro_infile(aimpro_output_file: str, grid_vectors_input_file: str,  r
     # Now that we have removed any ghost atoms, we can count how many atoms we have
     num_atoms = atom_positions.shape[0]
 
-    # Map species index to species proton number, subtrackting one to correct for OBO error due to OTB indexes
+    # Map species index to species proton number, subtracting one to correct for OBO error due to OTB indexes
     indexed_species_pn_list = []
     for element in species_index:
         indexed_species_pn_list.append(species_proton_num_list[element.item()-1])
@@ -371,9 +371,9 @@ def write_cube_file(aimpro_output_file: str, grid_vectors_input_file: str, num_a
     Args:
         aimpro_output_file: AIMPRO potential job output file name
         grid_vectors_input_file: Grid vectors input filename/path
-        num_atoms: integer number of atoms (omiting ghost atoms)
+        num_atoms: integer number of atoms (omitting ghost atoms)
         indexed_species_pn_list: list of species proton numbers in the same order as the atomic positions (omiting ghost atoms)
-        atom_pos: atom positions in au (omiting ghost atoms)
+        atom_pos: atom positions in au (omitting ghost atoms)
         potential_values: sum of the 3 potential values from aimpro_output_file
         repeats: number of repeats of each grid defining vector
         vectors: grid vectors
@@ -400,9 +400,36 @@ def write_cube_file(aimpro_output_file: str, grid_vectors_input_file: str, num_a
         outfile.write("Cubefile created from AIMPRO output using aimpot2cube parser: Copyright (c) A Christison 2025 All Rights Reserved.\n")
         outfile.write(f"Contains the total potential from {aimpro_output_file} on a voxelised mapping of the grid specified in {grid_vectors_input_file}\n")
 
-        # TODO Add writing of output file here
+        # Calculate offset vector so voxels can be centred on grid points
+        # N.B. might have to change to zeros if negatives don't play nice with parsing programs
+        offset_vector = -0.5 * np.sum(vectors, 0)
 
-        # TODO write quantites as required including loop format specified in: https://paulbourke.net/dataformats/cube/
+        # Write number of atoms & position of orign
+        outfile.write("{n_at:5d} {ov_x:12.6f} {ov_y:12.6f} {ov_z:12.6f}\n"
+                        .format(n_at = num_atoms, ov_x = offset_vector[0],
+                            ov_y = offset_vector[1], ov_z = offset_vector[2]))
+
+         # Write out grid vectors and their repeats
+        for i in range(len(repeats)):
+            outfile.write("{rep:5d} {gv_x:12.6f} {gv_y:12.6f} {gv_z:12.6f}\n"
+                            .format(rep = repeats[i], gv_x = vectors[i, 0],
+                                gv_y = vectors[i, 1], gv_z = vectors[i, 2]))
+
+        # Write out atom proton number, their (unscreened) ionic charge & positions (in au)
+        for i in range(len(indexed_species_pn_list)):
+            outfile.write("{pn:5d} {ch:12.6f} {px:12.6f} {py:12.6f} {pz:12.6f}\n"
+                          .format(pn = indexed_species_pn_list[i], ch = float(indexed_species_pn_list[i]) ,px = atom_pos[i, 0], py = atom_pos[i, 1], pz = atom_pos[i, 2]))
+
+        # Write out volumetric potential data
+        for ia in range(0, repeats[0]):
+            for ib in range(0, repeats[1]):
+                for ic in range(0, repeats[2]):
+
+                    outfile.write(" {pot_val:1.5e}".format(pot_val = potential_values[ia, ib, ic]))
+                    if ic % 6 == 5:
+                        outfile.write("\n")
+
+                outfile.write("\n")
 
         if verbose_output:
             print(f"Finished writing to: {outpath}\n")
@@ -412,10 +439,10 @@ def main() -> None:
     # Read cmd line for input files
     gv_infile, aim_infile = read_commmand_line()
 
-    # Get repeats, vectors and generate grid points dataframe from grid vectors input file
+    # Get repeats, vectors and generate grid points array from grid vectors input file
     rep, vec = cio.read_grid_vectors(gv_infile, verbose_output)
 
-    # Generate grid points from grid vectors, used later to valadate grid in AIMPRO input file
+    # Generate grid points from grid vectors, used later to validate grid in AIMPRO input file
     pts = generate_grid_points(rep,vec)
 
     # Read in AIMPRO file and extract required data
