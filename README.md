@@ -58,27 +58,27 @@ Known issues:
 None  
 
 # any2any usage  
-any2any [options] (--atomic | --intp | --intc | --angstroms) dat_file  
+any2any [options] (--atomic | --angstroms | --intp | --intc) dat_file  
 
-This script converts AIMRPO atomic positions using any reference frame to any other reference frame based on user selection, using Jon Goss's gres, InsertOTB & otb2intp Perl scripts.  
+This script converts AIMRPO atomic positions using any valid selection of reference frame to any other any valid selection of reference frame based on user selection, using Jon Goss's gres, InsertOTB & otb2intp Perl scripts.  
 
 Atom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html  
 
-Perl scripts
+Perl scripts  
 gres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html  
 InsertOTB: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html  
 otb2intp: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/DataFiles.html  
 (Copyright (c) J.P. Goss 2024, 2015, 2011 All Rights Reserved.)  
 
-[options]  
+[options]
 -h, --help: display help dialogue  
 -rb, --retain_bak: Retains backup copy of datafile (dat_file.bak)  
 
-(--atomic | --intp | --intc | --angstroms)  
+(--atomic | --angstroms | --intp | --intc)  
 -au, --atomic: convert to atomic reference frame  
 -p, --intp: convert to int-p reference frame  
--c, --intc: convert to int-c reference frame  
 -ang, --angstroms: convert to angstroms reference frame  
+-c, --intc: convert to int-c reference frame  
 
 The above options are mutually exclusive and required.  
 
@@ -88,6 +88,8 @@ AIMPRO dat file, this must follow the dat.xxx file name convention
 Known issues:  
 The script is unable to account for depreciated definitions of the lattice parameters (e.g. a0=...) due to limitations of otb2intp.  
 As these are depreciated this is not expected to be a frequent issue, however, example files in the docs still use the a0 definition so care must be taken to change a0= to params= in lattice{} if using these.  
+
+Due to limitations of gres -einit this script is unable to convert to/from the scaled atomic reference frame.  
 
 # AIMPRO dat file & job docs
 

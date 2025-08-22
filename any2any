@@ -2,7 +2,7 @@
 
 # Copyright (c) A Christison 2025 All Rights Reserved.
 
-"""apac2apac [options] (--atomic | --intp | --angstroms | --intc) dat_file
+"""any2any [options] (--atomic | --angstroms | --intp | --intc) dat_file
 
 This script converts AIMRPO atomic positions using any valid selection of reference frame to any other any valid selection of reference frame based on user selection, using Jon Goss's gres, InsertOTB & otb2intp Perl scripts.
 
@@ -18,7 +18,7 @@ otb2intp: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/DataFiles.html
 -h, --help: display help dialogue
 -rb, --retain_bak: Retains backup copy of datafile (dat_file.bak)
 
-(--atomic | --intp | --intc | --angstroms)
+(--atomic | --angstroms | --intp | --intc)
 -au, --atomic: convert to atomic reference frame
 -p, --intp: convert to int-p reference frame
 -ang, --angstroms: convert to angstroms reference frame
@@ -75,7 +75,7 @@ def read_commmand_line() -> str:
     global retain_bak, do_atomic, do_intp, do_intc, do_ang, do_scale_val
 
     parser = argparse.ArgumentParser(
-                    prog = "apac2apac",
+                    prog = "any2any",
                     formatter_class=argparse.RawDescriptionHelpFormatter,
                     description = "Converts atom positions in an AIMPRO dat file (dat_file) from any reference frame to any other using gres, InsertOTB & otb2intp.\n\nAtom positions documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/positions.html\n\ngres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html\nInsertOTB : https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/OTB+XYZ.html\notb2intp: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/DataFiles.html\n(Copyright (c) J.P. Goss 2024, 2015, 2011 All Rights Reserved.)",
                     epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.")
@@ -90,13 +90,13 @@ def read_commmand_line() -> str:
                         action = "store_true",
                         help = "convert to atomic reference frame")
 
-    group.add_argument("-p", "--intp",
-                        action = "store_true",
-                        help = "convert to int-p reference frame")
-
     group.add_argument("-ang", "--angstroms",
                         action = "store_true",
                         help = "convert to angstroms reference frame")
+
+    group.add_argument("-p", "--intp",
+                        action = "store_true",
+                        help = "convert to int-p reference frame")
 
     group.add_argument("-c", "--intc",
                         action = "store_true",
