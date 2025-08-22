@@ -66,6 +66,7 @@ This script converts AIMRPO atomic positions to the atomic reference frame, usin
 
 Perl scripts  
 gres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html  
+(Copyright (c) J.P. Goss 2024 All Rights Reserved.)
 
 Due to limitations of gres -einit this script is unable to convert to/from the scaled atomic reference frame.  
 
