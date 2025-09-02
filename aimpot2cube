@@ -27,7 +27,7 @@ See above.
 NOTE: this file must be the same as the one used by potfileGen
 
 Known issues:
-Due to limitations of gres -einit this script is unable to convert to/from the scaled atomic reference frame.
+None
 """
 
 import argparse
@@ -146,7 +146,7 @@ def generate_grid_points(repeats: object, vectors: object) -> object:
     return grid_points
 
 def get_atom_positions(aim_file: str) -> tuple[object, object]:
-    """Uses Jon Gos's gres on the backend to extract atom positions in atomic units and the species index list.
+    """Uses Jon Goss's gres on the backend to extract atom positions in atomic units and the species index list.
 
     gres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html
     (Copyright (c) J.P. Goss 2024 All Rights Reserved.)
@@ -232,10 +232,6 @@ def read_aimpro_infile(aimpro_output_file: str, grid_vectors_input_file: str,  r
             # Skip comment lines
             if re.search(c.RE_AIM_COMMENT, line):
                 continue
-
-            # Check we are not in scaled atomic reference frame
-            if re.search(c.RE_SCALE_POSLINE_START, line):
-                raise Exception(f"incorrect input format in {aimpro_infile} - unable to convert coordinates that are in the scaled atomic reference frame")
 
             partial_protons_search = re.search(c.RE_PARTIAL_PROTONS, line)
 

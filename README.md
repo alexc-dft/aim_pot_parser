@@ -84,4 +84,4 @@ See above.
 NOTE: this file must be the same as the one used by potfileGen
 
 Known issues:  
-Due to limitations of gres -einit this script is unable to convert to/from the scaled atomic reference frame.  
+None  
