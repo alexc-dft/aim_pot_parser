@@ -49,7 +49,7 @@ AUTHORS = "Alex Christison"
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
 # Perl script path details
-PERL_PATH = Path(__file__).resolve().parent  / "low_level_scripts" / "perl" # !!!Note __file__ isn't always safe, e.g. in non-local imported modules!!!
+PERL_PATH = Path(__file__).resolve().parent  / "aim_utils" / "perl" # !!!Note __file__ isn't always safe, e.g. in non-local imported modules!!!
 RGRES_PATH = PERL_PATH / "rgres"
 
 def read_commmand_line() -> tuple[str, str]:
