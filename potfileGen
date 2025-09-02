@@ -14,7 +14,8 @@ If no input file is specified the default input file from common_io will be used
 
 [options]
 -h, --help: display help dialogue
--v, --verbose: enables verbose output
+-v, --verbose: turn on verbose output mode
+-d, --debug: turn on debug mode (for developers only)
 
 [grid_vectors_input_file]
 Specifies the vectors & their repeats defining the grid.
@@ -37,6 +38,7 @@ import argparse
 from pathlib import Path
 import numpy as np
 import common_io as cio
+import sys
 
 # Module development info
 VERSION_NUMBER = "0.1"
@@ -61,7 +63,7 @@ def read_commmand_line() -> str:
         Errors & exits with message if incorrect number of args detected.
         Errors & exits with message if provided input file does not exist.
     """
-    global verbose_output
+    global verbose_output, debug
 
     parser = argparse.ArgumentParser(
                     prog = "potfileGen",
@@ -73,6 +75,11 @@ def read_commmand_line() -> str:
                         action = "store_true",
                         help = "turn on verbose output mode")
 
+    parser.add_argument("-d", "--debug",
+                        action = "store_true",
+                        default = False,
+                        help = "turn on debug mode (for developers only)")
+
     parser.add_argument("grid_vectors_input_file",
                         nargs = "?",
                         default = cio.DEFAULT_POT_INPUT_FILENAME,
@@ -80,14 +87,19 @@ def read_commmand_line() -> str:
 
     args = parser.parse_args()
     verbose_output = args.verbose
+    debug = args.debug
     input_filename = args.grid_vectors_input_file
+
+    # Disable traceback when not in debug mode
+    if not debug:
+        sys.tracebacklimit = 0
 
     # Check provided file is valid
     if not Path(input_filename).is_file():
         raise FileNotFoundError(f"no such file - '{input_filename}'")
 
     if verbose_output:
-        print("Verbose output on.\n")
+        print("Verbose output mode enabled\n")
         print(f"Input file: {input_filename}\n")
 
     return input_filename
