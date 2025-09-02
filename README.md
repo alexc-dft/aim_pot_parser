@@ -34,7 +34,7 @@ The output pot_file is written to the current working directory
 
 [options]  
 -h, --help: display help dialogue  
--v, --verbose: Enables verbose output  
+-v, --verbose: enables verbose output  
 
 [grid_vectors_input_file]  
 Specifies the vectors & their repeats defining the grid.  
@@ -73,7 +73,7 @@ CUBE file format documentation: https://paulbourke.net/dataformats/cube/
 
 [options]  
 -h, --help: display help dialogue  
--v, --verbose: Enables verbose output
+-v, --verbose: enables verbose output
 
 AIMPRO_output  
 The standard AIMPRO output file

@@ -14,7 +14,7 @@ If no input file is specified the default input file from common_io will be used
 
 [options]
 -h, --help: display help dialogue
--v, --verbose: Enables verbose output
+-v, --verbose: enables verbose output
 
 [grid_vectors_input_file]
 Specifies the vectors & their repeats defining the grid.

@@ -16,7 +16,7 @@ CUBE file format documentation: https://paulbourke.net/dataformats/cube/
 
 [options]
 -h, --help: display help dialogue
--v, --verbose: Enables verbose output
+-v, --verbose: enables verbose output
 
 AIMPRO_output
 The standard AIMPRO output file
