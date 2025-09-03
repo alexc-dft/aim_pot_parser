@@ -2,7 +2,7 @@
 
 # Copyright (c) A Christison 2025 All Rights Reserved.
 
-"""pot_file generator: potfileGen [options] [grid_vectors_input_file]
+"""pot_file generator: potfile_gen [options] [grid_vectors_input_file]
 
 This script plots a regular grid in the required format for the potential job in the AIMPRO code.
 
@@ -34,11 +34,16 @@ Known issues:
 None
 """
 
+# System modules
 import argparse
 from pathlib import Path
-import numpy as np
-import common_io as cio
 import sys
+
+# Third party modules
+import numpy as np
+
+# First party modules
+import common_io as cio
 
 # Module development info
 VERSION_NUMBER = "0.1"
@@ -66,9 +71,11 @@ def read_commmand_line() -> str:
     global verbose_output, debug
 
     parser = argparse.ArgumentParser(
-                    prog = "potfileGen",
+                    prog = "potfile_gen",
                     formatter_class=argparse.RawDescriptionHelpFormatter,
-                    description = "Plot a regular grid for the AIMPRO potential job.\n\nAIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html",
+                    description = "Plot a regular grid for the AIMPRO potential job.\n\n \
+                                    AIMPRO potential job documentation: \
+                                    https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html",
                     epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.")
 
     parser.add_argument("-v", "--verbose",
@@ -119,7 +126,7 @@ def write_pot_file(repeats: object, vectors: object) -> None:
     """
 
     # Open an outfile in cwd
-    # (N.B. this is the directory potfileGen was called from, not where it lives)
+    # (N.B. this is the directory potfile_gen was called from, not where it lives)
     outpath = Path.cwd() / cio.POT_OUTPUT_FILENAME
 
     if verbose_output:
@@ -128,7 +135,7 @@ def write_pot_file(repeats: object, vectors: object) -> None:
     num_grid_points = str(np.prod(repeats))
 
     # Open output file
-    with open(outpath,"w") as outfile:
+    with open(outpath, "w", encoding="UFT-8") as outfile:
 
         # Write out number of grid points as line 1
         outfile.write(num_grid_points+"\n")
@@ -146,14 +153,18 @@ def write_pot_file(repeats: object, vectors: object) -> None:
                                     + ic * vectors[2, :]
 
                     # Write grid point to file with 12.6f formatting
-                    outfile.write("{gp_x:12.6f} {gp_y:12.6f} {gp_z:12.6f}\n"
-                          .format(gp_x = grid_point[0],
-                            gp_y = grid_point[1], gp_z = grid_point[2]))
+                    outfile.write(f"{grid_point[0]:12.6f} {grid_point[1]:12.6f} {grid_point[2]:12.6f}\n")
 
         if verbose_output:
             print(f"Finished writing to: {outpath}\n")
 
 def main() -> None:
+    """Main method
+
+    The main method is run when executing the prog.py file from console.
+
+    This method is not designed to be called like a method from a module.
+    """
 
     # Read cmd line for input file
     filename = read_commmand_line()

@@ -10,9 +10,12 @@ Known issues:
 None
 """
 
+# System modules
 from pathlib import Path
-import numpy as np
 from typing import Optional
+
+# Third party modules
+import numpy as np
 
 # Module development info
 VERSION_NUMBER = "0.1"
@@ -23,7 +26,7 @@ COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 # Filename constants
 
 # Define filepath relative to script location
-DEFAULT_POT_INPUT_FILENAME = Path(__file__).resolve().parents[2]  / "plot_input" / "default.in" # !!!Note __file__ isn't always safe, e.g. in non-local imported modules!!!
+DEFAULT_POT_INPUT_FILENAME = Path(__file__).resolve().parents[2]  / "plot_input" / "default.in" # !!!Note __file__ isn't always safe, e.g. in nonlocal imported modules!!!
 
 # Regular Grid Plotter output file
 POT_OUTPUT_FILENAME = "pot_file"
@@ -57,12 +60,12 @@ def read_grid_vectors(grid_vectors_input_file: str, verbose_output: Optional[boo
     vectors = np.zeros((3, 3))
 
     # Read in input file
-    with open(grid_vectors_input_file,"r") as infile:
+    with open(grid_vectors_input_file,"r",encoding="UFT-8") as infile:
         # Split into rows
         raw_input = infile.readlines()
 
     if len(raw_input) != 3:
-        raise Exception(f"incorrect input file format - {input_filename} must have only 3 rows")
+        raise Exception(f"incorrect input file format - {grid_vectors_input_file} must have only 3 rows")
 
     index = 0
     for row in raw_input:
@@ -71,7 +74,7 @@ def read_grid_vectors(grid_vectors_input_file: str, verbose_output: Optional[boo
         split_row = row.split()
 
         if len(split_row) != 4:
-            raise Exception(f"incorrect input file format - {input_filename} must have only 4 columns")
+            raise Exception(f"incorrect input file format - {grid_vectors_input_file} must have only 4 columns")
 
         # Cast repeats to integer and add to numpy array
         split_row[0] = int(split_row[0])
@@ -93,10 +96,7 @@ def read_grid_vectors(grid_vectors_input_file: str, verbose_output: Optional[boo
     # Write out grid vectors input if verbose_output enabled
     if verbose_output:
         print("Input grid vector data:\n")
-        for i in range(len(repeats)):
-            print("{rep:5d} {vec_a:12.6f} {vec_b:12.6f} {vec_c:12.6f}"
-                  .format(rep = repeats[i],vec_a = vectors[i, 0],
-                          vec_b = vectors[i, 1], vec_c = vectors[i, 2]))
-        print("\n")
+        for i in enumerate(repeats):
+            print(f"{repeats[i]:5d} {vectors[i, 0]:12.6f} {vectors[i, 1]:12.6f} {vectors[i, 2]:12.6f}\n")
 
     return repeats, vectors

@@ -1,0 +1,13 @@
+[FORMAT]
+# Based on 1080p nano termial width
+max-line-length=170
+
+[DESIGN]
+max-statements=80
+max-locals = 30
+
+[MAIN]
+max-branches=30
+
+[MESSAGES CONTROL]
+disable=too-many-arguments, too-many-positional-arguments, broad-exception-raised, global-variable-undefined, import-error, R0801
