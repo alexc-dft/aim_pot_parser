@@ -1,5 +1,5 @@
 [FORMAT]
-# Based on 1080p nano termial width
+# Based on 1080p nano terminal width
 max-line-length=170
 
 [DESIGN]
@@ -10,4 +10,5 @@ max-locals = 30
 max-branches=30
 
 [MESSAGES CONTROL]
-disable=too-many-arguments, too-many-positional-arguments, broad-exception-raised, global-variable-undefined, import-error, R0801
+# The first 4 messages here disabled as they are acceptable warnings, the 5th is disabled due to the limitations of importing modules from submodules in the github workflow, the 6th is due to aimpot2cube & potfile_gen requiring duplicate code to define common cmd line arguments
+disable=too-many-arguments, too-many-positional-arguments, broad-exception-raised, global-variable-undefined, import-error, duplicate-code

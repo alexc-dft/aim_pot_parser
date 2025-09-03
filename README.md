@@ -9,6 +9,8 @@ N.B. recurse submodules must be enabled to properly clone this repo: git clone -
 
 All routines & classes must have Google style docstrings: https://google.github.io/styleguide/pyguide.html
 
+All python code should be run through Pylint: https://pylint.readthedocs.io/en/stable/
+
 ### Requirements
 To install all python package requirements in your python virtual environment do:  
 pip install -r requirements.txt
