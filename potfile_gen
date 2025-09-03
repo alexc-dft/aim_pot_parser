@@ -135,7 +135,7 @@ def write_pot_file(repeats: object, vectors: object) -> None:
     num_grid_points = str(np.prod(repeats))
 
     # Open output file
-    with open(outpath, "w", encoding="UFT-8") as outfile:
+    with open(outpath, "w", encoding="UTF-8") as outfile:
 
         # Write out number of grid points as line 1
         outfile.write(num_grid_points+"\n")

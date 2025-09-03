@@ -249,7 +249,7 @@ def read_aimpro_infile(aimpro_output_file: str, grid_vectors_input_file: str,  r
     in_pos_section = False
 
     # Open AIMPRO file, read line by line and extract data
-    with open(aimpro_output_file, "r",  encoding="UFT-8") as infile:
+    with open(aimpro_output_file, "r",  encoding="UTF-8") as infile:
         for line in infile:
 
             # Skip comment lines
@@ -418,7 +418,7 @@ def write_cube_file(aimpro_output_file: str, grid_vectors_input_file: str, num_a
         print(f"Writing output to file: {outpath}\n")
 
     # Open output file
-    with open(outpath, "w", encoding="UFT-8") as outfile:
+    with open(outpath, "w", encoding="UTF-8") as outfile:
 
         # Fill the required comment lines in .cube file
         outfile.write("Cubefile created from AIMPRO output using aimpot2cube parser: Copyright (c) A Christison 2025 All Rights Reserved.\n")

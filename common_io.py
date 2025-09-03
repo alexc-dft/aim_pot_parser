@@ -60,7 +60,7 @@ def read_grid_vectors(grid_vectors_input_file: str, verbose_output: Optional[boo
     vectors = np.zeros((3, 3))
 
     # Read in input file
-    with open(grid_vectors_input_file,"r",encoding="UFT-8") as infile:
+    with open(grid_vectors_input_file,"r",encoding="UTF-8") as infile:
         # Split into rows
         raw_input = infile.readlines()
 
