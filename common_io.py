@@ -96,7 +96,7 @@ def read_grid_vectors(grid_vectors_input_file: str, verbose_output: Optional[boo
     # Write out grid vectors input if verbose_output enabled
     if verbose_output:
         print("Input grid vector data:\n")
-        for i in enumerate(repeats):
-            print(f"{repeats[i]:5d} {vectors[i, 0]:12.6f} {vectors[i, 1]:12.6f} {vectors[i, 2]:12.6f}\n")
+        for i, value in enumerate(repeats):
+            print(f"{value:5d} {vectors[i, 0]:12.6f} {vectors[i, 1]:12.6f} {vectors[i, 2]:12.6f}\n")
 
     return repeats, vectors

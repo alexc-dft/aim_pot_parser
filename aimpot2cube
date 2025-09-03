@@ -432,13 +432,12 @@ def write_cube_file(aimpro_output_file: str, grid_vectors_input_file: str, num_a
         outfile.write(f"{num_atoms:5d} {offset_vector[0]:12.6f} {offset_vector[1]:12.6f} {offset_vector[2]:12.6f}\n")
 
          # Write out grid vectors and their repeats
-        for i in enumerate(repeats):
-            outfile.write(f"{repeats[i]:5d} {vectors[i, 0]:12.6f} {vectors[i, 1]:12.6f} {vectors[i, 2]:12.6f}\n")
+        for i, value in enumerate(repeats):
+            outfile.write(f"{value:5d} {vectors[i, 0]:12.6f} {vectors[i, 1]:12.6f} {vectors[i, 2]:12.6f}\n")
 
         # Write out atom proton number, their (unscreened) ionic charge & positions (in au)
-        for i in enumerate(indexed_species_pn_list):
-            outfile.write(f"{indexed_species_pn_list[i]:5d} {float(indexed_species_pn_list[i]):12.6f} {atom_pos[i, 0]:12.6f} {atom_pos[i, 1]:12.6f}\
-                            {atom_pos[i, 2]:12.6f}\n")
+        for i, value in enumerate(indexed_species_pn_list):
+            outfile.write(f"{value:5d} {float(value):12.6f} {atom_pos[i, 0]:12.6f} {atom_pos[i, 1]:12.6f}{atom_pos[i, 2]:12.6f}\n")
 
         # Write out volumetric potential data
         for ia in range(0, repeats[0]):
