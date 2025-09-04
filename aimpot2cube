@@ -12,7 +12,9 @@ Perl scripts
 gres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html
 (Copyright (c) J.P. Goss 2024 All Rights Reserved.)
 
-CUBE file format documentation: https://paulbourke.net/dataformats/cube/
+Cubefile format
+https://www.quantum-espresso.org/Doc/INPUT_PP.html (&PLOT namelist, iflag = 3, output_format = 6)
+https://paulbourke.net/dataformats/cube/
 
 [options]
 -h, --help: display help dialogue
@@ -49,8 +51,8 @@ import common_io  as cio
 
 
 # Module development info
-VERSION_NUMBER = "0.2"
-VERSION_DATE = "02/09/2025"
+VERSION_NUMBER = "0.4"
+VERSION_DATE = "04/09/2025"
 AUTHORS = "Alex Christison"
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
@@ -131,12 +133,13 @@ def read_commmand_line() -> tuple[str, str]:
 
     return grid_vec_infile, aimpro_infile
 
-def generate_grid_points(repeats: object, vectors: object) -> object:
+def generate_grid_points(repeats: object, vectors: object, origin: object) -> object:
     """Generates the pot_file grid points and adds adds them to a numpy array.
 
     Args:
         repeats: number of repeats of each vector
         vectors: grid vectors
+        origin: parallelepiped grid origin
 
     Returns:
         grid_points: numpy array of generated grid points
@@ -149,6 +152,9 @@ def generate_grid_points(repeats: object, vectors: object) -> object:
     num_grid_points = np.prod(repeats)
     grid_points = np.zeros((num_grid_points, 3))
 
+    # Calculate offset vector to center each grid point on its respective parallelepiped voxel element
+    offset_vector = 0.5 * np.sum(vectors, 0)
+
     # Declare  row counter
     row_count = 0
 
@@ -157,9 +163,16 @@ def generate_grid_points(repeats: object, vectors: object) -> object:
             for ic in range(0, repeats[2]):
 
                 # Calculate grid point and add to array
-                grid_points[row_count, :] = ia * vectors[0, :] \
-                                    + ib * vectors[1, :] \
-                                    + ic * vectors[2, :]
+                grid_points[row_count, :] = origin + offset_vector \
+                                                    + ia * vectors[0, :] \
+                                                    + ib * vectors[1, :] \
+                                                    + ic * vectors[2, :]
+
+                # Handle sign flip issue when grid_point ~~ 0.0, due to quirks of floats
+                # Forces -0.0 to be -0.0
+                if np.allclose(grid_points[row_count, :], np.zeros(3)):
+                    grid_points[row_count, :] = np.zeros(3)
+
                 # Increment row counter
                 row_count+=1
 
@@ -388,8 +401,9 @@ def read_aimpro_infile(aimpro_output_file: str, grid_vectors_input_file: str,  r
 
     return num_atoms, indexed_species_pn_list, atom_positions, potential_values
 
-def write_cube_file(aimpro_output_file: str, grid_vectors_input_file: str, num_atoms: int, indexed_species_pn_list: object, atom_pos: object,
-                    potential_values: object, repeats: object, vectors: object) -> None:
+def write_cube_file(aimpro_output_file: str, grid_vectors_input_file: str,
+                    num_atoms: int, indexed_species_pn_list: object, atom_pos: object,
+                    potential_values: object, repeats: object, vectors: object, origin: object) -> None:
     """Generates and writes out pot_file.cube .
 
     Args:
@@ -401,6 +415,7 @@ def write_cube_file(aimpro_output_file: str, grid_vectors_input_file: str, num_a
         potential_values: sum of the 3 potential values from aimpro_output_file
         repeats: number of repeats of each grid defining vector
         vectors: grid vectors
+        origin: parallelepiped grid origin
 
     Returns:
         None
@@ -424,12 +439,8 @@ def write_cube_file(aimpro_output_file: str, grid_vectors_input_file: str, num_a
         outfile.write("Cubefile created from AIMPRO output using aimpot2cube parser: Copyright (c) A Christison 2025 All Rights Reserved.\n")
         outfile.write(f"Contains the total potential from {aimpro_output_file} on a voxelised mapping of the grid specified in {grid_vectors_input_file}\n")
 
-        # Calculate offset vector so voxels can be centred on grid points
-        # N.B. might have to change to zeros if negatives don't play nice with parsing programs
-        offset_vector = -0.5 * np.sum(vectors, 0)
-
-        # Write number of atoms & position of orign
-        outfile.write(f"{num_atoms:5d} {offset_vector[0]:12.6f} {offset_vector[1]:12.6f} {offset_vector[2]:12.6f}\n")
+        # Write number of atoms & position of origin
+        outfile.write(f"{num_atoms:5d} {origin[0]:12.6f} {origin[1]:12.6f} {origin[2]:12.6f}\n")
 
          # Write out grid vectors and their repeats
         for i, value in enumerate(repeats):
@@ -465,16 +476,16 @@ def main() -> None:
     gv_infile, aim_infile = read_commmand_line()
 
     # Get repeats, vectors and generate grid points array from grid vectors input file
-    rep, vec = cio.read_grid_vectors(gv_infile, verbose_output)
+    rep, vec, orig = cio.read_grid_vectors(gv_infile, verbose_output)
 
     # Generate grid points from grid vectors, used later to validate grid in AIMPRO input file
-    pts = generate_grid_points(rep,vec)
+    pts = generate_grid_points(rep, vec, orig)
 
     # Read in AIMPRO file and extract required data
     natoms, ind_species_pn, atpos, pots = read_aimpro_infile(aim_infile, gv_infile, rep, pts)
 
     # Write cube file
-    write_cube_file(aim_infile, gv_infile, natoms, ind_species_pn, atpos, pots, rep, vec)
+    write_cube_file(aim_infile, gv_infile, natoms, ind_species_pn, atpos, pots, rep, vec, orig)
 
 if __name__ == "__main__":
     main()

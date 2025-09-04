@@ -4,13 +4,16 @@
 
 """pot_file generator: potfile_gen [options] [grid_vectors_input_file]
 
-This script plots a regular grid in the required format for the potential job in the AIMPRO code.
+This script plots a regular grid in the required format for the potential job in the AIMPRO code that is valid for cubefile plotting.
 
-AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html
+AIMPRO potential job documentation
+https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html
+
+Cubefile format
+https://www.quantum-espresso.org/Doc/INPUT_PP.html (&PLOT namelist, iflag = 3, output_format = 6)
+https://paulbourke.net/dataformats/cube/
 
 The output pot_file is written to the current working directory
-
-If no input file is specified the default input file from common_io will be used. This file is user editable (advanced: see ./low_level_scripts/python/common_io.py).
 
 [options]
 -h, --help: display help dialogue
@@ -18,17 +21,26 @@ If no input file is specified the default input file from common_io will be used
 -d, --debug: turn on debug mode (for developers only)
 
 [grid_vectors_input_file]
-Specifies the vectors & their repeats defining the grid.
+Specifies the vectors & the number of their repeats defining the grid of points centred on each voxel of the parallelepiped plotting volume,
+as well as the origin of the parallelepiped plotting volume.
+
 The file is delimited by whitespace and has the format:
 
-Repeats_A(int) A_x(float) A_y(float) A_z(float)
-Repeats_B(int) B_x(float) B_y(float) B_z(float)
-Repeats_C(int) C_x(float) C_y(float) C_z(float)
+A_x(float)       A_y(float)       A_z(float)       Repeats_A(int)
+B_x(float)       B_y(float)       B_z(float)       Repeats_B(int)
+C_x(float)       C_y(float)       C_z(float)       Repeats_C(int)
+Origin_x(float)  Origin_y(float)  Origin_z(float)
+
+All vectors are in atomic units.
+Origin must be specifed even if all vaues are zero.
 
 Repeats values must be >= 1.
-Vector compoment values must be >= 0.0.
+Vector compoments an have any valid float value.
+Origin compoments can have any valid float value.
 
 Floats are in 12.6 format.
+
+If no input file is specified the default input file from common_io will be used. This file is user editable (advanced: see common_io.py).
 
 Known issues:
 None
@@ -111,12 +123,13 @@ def read_commmand_line() -> str:
 
     return input_filename
 
-def write_pot_file(repeats: object, vectors: object) -> None:
+def write_pot_file(repeats: object, vectors: object, origin: object) -> None:
     """Generates and writes out AIMPRO pot_file
 
     Args:
         repeats: number of repeats of each vector
         vectors: grid vectors
+        origin: parallelepiped grid origin
 
     Returns:
         None
@@ -134,6 +147,9 @@ def write_pot_file(repeats: object, vectors: object) -> None:
 
     num_grid_points = str(np.prod(repeats))
 
+    # Calculate offset vector to center each grid point on its respective parallelepiped voxel element
+    offset_vector = 0.5 * np.sum(vectors, 0)
+
     # Open output file
     with open(outpath, "w", encoding="UTF-8") as outfile:
 
@@ -148,15 +164,21 @@ def write_pot_file(repeats: object, vectors: object) -> None:
                 for ic in range(0, repeats[2]):
 
                     # Calculate grid point
-                    grid_point = ia * vectors[0, :] \
-                                    + ib * vectors[1, :] \
-                                    + ic * vectors[2, :]
+                    grid_point = origin + offset_vector \
+                                        + ia * vectors[0, :] \
+                                        + ib * vectors[1, :] \
+                                        + ic * vectors[2, :]
+
+                    # Handle sign flip issue when grid_point ~~ 0.0, due to quirks of floats
+                    # Forces -0.0 to be -0.0
+                    if np.allclose(grid_point, np.zeros(3)):
+                        grid_point = np.zeros(3)
 
                     # Write grid point to file with 12.6f formatting
                     outfile.write(f"{grid_point[0]:12.6f} {grid_point[1]:12.6f} {grid_point[2]:12.6f}\n")
 
         if verbose_output:
-            print(f"Finished writing to: {outpath}\n")
+            print(f"Finished writing to: {outpath}")
 
 def main() -> None:
     """Main method
@@ -170,10 +192,10 @@ def main() -> None:
     filename = read_commmand_line()
 
     # Get repeats and vectors from input file
-    rep, vec = cio.read_grid_vectors(filename, verbose_output)
+    rep, vec, orig = cio.read_grid_vectors(filename, verbose_output)
 
     # Write grid using vectors & their repeats
-    write_pot_file(rep, vec)
+    write_pot_file(rep, vec, orig)
 
 if __name__ == "__main__":
     main()

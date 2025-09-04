@@ -29,9 +29,14 @@ Scripts can be made executable all locations in file system via chmod u+x and ad
 ## potfile_gen usage
 regGridPlot [options] [grid_vectors_input_file]
 
-This script plots a regular grid in the required format for the potential job in the AIMPRO code.
+This script plots a regular grid in the required format for the potential job in the AIMPRO code that is valid for cubefile plotting.
 
-AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html
+### AIMPRO potential job documentation
+https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html
+
+### CUBE file format
+https://www.quantum-espresso.org/Doc/INPUT_PP.html (&PLOT namelist, iflag = 3, output_format = 6)
+https://paulbourke.net/dataformats/cube/
 
 The output pot_file is written to the current working directory  
 
@@ -42,19 +47,24 @@ The output pot_file is written to the current working directory
 -d, --debug: turn on debug mode (for developers only)  
 
 [grid_vectors_input_file]  
-Specifies the vectors & their repeats defining the grid.  
+Specifies the vectors & the number of their repeats defining the grid of points centred on each voxel of the parallelepiped plotting volume, as well as the origin of the parallelepiped plotting volume.  
 The file is delimited by whitespace and has the format:
 
-If no grid vectors input file is specified the default input file from common_io will be used. This file is user editable (advanced: see common_io.py).
+A_x(float)       A_y(float)       A_z(float)       Repeats_A(int)  
+B_x(float)       B_y(float)       B_z(float)       Repeats_B(int)  
+C_x(float)       C_y(float)       C_z(float)       Repeats_C(int)  
+Origin_x(float)  Origin_y(float)  Origin_z(float)  
 
-Repeats_A(int) A_x(float) A_y(float) A_z(float)  
-Repeats_B(int) B_x(float) B_y(float) B_z(float)  
-Repeats_C(int) C_x(float) C_y(float) C_z(float)
+All vectors are in atomic units.  
+Origin must be specifed even if all vaues are zero.  
 
 Repeats values must be >= 1.  
-Vector compoment values must be >= 0.0.  
+Vector compoments an have any valid float value.  
+Origin compoments can have any valid float value.  
 
-Floats are in 12.6 format.
+Floats are in 12.6 format.  
+
+If no grid vectors input file is specified the default input file from common_io will be used. This file is user editable (advanced: see common_io.py).  
 
 ### Known issues
 None  
@@ -75,6 +85,7 @@ gres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html
 (Copyright (c) J.P. Goss 2024 All Rights Reserved.)
 
 ### CUBE file format
+https://www.quantum-espresso.org/Doc/INPUT_PP.html (&PLOT namelist output_format = 3)
 https://paulbourke.net/dataformats/cube/
 
 ### Arguments

@@ -10,5 +10,5 @@ max-locals = 30
 max-branches=30
 
 [MESSAGES CONTROL]
-# The first 4 messages here disabled as they are acceptable warnings, the 5th is disabled due to the limitations of importing modules from submodules in the github workflow, the 6th is due to aimpot2cube & potfile_gen requiring duplicate code to define common cmd line arguments
-disable=too-many-arguments, too-many-positional-arguments, broad-exception-raised, global-variable-undefined, import-error, duplicate-code
+# The first 5 messages here disabled as they are acceptable warnings, the 6th is disabled due to the limitations of importing modules from submodules in the github workflow, the 7th is due to aimpot2cube & potfile_gen requiring duplicate code to define common cmd line arguments
+disable=too-many-arguments, too-many-positional-arguments, broad-exception-raised, global-variable-undefined, too-many-function-args, import-error, duplicate-code
