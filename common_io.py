@@ -75,24 +75,24 @@ def read_grid_vectors(grid_vectors_input_file: str, verbose_output: Optional[boo
         # Split in individual items
         split_row = row.split()
 
-        if index < 3 and len(split_row) != 4:
-            raise Exception(f"incorrect input file format - {grid_vectors_input_file} grid vectors row must have only 4 columns")
-        if index == 3 and len(split_row) != 3:
+        if index == 0 and len(split_row) != 3:
             raise Exception(f"incorrect input file format - {grid_vectors_input_file} origin row must have only 3 columns")
+        if index > 0 and len(split_row) != 4:
+            raise Exception(f"incorrect input file format - {grid_vectors_input_file} grid vectors row must have only 4 columns")
 
-        if index < 3:
-            # Cast repeats to integer and add to numpy array
-            split_row[3] = int(split_row[3])
-            repeats[index] = np.array(split_row[3])
-
-            # Map vectors to floats and add to numpy array
-            split_row[0:3] = map(float,split_row[0:3])
-            vectors[index, :] = np.array(split_row[0:3])
-
-        elif index == 3:
+        if index == 0:
             # Map origin components to float and add to numpy array
             split_row[0:3] = map(float,split_row[0:3])
             origin[:] = np.array(split_row[0:3])
+
+        else:
+            # Cast repeats to integer and add to numpy array
+            split_row[0] = int(split_row[0])
+            repeats[index-1] = np.array(split_row[0])
+
+            # Map vectors to floats and add to numpy array
+            split_row[1:4] = map(float,split_row[1:4])
+            vectors[index-1, :] = np.array(split_row[1:4])
 
         # Increment index
         index+=1
@@ -104,8 +104,9 @@ def read_grid_vectors(grid_vectors_input_file: str, verbose_output: Optional[boo
     # Write out grid vectors input if verbose_output enabled
     if verbose_output:
         print("Input grid vector data:\n")
+        print(f"{origin[0]:12.6f} {origin[1]:12.6f} {origin[2]:12.6f}")
         for i, value in enumerate(repeats):
-            print(f"{vectors[i, 0]:12.6f} {vectors[i, 1]:12.6f} {vectors[i, 2]:12.6f} {value:5d}")
-        print(f"{origin[0]:12.6f} {origin[1]:12.6f} {origin[2]:12.6f}\n")
+            print(f"{value:5d} {vectors[i, 0]:12.6f} {vectors[i, 1]:12.6f} {vectors[i, 2]:12.6f}")
+        print("\n")
 
     return repeats, vectors, origin

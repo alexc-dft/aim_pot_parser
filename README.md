@@ -50,10 +50,11 @@ The output pot_file is written to the current working directory
 Specifies the vectors & the number of their repeats defining the grid of points centred on each voxel of the parallelepiped plotting volume, as well as the origin of the parallelepiped plotting volume.  
 The file is delimited by whitespace and has the format:
 
-A_x(float)       A_y(float)       A_z(float)       Repeats_A(int)  
-B_x(float)       B_y(float)       B_z(float)       Repeats_B(int)  
-C_x(float)       C_y(float)       C_z(float)       Repeats_C(int)  
 Origin_x(float)  Origin_y(float)  Origin_z(float)  
+Repeats_A(int)  A_x(float)  A_y(float)  A_z(float)  
+Repeats_B(int)  B_x(float)  B_y(float)  B_z(float)  
+Repeats_C(int)  C_x(float)  C_y(float)  C_z(float)  
+
 
 All vectors are in atomic units.  
 Origin must be specifed even if all vaues are zero.  
