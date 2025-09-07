@@ -58,7 +58,7 @@ COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
 # Perl script path details
 PERL_PATH = Path(__file__).resolve().parent  / "aim_utils" / "perl" # !!!Note __file__ isn't always safe, e.g. in non-local imported modules!!!
-RGRES_PATH = PERL_PATH / "rgres"
+CGRES_PATH = PERL_PATH / "cgres"
 
 def read_commmand_line() -> tuple[str, str]:
     """Gets input filename(s).
@@ -205,10 +205,10 @@ def get_atom_positions(aim_file: str) -> tuple[object, object]:
         print(f"Warning: exisiting otb.xyz.{aim_file}.init moved to otb.xyz.{aim_file}.init.bak\n")
 
     # Convert dat file to xyz
-    subprocess.run(f"{RGRES_PATH} -einit {aim_file} 1> /dev/null", shell=True, check=True)
+    subprocess.run(f"{CGRES_PATH} -einit {aim_file} 1> /dev/null", shell=True, check=True)
 
     # Convert xyz to otb, positions are now in atomic
-    subprocess.run(f"{RGRES_PATH} -x2o xyz.{aim_file}.init 1> /dev/null", shell=True, check=True)
+    subprocess.run(f"{CGRES_PATH} -x2o xyz.{aim_file}.init 1> /dev/null", shell=True, check=True)
 
     # Read in otb values, they will be in the atomic reference frame
     result = m.read_otb(f"otb.xyz.{aim_file}.init")
