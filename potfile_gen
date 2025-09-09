@@ -147,9 +147,6 @@ def write_pot_file(repeats: object, vectors: object, origin: object) -> None:
 
     num_grid_points = str(np.prod(repeats))
 
-    # Calculate offset vector to center each grid point on its respective parallelepiped voxel element
-    offset_vector = 0.5 * np.sum(vectors, 0)
-
     # Open output file
     with open(outpath, "w", encoding="UTF-8") as outfile:
 
@@ -164,8 +161,7 @@ def write_pot_file(repeats: object, vectors: object, origin: object) -> None:
                 for ic in range(0, repeats[2]):
 
                     # Calculate grid point
-                    grid_point = origin + offset_vector \
-                                        + ia * vectors[0, :] \
+                    grid_point = origin + ia * vectors[0, :] \
                                         + ib * vectors[1, :] \
                                         + ic * vectors[2, :]
 

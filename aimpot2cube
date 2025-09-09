@@ -159,9 +159,6 @@ def generate_grid_points(repeats: object, vectors: object, origin: object) -> ob
     num_grid_points = np.prod(repeats)
     grid_points = np.zeros((num_grid_points, 3))
 
-    # Calculate offset vector to center each grid point on its respective parallelepiped voxel element
-    offset_vector = 0.5 * np.sum(vectors, 0)
-
     # Declare  row counter
     row_count = 0
 
@@ -170,8 +167,7 @@ def generate_grid_points(repeats: object, vectors: object, origin: object) -> ob
             for ic in range(0, repeats[2]):
 
                 # Calculate grid point and add to array
-                grid_points[row_count, :] = origin + offset_vector \
-                                                    + ia * vectors[0, :] \
+                grid_points[row_count, :] = origin  + ia * vectors[0, :] \
                                                     + ib * vectors[1, :] \
                                                     + ic * vectors[2, :]
 
