@@ -1,15 +1,17 @@
-name: Pylint
+# Only use spaces to indent your .yml configuration
+name: Pylint-Test
 
 on: [push]
 
 jobs:
-  build:
+  pylint-test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.11"]
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout repo
+      uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v3
       with:
@@ -18,6 +20,12 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pylint==3.3.8 numpy==2.3.2
-    - name: Analysing the code with pylint (disabled messages found in .pylintrc, import-error disabled due to issue with symlinks in github workflow)
+    - name: Analysing the code with pylint (disabled messages found in .pylintrc)
       run: |
-        pylint potfile_gen aimpot2cube common_io.py
+        pylint $(git ls-files '*.py') potfile_gen aimpot2cube
+    - name: Run test suite
+      run: |
+        cd ./test_suite
+        bash ./run_tests.sh
+        bash ./run_cleanup.sh
+        cd ../
