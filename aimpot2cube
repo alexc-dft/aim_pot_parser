@@ -41,10 +41,17 @@ import subprocess
 import re
 import sys
 
+# Wrangle submodule path
+SUBMODULE_PATH = Path(__file__).resolve().parent  / "aim_utils"     #pylint: disable=wrong-import-position
+SUBM_PATH_STR = SUBMODULE_PATH.absolute().as_posix()                #pylint: disable=wrong-import-position
+
+# Add path to aim_utils directory root
+sys.path.append(SUBM_PATH_STR)  #pylint: disable=wrong-import-position
+
 # Third party modules
 import numpy as np
-import methods as m
-import const as c
+import methods as m #pylint: disable=import-error
+import const as c   #pylint: disable=import-error
 
 # First party modules
 import common_io  as cio
@@ -87,7 +94,7 @@ def read_commmand_line() -> tuple[str, str]:
                     description = "Pass the output of an AIMPRO potential job to the .cbue file format.\n\n \
                         AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html\n\n\
                             .cube file format: https://paulbourke.net/dataformats/cube/",
-                    epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.")
+                    epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.") #pylint: disable=duplicate-code
 
     parser.add_argument("-v", "--verbose",
                         action = "store_true",
@@ -400,9 +407,9 @@ def read_aimpro_infile(aimpro_output_file: str, grid_vectors_input_file: str,  r
 
     return num_atoms, indexed_species_pn_list, atom_positions, potential_values
 
-def write_cube_file(aimpro_output_file: str, grid_vectors_input_file: str,
-                    num_atoms: int, indexed_species_pn_list: object, atom_pos: object,
-                    potential_values: object, repeats: object, vectors: object, origin: object) -> None:
+def write_cube_file(aimpro_output_file: str, grid_vectors_input_file: str,                               #pylint:disable=too-many-arguments,too-many-positional-arguments
+                    num_atoms: int, indexed_species_pn_list: object, atom_pos: object,                   #pylint:disable=too-many-arguments,too-many-positional-arguments
+                    potential_values: object, repeats: object, vectors: object, origin: object) -> None: #pylint:disable=too-many-arguments,too-many-positional-arguments
     """Generates and writes out pot_file.cube .
 
     Args:
