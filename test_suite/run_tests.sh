@@ -12,10 +12,27 @@ declare -a failed_test_array=()
 
 test_dir=${test_list[0]}
 
+
 # Setup files
 cd $test_dir
 
 test=${test_dir%/}
+
+# Run potfile_gen for default input
+python ../../potfile_gen || { echo "Error: potfile_gen failed to run"; exit 2; }
+
+mv "pot_file" "pot_file_default"
+
+# Diff for result
+diff_str=$(diff "pot_file_default.benchmark" "pot_file_default")
+
+test_default="${test}-default"
+
+# Check diff
+if [ "$diff_str" != "" ]; then
+    failed_test_array+=($test_default)
+    echo "$diff_str" > ${test_default}.diff
+fi
 
 # Run potfile_gen
 python ../../potfile_gen test.in.benchmark || { echo "Error: potfile_gen failed to run"; exit 2; }
@@ -29,6 +46,7 @@ if [ "$diff_str" != "" ]; then
     echo "$diff_str" > ${test}.diff
 fi
 
+
 cd ../
 
 #***aimpot2cube test***
@@ -40,9 +58,28 @@ cd $test_dir
 
 test=${test_dir%/}
 
+cp "AIM.sh.o_default.benchmark" "AIM.sh.o_default.test"
+
+# Run aimpot2cube for default input
+python ../../aimpot2cube AIM.sh.o_default.test || { echo "Error: aimpot2cube failed to run"; exit 3; }
+
+# Diff for result
+diff_str=$(diff "AIM.sh.o_default.test.cube.benchmark" "AIM.sh.o_default.test.cube")
+
+echo $(diff "AIM.sh.o_default.test.cube.benchmark" "AIM.sh.o_default.test.cube")
+
+test_default="${test}-default"
+
+# Check diff
+if [ "$diff_str" != "" ]; then
+    failed_test_array+=($test_default)
+    echo "$diff_str" > ${test_default}.diff
+fi
+
+
 cp "AIM.sh.o.benchmark" "AIM.sh.o.test"
 
-# Run potfile_gen
+# Run aimpot2cube
 python ../../aimpot2cube AIM.sh.o.test test.in.benchmark || { echo "Error: aimpot2cube failed to run"; exit 3; }
 
 # Diff for result
@@ -53,6 +90,7 @@ if [ "$diff_str" != "" ]; then
     failed_test_array+=($test_dir)
     echo "$diff_str" > ${test}.diff
 fi
+
 
 cd ../
 
