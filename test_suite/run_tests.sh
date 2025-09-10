@@ -61,5 +61,5 @@ cd ../
 if [ ${#failed_test_array[@]} -eq 0 ]; then
     { echo "Success: all tests passed"; exit 0; }
 else
-    { echo "Error: failed test(s) in: ${failed_test_array}"; exit 1; }
+    { echo "Error: failed test(s) in: ${failed_test_array[@]}"; exit 1; }
 fi
