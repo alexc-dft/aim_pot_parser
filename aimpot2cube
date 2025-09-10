@@ -40,6 +40,7 @@ import fnmatch
 import subprocess
 import re
 import sys
+from typing import List, IO, Optional
 
 # Wrangle submodule path
 SUBMODULE_PATH = Path(__file__).resolve().parent  / "aim_utils"     #pylint: disable=wrong-import-position
@@ -67,7 +68,7 @@ COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 PERL_PATH = Path(__file__).resolve().parent  / "aim_utils" / "perl" # !!!Note __file__ isn't always safe, e.g. in non-local imported modules!!!
 CGRES_PATH = PERL_PATH / "cgres"
 
-def read_commmand_line() -> tuple[str, str]:
+def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
     """Gets input filename(s).
 
     If no input file is provided in command line the default input file is used.
@@ -181,7 +182,7 @@ def generate_grid_points(repeats: object, vectors: object, origin: object) -> ob
 
     return grid_points
 
-def get_atom_positions(aim_file: str) -> tuple[object, object]:
+def get_atom_positions(aim_file: IO[str]) -> tuple[object, object]:
     """Uses Jon Goss's gres on the backend to extract atom positions in atomic units and the species index list.
 
     gres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html
@@ -225,7 +226,8 @@ def get_atom_positions(aim_file: str) -> tuple[object, object]:
 
     return species_ind, atom_pos
 
-def read_aimpro_infile(aimpro_output_file: str, grid_vectors_input_file: str,  repeats: object, validation_grid_points: object) -> tuple[int, list, object, object]:
+def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str], repeats: object,
+                       validation_grid_points: object) -> tuple[int, List[int], object, object]:
     """Reads AIMPRO output file and extracts required data
 
     Args:
@@ -403,8 +405,8 @@ def read_aimpro_infile(aimpro_output_file: str, grid_vectors_input_file: str,  r
 
     return num_atoms, indexed_species_pn_list, atom_positions, potential_values
 
-def write_cube_file(aimpro_output_file: str, grid_vectors_input_file: str,                               #pylint:disable=too-many-arguments,too-many-positional-arguments
-                    num_atoms: int, indexed_species_pn_list: object, atom_pos: object,                   #pylint:disable=too-many-arguments,too-many-positional-arguments
+def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str],                       #pylint:disable=too-many-arguments,too-many-positional-arguments
+                    num_atoms: int, indexed_species_pn_list: List[int], atom_pos: object,                #pylint:disable=too-many-arguments,too-many-positional-arguments
                     potential_values: object, repeats: object, vectors: object, origin: object) -> None: #pylint:disable=too-many-arguments,too-many-positional-arguments
     """Generates and writes out pot_file.cube .
 

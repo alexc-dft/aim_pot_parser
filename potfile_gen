@@ -50,6 +50,7 @@ None
 import argparse
 from pathlib import Path
 import sys
+from typing import IO, Optional
 
 # Third party modules
 import numpy as np
@@ -63,7 +64,7 @@ VERSION_DATE = "11/08/2025"
 AUTHORS = "Alex Christison"
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
-def read_commmand_line() -> str:
+def read_commmand_line() -> Optional[IO[str]]:
     """Gets input filename
 
     If no input file is provided in command line the default input file is used.
