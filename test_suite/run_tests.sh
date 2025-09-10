@@ -66,8 +66,6 @@ python ../../aimpot2cube AIM.sh.o_default.test || { echo "Error: aimpot2cube fai
 # Diff for result
 diff_str=$(diff "AIM.sh.o_default.test.cube.benchmark" "AIM.sh.o_default.test.cube")
 
-echo $(diff "AIM.sh.o_default.test.cube.benchmark" "AIM.sh.o_default.test.cube")
-
 test_default="${test}-default"
 
 # Check diff

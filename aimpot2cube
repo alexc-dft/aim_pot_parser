@@ -35,7 +35,7 @@ None
 
 # System modules
 import argparse
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import fnmatch
 import subprocess
 import re
@@ -436,12 +436,15 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
     if verbose_output:
         print(f"Writing output to file: {outpath}\n")
 
+    # Get name of grid vectors file
+    gv_file_name = PurePosixPath(grid_vectors_input_file).name
+
     # Open output file
     with open(outpath, "w", encoding="UTF-8") as outfile:
 
         # Fill the required comment lines in .cube file
         outfile.write("Cubefile created from AIMPRO output using aimpot2cube parser: Copyright (c) A Christison 2025 All Rights Reserved.\n")
-        outfile.write(f"Contains the total potential from {aimpro_output_file} on a voxelised mapping of the grid specified in {grid_vectors_input_file}\n")
+        outfile.write(f"Contains the total potential from {aimpro_output_file} on a voxelised mapping of the grid specified in {gv_file_name}\n")
 
         # Write number of atoms & position of origin
         outfile.write(f"{num_atoms:5d}{origin[0]:12.6f}{origin[1]:12.6f}{origin[2]:12.6f}\n")
