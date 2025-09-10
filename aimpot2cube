@@ -96,14 +96,14 @@ def read_commmand_line() -> tuple[str, str]:
                             .cube file format: https://paulbourke.net/dataformats/cube/",
                     epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.") #pylint: disable=duplicate-code
 
-    parser.add_argument("-v", "--verbose",
-                        action = "store_true",
-                        help = "turn on verbose output mode")
+    parser.add_argument("-v", "--verbose",                                  #pylint: disable=duplicate-code
+                        action = "store_true",                              #pylint: disable=duplicate-code
+                        help = "turn on verbose output mode")               #pylint: disable=duplicate-code
 
-    parser.add_argument("-d", "--debug",
-                        action = "store_true",
-                        default = False,
-                        help = "turn on debug mode (for developers only)")
+    parser.add_argument("-d", "--debug",                                    #pylint: disable=duplicate-code
+                        action = "store_true",                              #pylint: disable=duplicate-code
+                        default = False,                                    #pylint: disable=duplicate-code
+                        help = "turn on debug mode (for developers only)")  #pylint: disable=duplicate-code
 
     parser.add_argument("aimpro_output_file",
                         nargs = 1,
