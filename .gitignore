@@ -209,6 +209,6 @@ __marimo__/
 # Test suite
 *.test
 *.diff
-.cube
+*.cube
 pot_file
 pot_file_default
