@@ -4,6 +4,9 @@
 
 # set -xv
 
+# Run initial cleanup
+bash ./run_cleanup.sh
+
 test_list=("potfile_gen/" "aimpot2cube/")
 
 declare -a failed_test_array=()
