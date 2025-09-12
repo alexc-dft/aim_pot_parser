@@ -399,9 +399,7 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
     num_atoms = atom_positions.shape[0]
 
     # Map species index to species proton number, subtracting one to correct for OBO error due to OTB indexes
-    indexed_species_pn_list = []
-    for element in species_index:
-        indexed_species_pn_list.append(species_proton_num_list[element.item()-1])
+    indexed_species_pn_list = [species_proton_num_list[element.item()-1] for element in species_index]
 
     return num_atoms, indexed_species_pn_list, atom_positions, potential_values
 
