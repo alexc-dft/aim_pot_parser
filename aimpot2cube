@@ -441,7 +441,7 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
 
         # Fill the required comment lines in .cube file
         outfile.write("Cubefile created from AIMPRO output using aimpot2cube parser: Copyright (c) A Christison 2025 All Rights Reserved.\n")
-        outfile.write(f"Contains the total potential from {aimpro_output_file} on a voxelised mapping of the grid specified in {gv_file_name}\n")
+        outfile.write(f"Contains the total potential from {aimpro_output_file} on the grid specified in {gv_file_name}\n")
 
         # Write number of atoms & position of origin
         outfile.write(f"{num_atoms:5d}{origin[0]:12.6f}{origin[1]:12.6f}{origin[2]:12.6f}\n")
