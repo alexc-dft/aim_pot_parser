@@ -32,15 +32,48 @@ Repeats_B(int)  B_x(float)  B_y(float)  B_z(float)
 Repeats_C(int)  C_x(float)  C_y(float)  C_z(float)
 
 All vectors are in atomic units.
-Origin must be specifed even if all vaues are zero.
+Origin must be specified even if all values are zero.
 
 Repeats values must be >= 1.
-Vector compoments an have any valid float value.
-Origin compoments can have any valid float value.
+Vector components an have any valid float value.
+Origin components can have any valid float value.
 
 Floats are in 12.6 format.
 
-If no input file is specified the default input file from common_io will be used. This file is user editable (advanced: see common_io.py).
+If no input file is specified the default input file from common_io will be used. This file is user editable (see default_potfile_input/default.in).
+
+It is often helpful to define grid with a reasonable dense sampling density within your system lattice.
+This ensures that the potential is being sampled with high enough resolution and avoids spurious data points from sampling periodic images.
+
+For the case of default.in, it is designed around a 1x1x1 simple cubic diamond system with a single lattice parameter of 6.74 Bohr
+and a sampling density of 36 data points in all dimensions of the unit cell.
+For simplicity the grid vectors are aligned with the lattice vectors.
+
+The calculation of grid vectors is as given:
+
+(1.0 0.0 0.0) x 6.74/36 = (0.187222 0.000000 0.000000)
+(0.0 1.0 0.0) x 6.74/36 = (0.000000 0.187222 0.000000)
+(0.0 0.0 0.0) x 6.74/36 = (0.000000 0.000000 0.187222)
+
+The sampling density therefor becomes the number of repeats, and by fixing the origin at (0.0 0.0 0.0) we obtain the contents of default_potfile_input/default.in:
+
+0.000000 0.000000 0.000000
+36 0.187222 0.000000 0.000000
+36 0.000000 0.187222 0.000000
+36 0.000000 0.000000 0.187222
+
+The general form of this calculation is given as:
+(Lattice_vector_A) x Lattice_param_A / Sampling_density_in_A = (Grid_vector_A)
+(Lattice_vector_B) x Lattice_param_B / Sampling_density_in_B = (Grid_vector_B)
+(Lattice_vector_C) x Lattice_param_C / Sampling_density_in_C = (Grid_vector_C)
+
+Where:
+
+Sampling_density_in_A = Repeats_A
+Sampling_density_in_B = Repeats_B
+Sampling_density_in_C = Repeats_C
+
+And Origin == System origin i.e. generally (0.0 0.0 0.0)
 
 Known issues:
 None
