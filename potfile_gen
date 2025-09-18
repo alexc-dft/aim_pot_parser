@@ -119,9 +119,8 @@ def read_commmand_line() -> Optional[IO[str]]:
     parser = argparse.ArgumentParser(
                     prog = "potfile_gen",
                     formatter_class=argparse.RawDescriptionHelpFormatter,
-                    description = "Plot a regular grid for the AIMPRO potential job.\n\n \
-                                    AIMPRO potential job documentation: \
-                                    https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html",
+                    description = "Plot a regular grid for the AIMPRO potential job. \
+                                    \n\nAIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html",
                     epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.") #pylint: disable=duplicate-code
 
     parser.add_argument("-v", "--verbose",                                  #pylint: disable=duplicate-code

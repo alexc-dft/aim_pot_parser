@@ -92,9 +92,9 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
     parser = argparse.ArgumentParser(
                     prog = "aimpot2cube",
                     formatter_class=argparse.RawDescriptionHelpFormatter,
-                    description = "Pass the output of an AIMPRO potential job to the .cbue file format.\n\n \
-                        AIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html\n\n\
-                            .cube file format: https://paulbourke.net/dataformats/cube/",
+                    description = "A parser to convert the output of an AIMPRO potential job to the cubefile format. \
+                        \n\nAIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html\
+                        \ncubefile format: https://paulbourke.net/dataformats/cube/",
                     epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.") #pylint: disable=duplicate-code
 
     parser.add_argument("-v", "--verbose",                                  #pylint: disable=duplicate-code
