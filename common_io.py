@@ -16,6 +16,7 @@ from typing import Optional
 
 # Third party modules
 import numpy as np
+from numba import jit
 
 # Module development info
 VERSION_NUMBER = "0.2"
@@ -112,6 +113,7 @@ def read_grid_vectors(grid_vectors_input_file: str, verbose_output: Optional[boo
 
     return repeats, vectors, origin
 
+@jit
 def generate_grid_points(repeats: object, vectors: object, origin: object) -> object:
     """Generates the pot_file grid points and adds adds them to a numpy array.
 
@@ -131,7 +133,7 @@ def generate_grid_points(repeats: object, vectors: object, origin: object) -> ob
     num_grid_points = np.prod(repeats)
     grid_points = np.zeros((num_grid_points, 3))
 
-    # Declare  row counter
+    # Declare row counter
     row_count = 0
 
     for ia in range(0, repeats[0]):
