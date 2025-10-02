@@ -111,3 +111,44 @@ def read_grid_vectors(grid_vectors_input_file: str, verbose_output: Optional[boo
         print("\n")
 
     return repeats, vectors, origin
+
+def generate_grid_points(repeats: object, vectors: object, origin: object) -> object:
+    """Generates the pot_file grid points and adds adds them to a numpy array.
+
+    Args:
+        repeats: number of repeats of each vector
+        vectors: grid vectors
+        origin: parallelepiped grid origin
+
+    Returns:
+        grid_points: numpy array of generated grid points
+
+    Raises:
+        None
+    """
+
+    # Get required array length
+    num_grid_points = np.prod(repeats)
+    grid_points = np.zeros((num_grid_points, 3))
+
+    # Declare  row counter
+    row_count = 0
+
+    for ia in range(0, repeats[0]):
+        for ib in range(0, repeats[1]):
+            for ic in range(0, repeats[2]):
+
+                # Calculate grid point and add to array
+                grid_points[row_count, :] = origin  + ia * vectors[0, :] \
+                                                    + ib * vectors[1, :] \
+                                                    + ic * vectors[2, :]
+
+                # Handle sign flip issue when grid_point ~~ 0.0, due to quirks of floats
+                # Forces -0.0 to be -0.0
+                if np.allclose(grid_points[row_count, :], np.zeros(3)):
+                    grid_points[row_count, :] = np.zeros(3)
+
+                # Increment row counter
+                row_count+=1
+
+    return grid_points, num_grid_points
