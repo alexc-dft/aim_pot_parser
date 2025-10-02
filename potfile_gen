@@ -94,7 +94,7 @@ import numpy as np
 import common_io as cio
 
 # Module development info
-VERSION_NUMBER = "0.1"
+VERSION_NUMBER = "0.2"
 VERSION_DATE = "11/08/2025"
 AUTHORS = "Alex Christison"
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
@@ -173,43 +173,26 @@ def write_pot_file(repeats: object, vectors: object, origin: object) -> None:
         None
     """
 
-    # Open an outfile in cwd
+    # Get output file path
     # (N.B. this is the directory potfile_gen was called from, not where it lives)
     outpath = Path.cwd() / cio.POT_OUTPUT_FILENAME
 
     if verbose_output:
+        print("Generating grid points.\n")
+
+    grid_points, num_grid_points = cio.generate_grid_points(repeats, vectors, origin)
+
+    if verbose_output:
+        print(f"Generated {num_grid_points} grid points.\n")
+
+
+    if verbose_output:
         print(f"Writing output to file: {outpath}\n")
 
-    num_grid_points = str(np.prod(repeats))
+    np.savetxt(outpath, grid_points, fmt="%12.6f", header= str(num_grid_points), comments='')
 
-    # Open output file
-    with open(outpath, "w", encoding="UTF-8") as outfile:
-
-        # Write out number of grid points as line 1
-        outfile.write(num_grid_points+"\n")
-
-        if verbose_output:
-            print(f"Writing {num_grid_points} grid points.\n")
-
-        for ia in range(0, repeats[0]):
-            for ib in range(0, repeats[1]):
-                for ic in range(0, repeats[2]):
-
-                    # Calculate grid point
-                    grid_point = origin + ia * vectors[0, :] \
-                                        + ib * vectors[1, :] \
-                                        + ic * vectors[2, :]
-
-                    # Handle sign flip issue when grid_point ~~ 0.0, due to quirks of floats
-                    # Forces -0.0 to be -0.0
-                    if np.allclose(grid_point, np.zeros(3)):
-                        grid_point = np.zeros(3)
-
-                    # Write grid point to file with 12.6f formatting
-                    outfile.write(f"{grid_point[0]:12.6f} {grid_point[1]:12.6f} {grid_point[2]:12.6f}\n")
-
-        if verbose_output:
-            print(f"Finished writing to: {outpath}")
+    if verbose_output:
+        print(f"Finished writing to: {outpath}")
 
 def main() -> None:
     """Main method

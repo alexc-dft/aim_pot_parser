@@ -141,47 +141,6 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
 
     return grid_vec_infile, aimpro_infile
 
-def generate_grid_points(repeats: object, vectors: object, origin: object) -> object:
-    """Generates the pot_file grid points and adds adds them to a numpy array.
-
-    Args:
-        repeats: number of repeats of each vector
-        vectors: grid vectors
-        origin: parallelepiped grid origin
-
-    Returns:
-        grid_points: numpy array of generated grid points
-
-    Raises:
-        None
-    """
-
-    # Get required array length
-    num_grid_points = np.prod(repeats)
-    grid_points = np.zeros((num_grid_points, 3))
-
-    # Declare  row counter
-    row_count = 0
-
-    for ia in range(0, repeats[0]):
-        for ib in range(0, repeats[1]):
-            for ic in range(0, repeats[2]):
-
-                # Calculate grid point and add to array
-                grid_points[row_count, :] = origin  + ia * vectors[0, :] \
-                                                    + ib * vectors[1, :] \
-                                                    + ic * vectors[2, :]
-
-                # Handle sign flip issue when grid_point ~~ 0.0, due to quirks of floats
-                # Forces -0.0 to be -0.0
-                if np.allclose(grid_points[row_count, :], np.zeros(3)):
-                    grid_points[row_count, :] = np.zeros(3)
-
-                # Increment row counter
-                row_count+=1
-
-    return grid_points
-
 def get_atom_positions(aim_file: IO[str]) -> tuple[object, object]:
     """Uses Jon Goss's gres on the backend to extract atom positions in atomic units and the species index list.
 
@@ -227,14 +186,16 @@ def get_atom_positions(aim_file: IO[str]) -> tuple[object, object]:
     return species_ind, atom_pos
 
 def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str], repeats: object,
-                       validation_grid_points: object) -> tuple[int, List[int], object, object]:
+                       validation_grid_points: object, expected_lines_of_pot: int ) -> tuple[int, List[int], object, object]:
     """Reads AIMPRO output file and extracts required data
 
     Args:
         aimpro_output_file: AIMPRO potential job output file name
         grid_vectors_input_file: : Filename of grid vectors input file
-        validation_grid_points: numpy array of regenerated grid points for validation of those in the AIMPRO file
         repeats: number of repeats of each grid defining vector
+        validation_grid_points: numpy array of regenerated grid points for validation of those in the AIMPRO file
+        expected_lines_of_pot: expected number of grid points from validation data
+
 
     Returns:
         num_atoms: integer number of atoms (omitting ghost atoms)
@@ -256,7 +217,6 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
     in_potential_output = False
     ghost_species_found = False
 
-    expected_lines_of_pot = np.prod(repeats)
     pot_count = 0
 
     aim_grid_points = np.zeros((expected_lines_of_pot, 3))
@@ -485,10 +445,10 @@ def main() -> None:
     rep, vec, orig = cio.read_grid_vectors(gv_infile, verbose_output)
 
     # Generate grid points from grid vectors, used later to validate grid in AIMPRO input file
-    pts = generate_grid_points(rep, vec, orig)
+    pts, num_pts = cio.generate_grid_points(rep, vec, orig)
 
     # Read in AIMPRO file and extract required data
-    natoms, ind_species_pn, atpos, pots = read_aimpro_infile(aim_infile, gv_infile, rep, pts)
+    natoms, ind_species_pn, atpos, pots = read_aimpro_infile(aim_infile, gv_infile, rep, pts, num_pts)
 
     # Write cube file
     write_cube_file(aim_infile, gv_infile, natoms, ind_species_pn, atpos, pots, rep, vec, orig)
