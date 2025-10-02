@@ -45,9 +45,11 @@ If no input file is specified the default input file from common_io will be used
 It is often helpful to define grid with a reasonable dense sampling density within your system lattice.
 This ensures that the potential is being sampled with high enough resolution and avoids spurious data points from sampling periodic images.
 
+Unless a custom grid is required for a specific purpose, the FFT sampling grid density AIMPRO uses for a DFT calculation of your system is generally a suitable choice.
+
 For the case of default.in, it is designed around a 1x1x1 simple cubic diamond system with a single lattice parameter of 6.74 Bohr
-and a sampling density of 36 data points in all dimensions of the unit cell.
-For simplicity the grid vectors are aligned with the lattice vectors.
+and a sampling density of 36 data points in all dimensions of the unit cell, taken from the FFT grid density.
+The grid vectors are aligned with the lattice vectors.
 
 The calculation of grid vectors is as given:
 
