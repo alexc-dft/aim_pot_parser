@@ -19,7 +19,7 @@ import numpy as np
 from numba import jit
 
 # Module development info
-VERSION_NUMBER = "0.2"
+VERSION_NUMBER = "0.3"
 VERSION_DATE = "04/09/2025"
 AUTHORS = "Alex Christison"
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
