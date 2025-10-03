@@ -11,6 +11,8 @@ All routines & classes must have Google style docstrings: https://google.github.
 
 All python code should be run through Pylint: https://pylint.readthedocs.io/en/stable/
 
+**NOTE:** these tools read/write entire files into memory to avoid poor performance due to I/O buffer thrashing. They will be memory intensive for particularly large files (i.e. those with ~ millions of lines).
+
 ### Requirements
 To install all python package requirements in your python virtual environment do:  
 pip install -r requirements.txt
