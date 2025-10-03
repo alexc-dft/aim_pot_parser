@@ -41,6 +41,7 @@ import subprocess
 import re
 import sys
 from typing import List, IO, Optional
+from io import StringIO
 
 # Wrangle submodule path
 SUBMODULE_PATH = Path(__file__).resolve().parent  / "aim_utils"     #pylint: disable=wrong-import-position
@@ -228,7 +229,11 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
 
     # Open AIMPRO file, read line by line and extract data
     with open(aimpro_output_file, "r",  encoding="UTF-8") as infile:
-        for line in infile:
+
+        # Read whole file into memory - this is more memory costly but prevents code from being I/O bound for large files
+        infile_lines = infile.read().splitlines()
+
+        for line in infile_lines:
 
             # Skip comment lines
             if re.search(c.RE_AIM_COMMENT, line):
@@ -362,10 +367,42 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
 
     return num_atoms, indexed_species_pn_list, atom_positions, potential_values
 
+def generate_cubefile_data_string(reps: object, data: object) -> str:
+    """Generates potential data string in cubefile format using string I/O stream.
+
+    Args:
+        reps: number of repeats of points in each dimension of the cubefile plotting volume
+        data: cubefile data
+
+    Returns:
+        out_string.get_value(): cubefile data string from StringIO stream
+
+    Raises:
+        None
+    """
+
+    # Define StringIO stream
+    out_string = StringIO()
+
+    # Generate cubefile data format
+    for ia in range(0, reps[0]):
+        for ib in range(0, reps[1]):
+            for ic in range(0, reps[2]):
+
+                # Use 12.4e format not 13.5e format as python doesnt force a leading zero like fotran, this keeps data rounded to the same precision
+                out_string.write(f" {data[ia, ib, ic]:12.4e}")
+
+                # not ic == reps[2]-1 statment prevents an erronius double newline when reps[2] is a multiple of 6
+                if ic % 6 == 5 and not ic == reps[2]-1:
+                    out_string.write("\n")
+            out_string.write("\n")
+
+    return out_string.getvalue()
+
 def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str],                       #pylint:disable=too-many-arguments,too-many-positional-arguments
                     num_atoms: int, indexed_species_pn_list: List[int], atom_pos: object,                #pylint:disable=too-many-arguments,too-many-positional-arguments
                     potential_values: object, repeats: object, vectors: object, origin: object) -> None: #pylint:disable=too-many-arguments,too-many-positional-arguments
-    """Generates and writes out pot_file.cube .
+    """Writes out potential data in cubefile format.
 
     Args:
         aimpro_output_file: AIMPRO potential job output file name
@@ -415,17 +452,7 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
             outfile.write(f"{value:5d}{float(value):12.6f}{atom_pos[i, 0]:12.6f}{atom_pos[i, 1]:12.6f}{atom_pos[i, 2]:12.6f}\n")
 
         # Write out volumetric potential data
-        for ia in range(0, repeats[0]):
-            for ib in range(0, repeats[1]):
-                for ic in range(0, repeats[2]):
-
-                    # Use 12.4e format not 13.5e format as python doesnt force a leading zero like fotran, this keeps data rounded to the same precision
-                    outfile.write(f" {potential_values[ia, ib, ic]:12.4e}")
-
-                    # not ic == repeats[2]-1 statment prevents an erronius double newline when repeats[2] is a multiple of 6
-                    if ic % 6 == 5 and not ic == repeats[2]-1:
-                        outfile.write("\n")
-                outfile.write("\n")
+        outfile.write(generate_cubefile_data_string(repeats, potential_values))
 
         if verbose_output:
             print(f"Finished writing to: {outpath}")
