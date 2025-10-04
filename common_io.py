@@ -114,7 +114,7 @@ def read_grid_vectors(grid_vectors_input_file: str, verbose_output: Optional[boo
     return repeats, vectors, origin
 
 @jit
-def generate_grid_points(repeats: object, vectors: object, origin: object) -> object:
+def generate_grid_points(repeats: object, vectors: object, origin: object, verbose_output: Optional[bool] = False) -> object:#pylint:disable=too-many-arguments,too-many-positional-arguments
     """Generates the pot_file grid points and adds adds them to a numpy array.
 
     Args:
@@ -128,6 +128,9 @@ def generate_grid_points(repeats: object, vectors: object, origin: object) -> ob
     Raises:
         None
     """
+
+    if verbose_output:
+        print("Generating grid points\n")
 
     # Get required array length
     num_grid_points = np.prod(repeats)
@@ -152,5 +155,8 @@ def generate_grid_points(repeats: object, vectors: object, origin: object) -> ob
 
                 # Increment row counter
                 row_count+=1
+
+    if verbose_output:
+        print(f"Generated {num_grid_points} grid points\n")
 
     return grid_points, num_grid_points

@@ -397,6 +397,9 @@ def generate_cubefile_data_string(reps: object, data: object) -> str:
                     out_string.write("\n")
             out_string.write("\n")
 
+    if verbose_output:
+        print("Generated cubefile volumetric data\n")
+
     return out_string.getvalue()
 
 def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str],                       #pylint:disable=too-many-arguments,too-many-positional-arguments
@@ -451,11 +454,17 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
         for i, value in enumerate(indexed_species_pn_list):
             outfile.write(f"{value:5d}{float(value):12.6f}{atom_pos[i, 0]:12.6f}{atom_pos[i, 1]:12.6f}{atom_pos[i, 2]:12.6f}\n")
 
+        if verbose_output:
+            print("Generating and writing cubefile volumetric data\n")
+
         # Write out volumetric potential data
         outfile.write(generate_cubefile_data_string(repeats, potential_values))
 
         if verbose_output:
-            print(f"Finished writing to: {outpath}")
+            print("Written cubefile volumetric data\n")
+
+        if verbose_output:
+            print(f"Finished writing to: {outpath}\n")
 
 def main() -> None:
     """Main method
@@ -472,7 +481,7 @@ def main() -> None:
     rep, vec, orig = cio.read_grid_vectors(gv_infile, verbose_output)
 
     # Generate grid points from grid vectors, used later to validate grid in AIMPRO input file
-    pts, num_pts = cio.generate_grid_points(rep, vec, orig)
+    pts, num_pts = cio.generate_grid_points(rep, vec, orig, verbose_output)
 
     # Read in AIMPRO file and extract required data
     natoms, ind_species_pn, atpos, pots = read_aimpro_infile(aim_infile, gv_infile, rep, pts, num_pts)
