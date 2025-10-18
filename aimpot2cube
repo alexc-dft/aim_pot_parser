@@ -19,11 +19,11 @@ https://paulbourke.net/dataformats/cube/
 [options]
 -h,  --help: display help dialogue
 -v,  --verbose: turn on verbose output mode
--ha, --hartee: output potential to cubefile in Hartee (default is eV)
+-ha, --hartree: output potential to cubefile in Hartree (default is eV)
 -d,  --debug: turn on debug mode (for developers only)
 
 AIMPRO_output
-The standard AIMPRO output file
+The AIMPRO output file from a potential job
 
 [grid_vectors_input_file]
 See above.
@@ -337,7 +337,7 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
 
                         # xc contribution has only one spin contribution in spin averaged case
 
-                        # Double xc contribution due to missing occupancy factor - accounts for AIMPRO potential output bug
+                        # Double xc contribution due to missing occupancy factor - accounts for potential output bug in AIMPRO v3.0.27
                         # When this bug is fixed in AIMPRO FIXME
                         spin_averaged_corrected_xc = split_line[7] * 2
 
