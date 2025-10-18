@@ -1,5 +1,5 @@
-Cubefile created from AIMPRO output using aimpot2cube parser: Copyright (c) A Christison 2025 All Rights Reserved.
-Contains the total potential from AIM.sh.o_default.test on the grid specified in default.in
+Cubefile created from AIMPRO output using aimpot2cube parser: Copyright (c) A Christison 2025 All Rights Reserved
+Contains the total potential from AIM.sh.o_default.test on the grid specified in default.in in eV, positional data in Bohr
     8    0.000000    0.000000    0.000000
    36    0.187222    0.000000    0.000000
    36    0.000000    0.187222    0.000000

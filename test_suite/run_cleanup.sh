@@ -49,6 +49,9 @@ cd $test_dir
 test=${test_dir%/}
 
 # Remove files if they exist
+
+# Default
+
 if [ -f AIM.sh.o_default.test ]; then
     rm "AIM.sh.o_default.test"
 fi
@@ -63,6 +66,8 @@ if [ -f ${test_default}.diff ]; then
     rm "${test_default}.diff"
 fi
 
+# Standard
+
 if [ -f AIM.sh.o.test ]; then
     rm "AIM.sh.o.test"
 fi
@@ -73,6 +78,22 @@ fi
 
 if [ -f ${test}.diff ]; then
     rm "${test}.diff"
+fi
+
+# Hartree
+
+if [ -f AIM.sh.o_hartree.test ]; then
+    rm "AIM.sh.o_hartree.test"
+fi
+
+if [ -f AIM.sh.o_hartree.test.cube ]; then
+    rm "AIM.sh.o_hartree.test.cube"
+fi
+
+test_hartree="${test}-hartree"
+
+if [ -f ${test_hartree}.diff ]; then
+    rm "${test_hartree}.diff"
 fi
 
 cd ../
