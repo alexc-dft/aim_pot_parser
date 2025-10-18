@@ -205,7 +205,6 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
         validation_grid_points: numpy array of regenerated grid points for validation of those in the AIMPRO file
         expected_lines_of_pot: expected number of grid points from validation data
 
-
     Returns:
         num_atoms: integer number of atoms (omitting ghost atoms)
         species_list: list of species symbols
