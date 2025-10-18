@@ -76,7 +76,7 @@ This ensures that the potential is being sampled with high enough resolution and
 
 Unless a custom grid is required for a specific purpose, the FFT sampling grid density AIMPRO uses for a DFT calculation of your system is generally a suitable choice.  
 
-For the case of default.in, it is designed around a 1x1x1 simple cubic diamond system with a single lattice parameter of 6.74 Bohr and a sampling density of 36 data points in all dimensions of the unit cell, taken from the FFT grid density.  
+For the case of default.in, it is designed around a 1x1x1 simple cubic diamond system with a single lattice constant of 6.74 Bohr and a sampling density of 36 data points in all dimensions of the unit cell, taken from the FFT grid density.  
 The grid vectors are aligned with the lattice vectors.  
 
 The calculation of grid vectors is as given:  
@@ -131,11 +131,11 @@ https://paulbourke.net/dataformats/cube/
 [options]  
 -h, --help: display help dialogue  
 -v, --verbose: turn on verbose output mode  
--ha, --hartee: output potential to cubefile in Hartee (default is eV)  
+-ha, --hartree: output potential to cubefile in Hartee (default is eV)  
 -d, --debug: turn on debug mode (for developers only)  
 
 AIMPRO_output  
-The standard AIMPRO output file
+The AIMPRO output file from a potential job
 
 [grid_vectors_input_file]  
 See above.
