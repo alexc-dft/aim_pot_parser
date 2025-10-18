@@ -59,10 +59,9 @@ fi
 
 test_default="${test}-default"
 
-if [ -f ${test_default}}.diff ]; then
+if [ -f ${test_default}.diff ]; then
     rm "${test_default}.diff"
 fi
-
 
 if [ -f AIM.sh.o.test ]; then
     rm "AIM.sh.o.test"
