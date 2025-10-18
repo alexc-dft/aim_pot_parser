@@ -92,6 +92,37 @@ if [ "$diff_str" != "" ]; then
     echo "$diff_str" > ${test}.diff
 fi
 
+cp "AIM.sh.o_hartree.benchmark" "AIM.sh.o_hartree.test"
+
+# Run aimpot2cube
+python ../../aimpot2cube -ha AIM.sh.o_hartree.test test_hartree.in.benchmark || { echo "Error: aimpot2cube failed to run"; exit 3; }
+
+# Diff for result
+diff_str=$(diff "AIM.sh.o_hartree.test.cube.benchmark" "AIM.sh.o_hartree.test.cube")
+
+test_hartree="${test}-hartree"
+
+# Check diff
+if [ "$diff_str" != "" ]; then
+    failed_test_array+=($test_hartree)
+    echo "$diff_str" > ${test_hartree}.diff
+fi
+
+cp "AIM.sh.o_spin_polarised.benchmark" "AIM.sh.o_spin_polarised.test"
+
+# Run aimpot2cube
+python ../../aimpot2cube AIM.sh.o_spin_polarised.test test_spin_polarised.in.benchmark || { echo "Error: aimpot2cube failed to run"; exit 3; }
+
+test_spin_polarised="${test}-spin_polarised"
+
+# Diff for result
+diff_str=$(diff "AIM.sh.o_spin_polarised.test.cube.benchmark" "AIM.sh.o_spin_polarised.test.cube")
+
+# Check diff
+if [ "$diff_str" != "" ]; then
+    failed_test_array+=($test_spin_polarised)
+    echo "$diff_str" > ${test_spin_polarised}.diff
+fi
 
 cd ../
 
