@@ -131,7 +131,7 @@ https://paulbourke.net/dataformats/cube/
 [options]  
 -h, --help: display help dialogue  
 -v, --verbose: turn on verbose output mode  
--Ha, --Hartee: output potential to cubefile in Hartee (default is eV)  
+-ha, --hartee: output potential to cubefile in Hartee (default is eV)  
 -d, --debug: turn on debug mode (for developers only)  
 
 AIMPRO_output  

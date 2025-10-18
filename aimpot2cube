@@ -19,7 +19,7 @@ https://paulbourke.net/dataformats/cube/
 [options]
 -h,  --help: display help dialogue
 -v,  --verbose: turn on verbose output mode
--Ha, --Hartee: output potential to cubefile in Hartee (default is eV)
+-ha, --hartee: output potential to cubefile in Hartee (default is eV)
 -d,  --debug: turn on debug mode (for developers only)
 
 AIMPRO_output
@@ -108,7 +108,7 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
                         default = False,                                    #pylint: disable=duplicate-code
                         help = "turn on debug mode (for developers only)")  #pylint: disable=duplicate-code
 
-    parser.add_argument("-Ha", "--Hartree",
+    parser.add_argument("-ha", "--hartree",
                         action = "store_true",
                         default = False,
                         help = "output potential in Hartee (default is eV)")
@@ -125,7 +125,7 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
     args = parser.parse_args()
     verbose_output = args.verbose
     debug = args.debug
-    use_hartree = args.Hartree
+    use_hartree = args.hartree
     aimpro_infile = args.aimpro_output_file[0]
     grid_vec_infile = args.grid_vectors_input_file
 
