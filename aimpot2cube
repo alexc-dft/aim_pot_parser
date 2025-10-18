@@ -330,7 +330,12 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
                     else:
 
                         # xc contribution has only one spin contribution in spin averaged case
-                        aim_pot_values[pot_count] = np.sum(np.array(split_line[4:7]))
+
+                        # Double xc contribution due to missing occupancy factor - accounts for AIMPRO potential output bug
+                        # When this bug is fixed in AIMPRO FIXME
+                        spin_averaged_corrected_xc = split_line[7] * 2
+
+                        aim_pot_values[pot_count] = np.sum(np.array(split_line[4:6])) + spin_averaged_corrected_xc
 
                     # Increment count of number of lines we have read in
                     pot_count+=1

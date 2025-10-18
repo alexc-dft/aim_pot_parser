@@ -22,6 +22,10 @@ Requirements: see requirements.txt
 
 Scripts can be made executable all locations in file system via chmod u+x and adding to PATH.
 
+AIMPRO version: 3.0.27
+
+**NOTE:** There is a bug in this version of the code, the xc contribution to the potential in the output from the potential job for spin averaged calculations is half what it should be as the occupancy factor (of 2) is not being applied. This parser accounts for this and applies the correction in post. If this bug is fixed in future versions of AIMPRO this post processing correction will need to be removed.
+
 ## Top level workflow
 
 1. Generate a pot_file using potfile_gen
