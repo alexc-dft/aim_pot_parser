@@ -186,8 +186,9 @@ def get_atom_positions(aim_file: IO[str]) -> tuple[object, object]:
 
     return species_ind, atom_pos
 
-def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str], repeats: object,
-                       validation_grid_points: object, expected_lines_of_pot: int ) -> tuple[int, List[int], object, object]:
+def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str],         #pylint: disable=too-many-statements
+                       repeats: object, validation_grid_points: object,                       #pylint: disable=too-many-statements
+                       expected_lines_of_pot: int ) -> tuple[int, List[int], object, object]: #pylint: disable=too-many-statements
     """Reads AIMPRO output file and extracts required data
 
     Args:
@@ -227,6 +228,8 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
     dat_file_search = False
     in_pos_section = False
 
+    spin_polarised = False
+
     # Open AIMPRO file, read line by line and extract data
     with open(aimpro_output_file, "r",  encoding="UTF-8") as infile:
 
@@ -251,6 +254,10 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
 
             # If flags tell us we are in dat section of AIM.sh.o*, Regex for the data we want
             if dat_file_search and not in_pos_section:
+
+                # Flag if calculation is spin polarised
+                if c.RE_SPIN_POLARISED in line:
+                    spin_polarised = True
 
                 partial_protons_search = re.search(c.RE_PARTIAL_PROTONS, line)
 
@@ -308,18 +315,27 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
                                             - are you sure {grid_vectors_input_file} is the correct grid vectors input file?")
 
                     # Map to floats
-                    split_line[1:7] = map(float, split_line[1:7])
+                    split_line[1:8] = map(float, split_line[1:8])
 
                     # Save positions
                     aim_grid_points[pot_count] = np.array(split_line[1:4])
 
-                    # Save total potential, this will be in eV)
-                    aim_pot_values[pot_count] = np.sum(np.array(split_line[4:7]))
+                    # Save total potential accounting for the difference in the spin averaged vs spin polarised formats
+                    # this will be in eV
+                    if spin_polarised:
+
+                        # xc contribution includes both spin channels, as we only care about the total magnitude of the spin density in this scenario this is safe to do
+                        aim_pot_values[pot_count] = np.sum(np.array(split_line[4:8]))
+
+                    else:
+
+                        # xc contribution has only one spin contribution in spin averaged case
+                        aim_pot_values[pot_count] = np.sum(np.array(split_line[4:7]))
 
                     # Increment count of number of lines we have read in
                     pot_count+=1
 
-    # Error if we haven't detected a potential job run, looks like AIMPRO file wasn't a potential job output
+    # Error if we haven't detected a potential job run, looks like AIMPRO output file wasn't a potential job output
     if not potential_job_run:
         raise Exception(f"no potential output detected in {aimpro_output_file} - are you sure it is an AIMPRO potential job output?")
 
