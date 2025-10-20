@@ -67,7 +67,7 @@ cp "AIM.sh.o_default.benchmark" "AIM.sh.o_default.test"
 python ../../aimpot2cube AIM.sh.o_default.test || { echo "Error: aimpot2cube failed to run"; exit 3; }
 
 # Diff for result
-diff_str=$(diff "AIM.sh.o_default.test.cube.benchmark" "AIM.sh.o_default.test.cube")
+diff_str=$(diff "AIM.sh.o_default.test_eV.cube.benchmark" "AIM.sh.o_default.test_eV.cube")
 
 test_default="${test}-default"
 
@@ -84,7 +84,7 @@ cp "AIM.sh.o.benchmark" "AIM.sh.o.test"
 python ../../aimpot2cube AIM.sh.o.test test.in.benchmark || { echo "Error: aimpot2cube failed to run"; exit 3; }
 
 # Diff for result
-diff_str=$(diff "AIM.sh.o.test.cube.benchmark" "AIM.sh.o.test.cube")
+diff_str=$(diff "AIM.sh.o.test_eV.cube.benchmark" "AIM.sh.o.test_eV.cube")
 
 # Check diff
 if [ "$diff_str" != "" ]; then
@@ -98,7 +98,7 @@ cp "AIM.sh.o_hartree.benchmark" "AIM.sh.o_hartree.test"
 python ../../aimpot2cube -ha AIM.sh.o_hartree.test test_hartree.in.benchmark || { echo "Error: aimpot2cube failed to run"; exit 3; }
 
 # Diff for result
-diff_str=$(diff "AIM.sh.o_hartree.test.cube.benchmark" "AIM.sh.o_hartree.test.cube")
+diff_str=$(diff "AIM.sh.o_hartree.test_Ha.cube.benchmark" "AIM.sh.o_hartree.test_Ha.cube")
 
 test_hartree="${test}-hartree"
 
@@ -116,7 +116,7 @@ python ../../aimpot2cube AIM.sh.o_spin_polarised.test test_spin_polarised.in.ben
 test_spin_polarised="${test}-spin_polarised"
 
 # Diff for result
-diff_str=$(diff "AIM.sh.o_spin_polarised.test.cube.benchmark" "AIM.sh.o_spin_polarised.test.cube")
+diff_str=$(diff "AIM.sh.o_spin_polarised.test_eV.cube.benchmark" "AIM.sh.o_spin_polarised.test_eV.cube")
 
 # Check diff
 if [ "$diff_str" != "" ]; then

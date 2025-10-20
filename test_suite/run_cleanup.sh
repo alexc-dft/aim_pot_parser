@@ -56,8 +56,8 @@ if [ -f AIM.sh.o_default.test ]; then
     rm "AIM.sh.o_default.test"
 fi
 
-if [ -f AIM.sh.o_default.test.cube ]; then
-    rm "AIM.sh.o_default.test.cube"
+if [ -f AIM.sh.o_default.test_eV.cube ]; then
+    rm "AIM.sh.o_default.test_eV.cube"
 fi
 
 test_default="${test}-default"
@@ -72,8 +72,8 @@ if [ -f AIM.sh.o.test ]; then
     rm "AIM.sh.o.test"
 fi
 
-if [ -f AIM.sh.o.test.cube ]; then
-    rm "AIM.sh.o.test.cube"
+if [ -f AIM.sh.o.test_eV.cube ]; then
+    rm "AIM.sh.o.test_eV.cube"
 fi
 
 if [ -f ${test}.diff ]; then
@@ -86,8 +86,8 @@ if [ -f AIM.sh.o_hartree.test ]; then
     rm "AIM.sh.o_hartree.test"
 fi
 
-if [ -f AIM.sh.o_hartree.test.cube ]; then
-    rm "AIM.sh.o_hartree.test.cube"
+if [ -f AIM.sh.o_hartree.test_Ha.cube ]; then
+    rm "AIM.sh.o_hartree.test_Ha.cube"
 fi
 
 test_hartree="${test}-hartree"
@@ -102,8 +102,8 @@ if [ -f AIM.sh.o_spin_polarised.test ]; then
     rm "AIM.sh.o_spin_polarised.test"
 fi
 
-if [ -f AIM.sh.o_spin_polarised.test.cube ]; then
-    rm "AIM.sh.o_spin_polarised.test.cube"
+if [ -f AIM.sh.o_spin_polarised.test_eV.cube ]; then
+    rm "AIM.sh.o_spin_polarised.test_eV.cube"
 fi
 
 test_spin_polarised="${test}-spin_polarised"

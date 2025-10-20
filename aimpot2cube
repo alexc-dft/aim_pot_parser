@@ -460,7 +460,12 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
 
     # Open an outfile in cwd
     # (N.B. this is the directory aimpot2cube was called from, not were it lives)
-    cube_output_file = aimpro_output_file + cio.CUBE_OUTPUT_FILENAME
+    # Include units in filename
+    if use_hartree:
+        cube_output_file = aimpro_output_file + "_Ha" + cio.CUBE_OUTPUT_FILENAME
+    else:
+        cube_output_file = aimpro_output_file + "_eV" + cio.CUBE_OUTPUT_FILENAME
+
     outpath = Path.cwd() / cube_output_file
 
     if verbose_output:
