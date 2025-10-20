@@ -22,12 +22,12 @@ cd $test_dir
 test=${test_dir%/}
 
 # Run potfile_gen for default input
-python ../../potfile_gen || { echo "Error: potfile_gen failed to run"; exit 2; }
+python ../../potfile_gen || { echo "Error: potfile_gen failed to run">&2; exit 2; }
 
 mv "pot_file" "pot_file_default"
 
 # Diff for result
-diff_str=$(diff "pot_file_default.benchmark" "pot_file_default")
+diff_str=$(diff "pot_file_default.benchmark" "pot_file_default"); [ $? -gt 1 ] && exit 4
 
 test_default="${test}-default"
 
@@ -38,10 +38,10 @@ if [ "$diff_str" != "" ]; then
 fi
 
 # Run potfile_gen
-python ../../potfile_gen test.in.benchmark || { echo "Error: potfile_gen failed to run"; exit 2; }
+python ../../potfile_gen test.in.benchmark || { echo "Error: potfile_gen failed to run">&2; exit 2; }
 
 # Diff for result
-diff_str=$(diff "pot_file.benchmark" "pot_file")
+diff_str=$(diff "pot_file.benchmark" "pot_file"); [ $? -gt 1 ] && exit 4
 
 # Check diff
 if [ "$diff_str" != "" ]; then
@@ -64,10 +64,10 @@ test=${test_dir%/}
 cp "AIM.sh.o_default.benchmark" "AIM.sh.o_default.test"
 
 # Run aimpot2cube for default input
-python ../../aimpot2cube AIM.sh.o_default.test || { echo "Error: aimpot2cube failed to run"; exit 3; }
+python ../../aimpot2cube AIM.sh.o_default.test || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
 
 # Diff for result
-diff_str=$(diff "AIM.sh.o_default.test_eV.cube.benchmark" "AIM.sh.o_default.test_eV.cube")
+diff_str=$(diff "AIM.sh.o_default.test_eV.cube.benchmark" "AIM.sh.o_default.test_eV.cube"); [ $? -gt 1 ] && exit 4
 
 test_default="${test}-default"
 
@@ -81,10 +81,10 @@ fi
 cp "AIM.sh.o.benchmark" "AIM.sh.o.test"
 
 # Run aimpot2cube
-python ../../aimpot2cube AIM.sh.o.test test.in.benchmark || { echo "Error: aimpot2cube failed to run"; exit 3; }
+python ../../aimpot2cube AIM.sh.o.test test.in.benchmark || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
 
 # Diff for result
-diff_str=$(diff "AIM.sh.o.test_eV.cube.benchmark" "AIM.sh.o.test_eV.cube")
+diff_str=$(diff "AIM.sh.o.test_eV.cube.benchmark" "AIM.sh.o.test_eV.cube"); [ $? -gt 1 ] && exit 4
 
 # Check diff
 if [ "$diff_str" != "" ]; then
@@ -95,10 +95,10 @@ fi
 cp "AIM.sh.o_hartree.benchmark" "AIM.sh.o_hartree.test"
 
 # Run aimpot2cube
-python ../../aimpot2cube -ha AIM.sh.o_hartree.test test_hartree.in.benchmark || { echo "Error: aimpot2cube failed to run"; exit 3; }
+python ../../aimpot2cube -ha AIM.sh.o_hartree.test test_hartree.in.benchmark || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
 
 # Diff for result
-diff_str=$(diff "AIM.sh.o_hartree.test_Ha.cube.benchmark" "AIM.sh.o_hartree.test_Ha.cube")
+diff_str=$(diff "AIM.sh.o_hartree.test_Ha.cube.benchmark" "AIM.sh.o_hartree.test_Ha.cube"); [ $? -gt 1 ] && exit 4
 
 test_hartree="${test}-hartree"
 
@@ -113,7 +113,7 @@ cd ../
 
 # Check if we passed all tests
 if [ ${#failed_test_array[@]} -eq 0 ]; then
-    { echo "Success: all tests passed"; exit 0; }
+    { echo "Success: all tests passed" >&2; exit 0; }
 else
-    { echo "Error: failed test(s) in: ${failed_test_array[@]}"; exit 1; }
+    { echo "Error: failed test(s) in: ${failed_test_array[@]}" >&2; exit 1; }
 fi
