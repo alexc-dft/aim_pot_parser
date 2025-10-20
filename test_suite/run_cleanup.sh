@@ -114,4 +114,4 @@ fi
 
 cd ../
 
-{ echo "Success: test suite cleanup finished"; exit 0; }
+{ echo "Success: test suite cleanup finished" >&2; exit 0; }
