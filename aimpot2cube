@@ -61,8 +61,8 @@ import common_io  as cio
 
 
 # Module development info
-VERSION_NUMBER = "0.5"
-VERSION_DATE = "04/09/2025"
+VERSION_NUMBER = "0.8"
+VERSION_DATE = "20/10/2025"
 AUTHORS = "Alex Christison"
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
