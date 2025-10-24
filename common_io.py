@@ -4,7 +4,7 @@
 
 This module stores the shared routines and I/O parameters for the aim_pot_parser repo.
 
-The I/O parameters  can be user reconfigured - recommended only for advanced users.
+The I/O parameters can be user reconfigured - recommended only for advanced users.
 
 Known issues:
 None
@@ -148,8 +148,8 @@ def generate_grid_points(repeats: object, vectors: object, origin: object, verbo
                                                     + ib * vectors[1, :] \
                                                     + ic * vectors[2, :]
 
-                # Handle sign flip issue when grid_point ~~ 0.0, due to quirks of floats
-                # Forces -0.0 to be -0.0
+                # Handle sign flip issue when grid_point values ~~ 0.0, due to quirks of floats
+                # Forces -0.0 to be 0.0
                 if np.allclose(grid_points[row_count, :], np.zeros(3)):
                     grid_points[row_count, :] = np.zeros(3)
 
