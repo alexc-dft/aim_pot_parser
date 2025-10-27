@@ -340,6 +340,9 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
                     # If the 'Spin averaged fix' is required is required
                     # this should be switched can be commited and pushed to github
 
+                    # If this bug is patched in AIMPRO the options without the factor of 2 should be used
+                    #(i.e. without spin_polarised_corrected_v_xc or spin_averaged_corrected_v_xc)
+
                     # Test suite note:
                     # If the 'Spin averaged fix' is required the benchmarks for the aimpot2cube tests for the test suite will have to be
                     #re-generated for the code to pass the tests
