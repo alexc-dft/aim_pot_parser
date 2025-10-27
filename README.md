@@ -58,7 +58,7 @@ Repeats_B(int)  B_x(float)  B_y(float)  B_z(float)
 Repeats_C(int)  C_x(float)  C_y(float)  C_z(float)  
 
 
-All vectors are in atomic units.  
+All vectors are in atomic units (i.e. Bohr).  
 Origin must be specified even if all values are zero.  
 
 Repeats values must be >= 1.  
