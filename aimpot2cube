@@ -326,22 +326,69 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
                     # Save positions
                     aim_grid_points[pot_count] = np.array(split_line[1:4])
 
+
+                    #========================= James TODO =================================
+                    # Select which options to use for the spin polarised and spin averaged case in the following if statement
+
+                    # You should do this by leaving ONLY one set of options un-commented across both branches (the if & else options) of the following if statement
+                    # If the factor of 2 is missing in the spin averaged case (i.e. the spin averaged v_xc contribution should be doubled),
+                    #the 'Spin averaged fix' sections should be the ones un-commented
+                    # If it is missing in the spin polarised case (i.e. the total spin polarised v_xc contribution should be halved over both spin channels),
+                    #the 'Spin polarised fix' sections should be the ones un-commented
+
+                    # I suspect the 'Spin averaged fix' is required so I have left these un-commented
+                    # If the 'Spin averaged fix' is required is required
+                    # this should be switched can be commited and pushed to github
+
+                    # Test suite note:
+                    # If the 'Spin averaged fix' is required the benchmarks for the aimpot2cube tests for the test suite will have to be
+                    #re-generated for the code to pass the tests
+                    # This is not critical for use of the code and is something I can do when I come back
+                    # Provided the .diff files show only the volumetric potential data in the cubefiles differs between the test run
+                    #& the benchmarks then you are safe and no other issues have been introduced
+                    #======================================================================
+
                     # Save total potential accounting for the difference in the spin averaged vs spin polarised formats
                     # this will be in eV
                     if spin_polarised:
 
-                        # xc contribution includes both spin channels, as we only care about the total magnitude of the spin density in this scenario this is safe to do
+                        # v_xc contribution includes both spin channels, as we only care about the total magnitude of the spin density in this scenario this is safe to do
+
+                        #======================= Spin averaged fix ===============================
+
                         aim_pot_values[pot_count] = np.sum(np.array(split_line[4:8]))
+
+                        #=========================================================================
+
+                        #========================= Spin polarised fix ============================
+
+                        # Half the total v_xc contribution from both spin channels due to missing occupancy factor - accounts for potential output bug in AIMPRO v3.0.27
+                        # When this bug is fixed in AIMPRO FIXME
+                        # spin_polarised_corrected_v_xc = (split_line[7] + split_line[8]) / 2
+
+                        # aim_pot_values[pot_count] = np.sum(np.array(split_line[4:6])) + spin_polarised_corrected_v_xc
+
+                        #=========================================================================
 
                     else:
 
-                        # xc contribution has only one spin contribution in spin averaged case
+                        # v_xc contribution has only one spin contribution in spin averaged case
 
-                        # Double xc contribution due to missing occupancy factor - accounts for potential output bug in AIMPRO v3.0.27
+                        #========================= Spin averaged fix =============================
+
+                        # Double the  v_xc contribution due to missing occupancy factor - accounts for potential output bug in AIMPRO v3.0.27
                         # When this bug is fixed in AIMPRO FIXME
-                        spin_averaged_corrected_xc = split_line[7] * 2
+                        spin_averaged_corrected_v_xc = split_line[7] * 2
 
-                        aim_pot_values[pot_count] = np.sum(np.array(split_line[4:6])) + spin_averaged_corrected_xc
+                        aim_pot_values[pot_count] = np.sum(np.array(split_line[4:6])) + spin_averaged_corrected_v_xc
+
+                        #=========================================================================
+
+                        #======================= Spin polarised fix ==============================
+
+                        # aim_pot_values[pot_count] = np.sum(np.array(split_line[4:7]))
+
+                        #=========================================================================
 
                     # Increment count of number of lines we have read in
                     pot_count+=1
