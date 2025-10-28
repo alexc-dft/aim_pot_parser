@@ -96,6 +96,22 @@ if [ -f ${test_hartree}.diff ]; then
     rm "${test_hartree}.diff"
 fi
 
+# Rydberg
+
+if [ -f AIM.sh.o_rydberg.test ]; then
+    rm "AIM.sh.o_rydberg.test"
+fi
+
+if [ -f AIM.sh.o_rydberg.test_Ry.cube ]; then
+    rm "AIM.sh.o_rydberg.test_Ry.cube"
+fi
+
+test_rydberg="${test}-rydberg"
+
+if [ -f ${test_rydberg}.diff ]; then
+    rm "${test_rydberg}.diff"
+fi
+
 cd ../
 
 { echo "Success: test suite cleanup finished" >&2; exit 0; }

@@ -61,6 +61,8 @@ cd $test_dir
 
 test=${test_dir%/}
 
+# Default
+
 cp "AIM.sh.o_default.benchmark" "AIM.sh.o_default.test"
 
 # Run aimpot2cube for default input
@@ -77,6 +79,7 @@ if [ "$diff_str" != "" ]; then
     echo "$diff_str" > ${test_default}.diff
 fi
 
+# Standard
 
 cp "AIM.sh.o.benchmark" "AIM.sh.o.test"
 
@@ -92,6 +95,8 @@ if [ "$diff_str" != "" ]; then
     echo "$diff_str" > ${test}.diff
 fi
 
+# Hartree
+
 cp "AIM.sh.o_hartree.benchmark" "AIM.sh.o_hartree.test"
 
 # Run aimpot2cube
@@ -106,6 +111,24 @@ test_hartree="${test}-hartree"
 if [ "$diff_str" != "" ]; then
     failed_test_array+=($test_hartree)
     echo "$diff_str" > ${test_hartree}.diff
+fi
+
+# Rydberg
+
+cp "AIM.sh.o_rydberg.benchmark" "AIM.sh.o_rydberg.test"
+
+# Run aimpot2cube
+python ../../aimpot2cube AIM.sh.o_rydberg.test test_rydberg.in.benchmark || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
+
+# Diff for result
+diff_str=$(diff "AIM.sh.o_rydberg.test_Ry.cube.benchmark" "AIM.sh.o_rydberg.test_Ry.cube"); [ $? -gt 1 ] && exit 4
+
+test_rydberg="${test}-rydberg"
+
+# Check diff
+if [ "$diff_str" != "" ]; then
+    failed_test_array+=($test_rydberg)
+    echo "$diff_str" > ${test_rydberg}.diff
 fi
 
 cd ../
