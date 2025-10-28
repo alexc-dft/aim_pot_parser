@@ -64,7 +64,7 @@ test=${test_dir%/}
 cp "AIM.sh.o_default.benchmark" "AIM.sh.o_default.test"
 
 # Run aimpot2cube for default input
-python ../../aimpot2cube AIM.sh.o_default.test || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
+python ../../aimpot2cube -eV AIM.sh.o_default.test || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
 
 # Diff for result
 diff_str=$(diff "AIM.sh.o_default.test_eV.cube.benchmark" "AIM.sh.o_default.test_eV.cube"); [ $? -gt 1 ] && exit 4
@@ -81,7 +81,7 @@ fi
 cp "AIM.sh.o.benchmark" "AIM.sh.o.test"
 
 # Run aimpot2cube
-python ../../aimpot2cube AIM.sh.o.test test.in.benchmark || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
+python ../../aimpot2cube -eV AIM.sh.o.test test.in.benchmark || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
 
 # Diff for result
 diff_str=$(diff "AIM.sh.o.test_eV.cube.benchmark" "AIM.sh.o.test_eV.cube"); [ $? -gt 1 ] && exit 4
@@ -95,7 +95,7 @@ fi
 cp "AIM.sh.o_hartree.benchmark" "AIM.sh.o_hartree.test"
 
 # Run aimpot2cube
-python ../../aimpot2cube -ha AIM.sh.o_hartree.test test_hartree.in.benchmark || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
+python ../../aimpot2cube -Ha AIM.sh.o_hartree.test test_hartree.in.benchmark || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
 
 # Diff for result
 diff_str=$(diff "AIM.sh.o_hartree.test_Ha.cube.benchmark" "AIM.sh.o_hartree.test_Ha.cube"); [ $? -gt 1 ] && exit 4
