@@ -28,12 +28,13 @@ https://paulbourke.net/dataformats/cube/
 -Ry, --Rydberg: output potential in Rydberg (default is Rydberg if none provided)
 
 AIMPRO_output
-The AIMPRO output file from a potential job
+The AIMPRO output file from a potential job, this can be a filepath
 
 [grid_vectors_input_file]
-See above.
+potfile_gen input file, this can be a filepath, if none specified the default input file is used.
+See potfile_gen documentation.
 
-NOTE: this file must be the same as the one used by potfile_gen
+NOTE: this input file must be identical to the one used by potfile_gen to generate the input for the AIMPRO potential job
 
 Known issues:
 None
@@ -133,12 +134,12 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
 
     parser.add_argument("aimpro_output_file",
                         nargs = 1,
-                        help = "the AIM.sh.o* output file from an AIMPRO potential job")
+                        help = "the AIM.sh.o* output file from an AIMPRO potential job, this can be a filepath")
 
     parser.add_argument("grid_vectors_input_file",
                         nargs = "?",
                         default = cio.DEFAULT_POT_INPUT_FILENAME,
-                        help = f"input file, if none specified the default input file is used: {cio.DEFAULT_POT_INPUT_FILENAME}")
+                        help = f"potfile_gen input file, this can be a filepath, if none specified the default input file is used: {cio.DEFAULT_POT_INPUT_FILENAME}")
 
     args = parser.parse_args()
     verbose_output = args.verbose
@@ -165,8 +166,11 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
     if not Path(grid_vec_infile).is_file():
         raise FileNotFoundError(f"no such file - '{grid_vec_infile}'")
 
+    # Strip filename out of inputted AIMPRO output file, to handle filepaths
+    aimpro_infile_root_name = PurePosixPath(aimpro_infile).name
+
     # Check if AIMPRO file has correct naming convention, warn if not
-    if not fnmatch.fnmatch(aimpro_infile ,"AIM.sh.o*"):
+    if not fnmatch.fnmatch(aimpro_infile_root_name ,"AIM.sh.o*"):
         print(f"Warning: {aimpro_infile} filename does not match the conventional AIMPRO output filename format (AIM.sh.o*), are you sure it is an AIMPRO output file?")
 
     if verbose_output:
@@ -192,6 +196,9 @@ def get_atom_positions(aim_file: IO[str]) -> tuple[object, object]:
         Warns if the files it needs to create already exist & backs up the existing ones
     """
 
+    # Strip filename out of inputted AIMPRO output file, to handle filepaths
+    aim_file_root_name = PurePosixPath(aim_file).name
+
     # Ensure we are able to create the xyz & otb files we temporarily need, backup exisiting ones and inform user
     if Path(f"xyz.{aim_file}.init").is_file():
         subprocess.run(f"mv xyz.{aim_file}.init xyz.{aim_file}.init.bak", shell=True, check=True)
@@ -202,20 +209,22 @@ def get_atom_positions(aim_file: IO[str]) -> tuple[object, object]:
         print(f"Warning: exisiting otb.xyz.{aim_file}.init moved to otb.xyz.{aim_file}.init.bak\n")
 
     # Convert dat file to xyz
+    # cgres strips filepaths down to to just the filename in this case
     subprocess.run(f"{CGRES_PATH} -einit {aim_file} 1> /dev/null", shell=True, check=True)
 
     # Convert xyz to otb, positions are now in atomic
-    subprocess.run(f"{CGRES_PATH} -x2o xyz.{aim_file}.init 1> /dev/null", shell=True, check=True)
+    # Using the stripped down filename going forward, in case cgres has stripped out a path
+    subprocess.run(f"{CGRES_PATH} -x2o xyz.{aim_file_root_name}.init 1> /dev/null", shell=True, check=True)
 
     # Read in otb values, they will be in the atomic reference frame
-    result = m.read_otb(f"otb.xyz.{aim_file}.init")
+    result = m.read_otb(f"otb.xyz.{aim_file_root_name}.init")
 
     # Only need species_index and atom positions
     species_ind = result[0]
     atom_pos = result[2]
 
     # Remove temporary xyz & otb files
-    subprocess.run(f"rm xyz.{aim_file}.init  otb.xyz.{aim_file}.init", shell=True, check=True)
+    subprocess.run(f"rm xyz.{aim_file_root_name}.init  otb.xyz.{aim_file_root_name}.init", shell=True, check=True)
 
     return species_ind, atom_pos
 
@@ -475,18 +484,20 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
     Raises:
         None
     """
+    # Strip filename out of inputted AIMPRO output file, to handle filepaths
+    aimpro_output_file_root_name = PurePosixPath(aimpro_output_file).name
 
-    # Open an outfile in cwd
+    # Open an outfile in cwd, using just the AIMPRO output file name to avoid issues caused by paths
     # (N.B. this is the directory aimpot2cube was called from, not were it lives)
     # Include units in filename
     if use_rydberg:
-        cube_output_file = aimpro_output_file + "_Ry" + cio.CUBE_OUTPUT_FILENAME
+        cube_output_file = aimpro_output_file_root_name + "_Ry" + cio.CUBE_OUTPUT_FILENAME
 
     elif use_ev:
-        cube_output_file = aimpro_output_file + "_eV" + cio.CUBE_OUTPUT_FILENAME
+        cube_output_file = aimpro_output_file_root_name + "_eV" + cio.CUBE_OUTPUT_FILENAME
 
     else:
-        cube_output_file = aimpro_output_file + "_Ha" + cio.CUBE_OUTPUT_FILENAME
+        cube_output_file = aimpro_output_file_root_name + "_Ha" + cio.CUBE_OUTPUT_FILENAME
 
     outpath = Path.cwd() / cube_output_file
 

@@ -141,12 +141,13 @@ https://paulbourke.net/dataformats/cube/
 -Ry, --Rydberg: output potential in Rydberg (default is Rydberg if none provided)  
 
 AIMPRO_output  
-The AIMPRO output file from a potential job
+The AIMPRO output file from a potential job, this can be a filepath
 
 [grid_vectors_input_file]  
-See above.
+potfile_gen input file, this can be a filepath, if none specified the default input file is used.  
+See potfile_gen documentation.
 
-**NOTE: this file must be the same as the one used by potfile_gen**
+**NOTE: this input file must be identical to the one used by potfile_gen to generate the input for the AIMPRO potential job**
 
 ### Known issues
 None  
