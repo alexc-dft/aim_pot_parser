@@ -260,6 +260,7 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
     in_potential_output = False
     ghost_species_found = False
 
+    # Counter for lines of potential data
     pot_count = 0
 
     aim_grid_points = np.zeros((expected_lines_of_pot, 3))
