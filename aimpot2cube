@@ -154,12 +154,6 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
     if not debug:
         sys.tracebacklimit = 0
 
-    # Set to use Rydberg if no units specified
-    if not use_hartree and not use_ev and not use_rydberg:
-        use_rydberg = True
-        if verbose_output:
-            print("No potential units specified, defaulting to Rydberg")
-
     # Check provided files are valid
     if not Path(aimpro_infile).is_file():
         raise FileNotFoundError(f"no such file - '{aimpro_infile}'")
@@ -176,6 +170,12 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
     if verbose_output:
         print("Verbose output mode enabled\n")
         print(f"Input file: {grid_vec_infile}\n")
+
+    # Set to use Rydberg if no units specified
+    if not use_hartree and not use_ev and not use_rydberg:
+        use_rydberg = True
+        if verbose_output:
+            print("No potential units specified, defaulting to Rydberg\n")
 
     return grid_vec_infile, aimpro_infile
 
