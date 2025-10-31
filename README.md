@@ -128,7 +128,7 @@ gres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html
 (Copyright (c) J.P. Goss 2024 All Rights Reserved.)
 
 ### CUBE file format
-https://www.quantum-espresso.org/Doc/INPUT_PP.html (&PLOT namelist output_format = 3)
+https://www.quantum-espresso.org/Doc/INPUT_PP.html (&INPUTPP namelist plot_num = 11; &PLOT namelist, iflag = 3, output_format = 6)
 https://paulbourke.net/dataformats/cube/
 
 ### Arguments

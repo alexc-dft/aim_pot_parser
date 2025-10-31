@@ -16,7 +16,7 @@ gres: https://www.staff.ncl.ac.uk/j.p.goss/MMG/Scripts/Output.html
 (Copyright (c) J.P. Goss 2024 All Rights Reserved.)
 
 Cubefile format
-https://www.quantum-espresso.org/Doc/INPUT_PP.html (&PLOT namelist, iflag = 3, output_format = 6)
+https://www.quantum-espresso.org/Doc/INPUT_PP.html (&INPUTPP namelist plot_num = 11; &PLOT namelist, iflag = 3, output_format = 6)
 https://paulbourke.net/dataformats/cube/
 
 [options]
@@ -449,10 +449,10 @@ def generate_cubefile_data_string(reps: object, data: object) -> str:
         for ib in range(0, reps[1]):
             for ic in range(0, reps[2]):
 
-                # Use 12.4e format not 13.5e format as python doesnt force a leading zero like fotran, this keeps data rounded to the same precision
+                # Use 12.4e format not 13.5e format as python doesn't force a leading zero like Fortran, this keeps data rounded to the same precision
                 out_string.write(f" {data[ia, ib, ic]:12.4e}")
 
-                # not ic == reps[2]-1 statment prevents an erronius double newline when reps[2] is a multiple of 6
+                # not ic == reps[2]-1 statement prevents an erroneous double newline when reps[2] is a multiple of 6
                 if ic % 6 == 5 and not ic == reps[2]-1:
                     out_string.write("\n")
             out_string.write("\n")
