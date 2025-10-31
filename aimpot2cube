@@ -68,7 +68,7 @@ import common_io  as cio
 # Module development info
 VERSION_NUMBER = "0.9"
 VERSION_DATE = "28/10/2025"
-AUTHORS = "Alex Christison"
+AUTHORS = "Alex Christison, fixes by James Ramsey"
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
 # Perl script path details
@@ -341,13 +341,13 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
                                             - are you sure {grid_vectors_input_file} is the correct grid vectors input file?")
 
                     # Map to floats
-                    split_line[1:7] = map(float, split_line[1:7])
+                    split_line[1:6] = map(float, split_line[1:6])
 
                     # Save positions
                     aim_grid_points[pot_count] = np.array(split_line[1:4])
 
-                    # Save total potential, this will be in eV)
-                    aim_pot_values[pot_count] = np.sum(np.array(split_line[4:7]))
+                    # Save the potential value, which is the sum of the local and Hartree potentials. AIMPRO outputs this in units of Hartrees.
+                    aim_pot_values[pot_count] = np.sum(np.array(split_line[4:6]))
 
                     # Increment count of number of lines we have read in
                     pot_count+=1

@@ -2,7 +2,7 @@
 Scripts for setting up a regular grid of points for AIMPRO potential calculations and parsing the results to the .cube file format 
 (potential values in Rydberg by default).
 
-Please credit the code author(s) (Alex Christison) in works arising from the use of this software.
+Please credit the code author(s) (Alex Christison, fixes by James Ramsey) in works arising from the use of this software.
 
 Copyright (c) A Christison 2025 All Rights Reserved.  
 
