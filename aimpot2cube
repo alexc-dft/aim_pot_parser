@@ -21,7 +21,7 @@ https://paulbourke.net/dataformats/cube/
 
 [options]
 -h,  --help: display help dialogue
--v,  --verbose: turn on verbose output mode
+-v,  --verbose: turn on verbose output mode, this prints useful status info to screen
 -d,  --debug: turn on debug mode (for developers only)
 -Ha, --Hartree: output potential in Hartee (default is Rydberg if none provided)
 -eV, --electron-volts: output potential in electron volts (default is Rydberg if none provided)
@@ -105,14 +105,14 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
                         \ncubefile format: https://paulbourke.net/dataformats/cube/",
                     epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.") #pylint: disable=duplicate-code
 
-    parser.add_argument("-v", "--verbose",                                  #pylint: disable=duplicate-code
-                        action = "store_true",                              #pylint: disable=duplicate-code
-                        help = "turn on verbose output mode")               #pylint: disable=duplicate-code
+    parser.add_argument("-v", "--verbose",                                                                  #pylint: disable=duplicate-code
+                        action = "store_true",                                                              #pylint: disable=duplicate-code
+                        help = "turn on verbose output mode, this prints useful status info to screen")     #pylint: disable=duplicate-code
 
-    parser.add_argument("-d", "--debug",                                    #pylint: disable=duplicate-code
-                        action = "store_true",                              #pylint: disable=duplicate-code
-                        default = False,                                    #pylint: disable=duplicate-code
-                        help = "turn on debug mode (for developers only)")  #pylint: disable=duplicate-code
+    parser.add_argument("-d", "--debug",                                                                    #pylint: disable=duplicate-code
+                        action = "store_true",                                                              #pylint: disable=duplicate-code
+                        default = False,                                                                    #pylint: disable=duplicate-code
+                        help = "turn on debug mode (for developers only)")                                  #pylint: disable=duplicate-code
 
     group = parser.add_mutually_exclusive_group(required=False)
 

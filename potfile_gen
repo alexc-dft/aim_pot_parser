@@ -17,7 +17,7 @@ The output pot_file is written to the current working directory
 
 [options]
 -h, --help: display help dialogue
--v, --verbose: turn on verbose output mode
+-v, --verbose: turn on verbose output mode, this prints useful status info to screen
 -d, --debug: turn on debug mode (for developers only)
 
 [grid_vectors_input_file]
@@ -125,14 +125,14 @@ def read_commmand_line() -> Optional[IO[str]]:
                                     \n\nAIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html",
                     epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.") #pylint: disable=duplicate-code
 
-    parser.add_argument("-v", "--verbose",                                  #pylint: disable=duplicate-code
-                        action = "store_true",                              #pylint: disable=duplicate-code
-                        help = "turn on verbose output mode")               #pylint: disable=duplicate-code
+    parser.add_argument("-v", "--verbose",                                                                  #pylint: disable=duplicate-code
+                        action = "store_true",                                                              #pylint: disable=duplicate-code
+                        help = "turn on verbose output mode, this prints useful status info to screen")     #pylint: disable=duplicate-code
 
-    parser.add_argument("-d", "--debug",                                    #pylint: disable=duplicate-code
-                        action = "store_true",                              #pylint: disable=duplicate-code
-                        default = False,                                    #pylint: disable=duplicate-code
-                        help = "turn on debug mode (for developers only)")  #pylint: disable=duplicate-code
+    parser.add_argument("-d", "--debug",                                                                    #pylint: disable=duplicate-code
+                        action = "store_true",                                                              #pylint: disable=duplicate-code
+                        default = False,                                                                    #pylint: disable=duplicate-code
+                        help = "turn on debug mode (for developers only)")                                  #pylint: disable=duplicate-code
 
     parser.add_argument("grid_vectors_input_file",
                         nargs = "?",

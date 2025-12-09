@@ -46,7 +46,7 @@ The output pot_file is written to the current working directory
 ### Arguments
 [options]  
 -h, --help: display help dialogue  
--v, --verbose: turn on verbose output mode  
+-v, --verbose: turn on verbose output mode, this prints useful status info to screen  
 -d, --debug: turn on debug mode (for developers only)  
 
 [grid_vectors_input_file]  
@@ -134,7 +134,7 @@ https://paulbourke.net/dataformats/cube/
 ### Arguments
 [options]  
 -h, --help: display help dialogue  
--v, --verbose: turn on verbose output mode  
+-v, --verbose: turn on verbose output mode, this prints useful status info to screen  
 -d, --debug: turn on debug mode (for developers only)  
 -Ha, --Hartree: output potential in Hartee (default is Rydberg if none provided)  
 -eV, --electron-volts: output potential in electron volts (default is Rydberg if none provided)  
