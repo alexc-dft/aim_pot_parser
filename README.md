@@ -6,7 +6,7 @@ Please credit the code author(s) (Alex Christison, fixes by James Ramsey) in wor
 
 Copyright (c) A Christison 2025 All Rights Reserved.  
 
-N.B. recurse submodules must be enabled to properly clone this repo: git clone --recurse-submodules repo_address  
+**N.B. recurse submodules must be enabled to properly clone this repo: git clone --recurse-submodules repo_address**  
 
 All routines & classes must have Google style docstrings: https://google.github.io/styleguide/pyguide.html
 
