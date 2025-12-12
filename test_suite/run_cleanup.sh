@@ -19,16 +19,6 @@ test=${test_dir%/}
 
 # Remove files if they exist
 
-if [ -f pot_file_default ]; then
-    rm "pot_file_default"
-fi
-
-test_default="${test}-default"
-
-if [ -f ${test_default}.diff ]; then
-    rm "${test_default}.diff"
-fi
-
 if [ -f pot_file ]; then
     rm "pot_file"
 fi
@@ -49,22 +39,6 @@ cd $test_dir
 test=${test_dir%/}
 
 # Remove files if they exist
-
-# Default
-
-if [ -f AIM.sh.o_default.test ]; then
-    rm "AIM.sh.o_default.test"
-fi
-
-if [ -f AIM.sh.o_default.test_eV.cube ]; then
-    rm "AIM.sh.o_default.test_eV.cube"
-fi
-
-test_default="${test}-default"
-
-if [ -f ${test_default}.diff ]; then
-    rm "${test_default}.diff"
-fi
 
 # Standard
 

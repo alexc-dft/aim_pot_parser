@@ -2,7 +2,7 @@
 
 # Copyright (c) A Christison 2025 All Rights Reserved.
 
-"""pot_file generator: potfile_gen [options] [grid_vectors_input_file]
+"""pot_file generator: potfile_gen [options] grid_vectors_input_file
 
 This script plots a regular grid in the required format for the potential job in the AIMPRO code that is valid for cubefile plotting.
 
@@ -20,7 +20,7 @@ The output pot_file is written to the current working directory
 -v, --verbose: turn on verbose output mode, this prints useful status info to screen
 -d, --debug: turn on debug mode (for developers only)
 
-[grid_vectors_input_file]
+grid_vectors_input_file
 Specifies the vectors & the number of their repeats defining the grid of points centred on each voxel of the parallelepiped plotting volume,
 as well as the origin of the parallelepiped plotting volume.
 
@@ -40,14 +40,12 @@ Origin components can have any valid float value.
 
 Floats are in 12.6 format.
 
-If no input file is specified the default input file from common_io will be used. This file is user editable (see default_potfile_input/default.in).
-
-It is often helpful to define grid with a reasonable dense sampling density within your system lattice.
+It is often helpful to define grid with a reasonably dense sampling density within your system lattice.
 This ensures that the potential is being sampled with high enough resolution and avoids spurious data points from sampling periodic images.
 
 Unless a custom grid is required for a specific purpose, the FFT sampling grid density AIMPRO uses for a DFT calculation of your system is generally a suitable choice.
 
-For the case of default.in, it is designed around a 1x1x1 simple cubic diamond system with a single lattice constant of 6.74 Bohr
+For the case of example_input.in, it is designed around a 1x1x1 simple cubic diamond system with a single lattice constant of 6.74 Bohr
 and a sampling density of 36 data points in all dimensions of the unit cell, taken from the FFT grid density.
 The grid vectors are aligned with the lattice vectors.
 
@@ -57,7 +55,7 @@ The calculation of grid vectors is as given:
 (0.0 1.0 0.0) x 6.74/36 = (0.000000 0.187222 0.000000)
 (0.0 0.0 0.0) x 6.74/36 = (0.000000 0.000000 0.187222)
 
-The sampling density therefor becomes the number of repeats, and by fixing the origin at (0.0 0.0 0.0) we obtain the contents of default_potfile_input/default.in:
+Sampling density therefor becomes the number of repeats, and by fixing the origin at (0.0 0.0 0.0) we obtain the contents of example_potfile_gen_input/example_input.in:
 
 0.000000 0.000000 0.000000
 36 0.187222 0.000000 0.000000
@@ -94,7 +92,7 @@ import numpy as np
 import common_io as cio
 
 # Module development info
-VERSION_NUMBER = "0.3"
+VERSION_NUMBER = "0.4"
 VERSION_DATE = "12/12/2025"
 AUTHORS = "Alex Christison"
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
@@ -135,14 +133,13 @@ def read_commmand_line() -> Optional[IO[str]]:
                         help = "turn on debug mode (for developers only)")                                  #pylint: disable=duplicate-code
 
     parser.add_argument("grid_vectors_input_file",
-                        nargs = "?",
-                        default = cio.DEFAULT_POT_INPUT_FILENAME,
-                        help = f"grid vectors input file, if none specified the default input file is used: {cio.DEFAULT_POT_INPUT_FILENAME}")
+                        nargs = 1,
+                        help = "grid vectors input file")
 
     args = parser.parse_args()
     verbose_output = args.verbose
     debug = args.debug
-    input_filename = args.grid_vectors_input_file
+    input_filename = args.grid_vectors_input_file[0]
 
     # Disable traceback when not in debug mode
     if not debug:

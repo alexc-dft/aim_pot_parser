@@ -37,10 +37,6 @@ COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
 # Filename constants
 
-# Define filepath relative to script location
-DEFAULT_POT_INPUT_FILENAME = Path(__file__).resolve().parents[0]  / "default_potfile_gen_input" / "default.in"
-# !!!Note __file__ isn't always safe, e.g. in nonlocal imported modules!!!
-
 # Regular Grid Plotter output file
 POT_OUTPUT_FILENAME = "pot_file"
 
