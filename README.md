@@ -50,7 +50,7 @@ The output pot_file is written to the current working directory
 -d, --debug: turn on debug mode (for developers only)  
 
 [grid_vectors_input_file]  
-Specifies the vectors & the number of their repeats defining the grid of points centered on each voxel of the parallelepiped plotting volume, as well as the origin of the parallelepiped plotting volume.  
+Specifies the vectors & the number of their repeats defining the grid of points centered on each voxel of the parallelepiped plotting volume, as well as the origin of the parallelepiped plotting volume, this can also be a filepath and/or bzip2 archive to/of the file.  
 The file is delimited by whitespace and has the format:  
 
 Origin_x(float)  Origin_y(float)  Origin_z(float)  
@@ -141,10 +141,10 @@ https://paulbourke.net/dataformats/cube/
 -Ry, --Rydberg: output potential in Rydberg (default is Rydberg if none provided)  
 
 AIMPRO_output  
-The AIMRPO standard output file from a potential job, this can be a filepath  
+The AIMRPO standard output file from a potential job, this can also be a filepath and/or bzip2 archive to/of the file.  
 
 grid_vectors_input_file  
-the potfile_gen input file that was used for the AIMRPO potential job, this can be a filepath.  
+the potfile_gen input file that was used for the AIMRPO potential job, this can also be a filepath and/or bzip2 archive to/of the file.  
 See potfile_gen documentation.
 
 **NOTE: this input file must be identical to the one used by potfile_gen to generate the input for the AIMPRO potential job**
