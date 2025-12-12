@@ -28,7 +28,7 @@ https://paulbourke.net/dataformats/cube/
 -Ry, --Rydberg: output potential in Rydberg (default is Rydberg if none provided)
 
 AIMPRO_output
-The AIMPRO output file from a potential job, this can be a filepath
+The AIMRPO standard output file from a potential job, this can be a filepath
 
 [grid_vectors_input_file]
 potfile_gen input file, this can be a filepath, if none specified the default input file is used.
@@ -43,7 +43,6 @@ None
 # System modules
 import argparse
 from pathlib import Path, PurePosixPath
-import fnmatch
 import subprocess
 import re
 import sys
@@ -94,7 +93,6 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
     Raises:
         Errors & exits with message if incorrect number of args detected.
         Errors & exits with message if provided input file does not exist.
-        Warns if AIMPRO output file does not match conventional AIM.sh.o* format.
     """
     global verbose_output, debug, use_hartree, use_ev, use_rydberg
 
@@ -135,7 +133,7 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
 
     parser.add_argument("aimpro_output_file",
                         nargs = 1,
-                        help = "the AIM.sh.o* output file from an AIMPRO potential job, this can be a filepath")
+                        help = "the AIMRPO standard output file from a potential job, this can be a filepath")
 
     parser.add_argument("grid_vectors_input_file",
                         nargs = "?",
@@ -160,13 +158,6 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
         raise FileNotFoundError(f"no such file - '{aimpro_infile}'")
     if not Path(grid_vec_infile).is_file():
         raise FileNotFoundError(f"no such file - '{grid_vec_infile}'")
-
-    # Strip filename out of inputted AIMPRO output file, to handle filepaths
-    aimpro_infile_root_name = PurePosixPath(aimpro_infile).name
-
-    # Check if AIMPRO file has correct naming convention, warn if not
-    if not fnmatch.fnmatch(aimpro_infile_root_name ,"AIM.sh.o*"):
-        print(f"Warning: {aimpro_infile} filename does not match the conventional AIMPRO output filename format (AIM.sh.o*), are you sure it is an AIMPRO output file?")
 
     if verbose_output:
         print("Verbose output mode enabled\n")
@@ -311,7 +302,7 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
         elif c.RE_POSITIONS_END in line:
             in_pos_section = False
 
-        # If flags tell us we are in dat section of AIM.sh.o*, Regex for the data we want
+        # If flags tell us we are in dat section of AIMPRO output file, Regex for the data we want
         if dat_file_search and not in_pos_section:
 
             partial_protons_search = re.search(c.RE_PARTIAL_PROTONS, line)
