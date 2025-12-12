@@ -13,14 +13,25 @@ None
 # System modules
 from pathlib import Path
 from typing import Optional
+import bz2
+import re
+import sys
+
+# Wrangle submodule path
+SUBMODULE_PATH = Path(__file__).resolve().parent  / "aim_utils"     #pylint: disable=wrong-import-position
+SUBM_PATH_STR = SUBMODULE_PATH.absolute().as_posix()                #pylint: disable=wrong-import-position
+
+# Add path to aim_utils directory root
+sys.path.append(SUBM_PATH_STR)  #pylint: disable=wrong-import-position
 
 # Third party modules
 import numpy as np
 from numba import jit
+import const as c   #pylint: disable=import-error
 
 # Module development info
-VERSION_NUMBER = "0.3"
-VERSION_DATE = "04/09/2025"
+VERSION_NUMBER = "0.4"
+VERSION_DATE = "12/12/2025"
 AUTHORS = "Alex Christison"
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
@@ -63,10 +74,13 @@ def read_grid_vectors(grid_vectors_input_file: str, verbose_output: Optional[boo
     vectors = np.zeros((3, 3))
     origin = np.zeros((3))
 
-    # Read in input file
-    with open(grid_vectors_input_file,"r",encoding="UTF-8") as infile:
-        # Split into rows
-        raw_input = infile.readlines()
+    # Read in input file, handling bzip2 archives if detected
+    if re.search(c.RE_BZIP_FILE, grid_vectors_input_file):
+        with bz2.open(grid_vectors_input_file, "rt") as infile:
+            raw_input = infile.readlines()
+    else:
+        with open(grid_vectors_input_file, "r", encoding="UTF-8") as infile:
+            raw_input = infile.readlines()
 
     if len(raw_input) != 4:
         raise Exception(f"incorrect input file format - {grid_vectors_input_file} must have only 4 rows")

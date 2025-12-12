@@ -49,6 +49,7 @@ import re
 import sys
 from typing import List, IO, Optional
 from io import StringIO
+import bz2
 
 # Wrangle submodule path
 SUBMODULE_PATH = Path(__file__).resolve().parent  / "aim_utils"     #pylint: disable=wrong-import-position
@@ -63,12 +64,12 @@ import methods as m #pylint: disable=import-error
 import const as c   #pylint: disable=import-error
 
 # First party modules
-import common_io  as cio
+import common_io as cio
 
 
 # Module development info
-VERSION_NUMBER = "0.9"
-VERSION_DATE = "31/10/2025"
+VERSION_NUMBER = "0.10"
+VERSION_DATE = "12/12/2025"
 AUTHORS = "Alex Christison, fixes by James Ramsey"
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
@@ -196,6 +197,14 @@ def get_atom_positions(aim_file: IO[str]) -> tuple[object, object]:
         Warns if the files it needs to create already exist & backs up the existing ones
     """
 
+    # Flag that we have a bzip2ed archive if detected, unzip and update file name to remove the .bz2 extension
+    bz2ed_file = False
+    if re.search(c.RE_BZIP_FILE, aim_file):
+        bz2ed_file = True
+        bz2ed_aim_file = aim_file
+        aim_file = re.sub(c.RE_BZIP_FILE, "", bz2ed_aim_file)
+        subprocess.run(f"bunzip2 {bz2ed_aim_file}", shell=True, check=True)
+
     # Strip filename out of inputted AIMPRO output file, to handle filepaths
     aim_file_root_name = PurePosixPath(aim_file).name
 
@@ -218,6 +227,10 @@ def get_atom_positions(aim_file: IO[str]) -> tuple[object, object]:
 
     # Read in otb values, they will be in the atomic reference frame
     result = m.read_otb(f"otb.xyz.{aim_file_root_name}.init")
+
+    # Rezip bz2ed file if required
+    if bz2ed_file:
+        subprocess.run(f"bzip2 {aim_file}", shell=True, check=True)
 
     # Only need species_index and atom positions
     species_ind = result[0]
@@ -270,97 +283,103 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
     dat_file_search = False
     in_pos_section = False
 
-    # Open AIMPRO file, read line by line and extract data
-    with open(aimpro_output_file, "r",  encoding="UTF-8") as infile:
+    # Open AIMPRO file, handling bzip2 archives if detected, read line by line and extract data
 
-        # Read whole file into memory - this is more memory costly but prevents code from being I/O bound for large files
-        infile_lines = infile.read().splitlines()
+    if re.search(c.RE_BZIP_FILE, aimpro_output_file):
+        with bz2.open(aimpro_output_file, "rt") as infile:
+            # Read whole file into memory - this is more memory costly but prevents code from being I/O bound for large files
+            infile_lines = infile.read().splitlines()
 
-        for line in infile_lines:
+    else:
+        with open(aimpro_output_file, "r",  encoding="UTF-8") as infile:
+            # Read whole file into memory - this is more memory costly but prevents code from being I/O bound for large files
+            infile_lines = infile.read().splitlines()
 
-            # Skip comment lines
-            if re.search(c.RE_AIM_COMMENT, line):
+    for line in infile_lines:
+
+        # Skip comment lines
+        if re.search(c.RE_AIM_COMMENT, line):
+            continue
+
+        # Update flags
+        if c.RE_DAT_START in line:
+            dat_file_search = True
+        elif c.RE_DAT_END in line:
+            dat_file_search = False
+        elif c.RE_POSITIONS_START in line:
+            in_pos_section = True
+        elif c.RE_POSITIONS_END in line:
+            in_pos_section = False
+
+        # If flags tell us we are in dat section of AIM.sh.o*, Regex for the data we want
+        if dat_file_search and not in_pos_section:
+
+            partial_protons_search = re.search(c.RE_PARTIAL_PROTONS, line)
+
+            # Error if species with partial protons detected
+            if partial_protons_search:
+                raise Exception(f"unphysical input in {aimpro_output_file} - unable to parse {partial_protons_search.group(2)}\
+                                    species with unphysical partial protons: {partial_protons_search.group(1)}")
+
+            species_search = re.search(c.RE_SPECIES_EXTRACT, line)
+            ghost_search = re.search(c.RE_GHOST, line)
+
+            # Extract proton number of species and add to list in order (including GHOST atoms, we will filter them out later)
+            if species_search:
+                species_proton_num_list.append(int(species_search.group(1)))
+
+                if verbose_output:
+                    print(f"Species of type {species_search.group(2)} detected\n")
+
+            if ghost_search:
+                species_proton_num_list.append(int(ghost_search.group(1)))
+                ghost_species_found = True
+
+                if verbose_output:
+                    print(f"Species of type {ghost_search.group(2)} detected\n")
+
+        # If we are outside dat region, we want to search for the potential data
+        if not dat_file_search and not in_pos_section:
+
+            pot_header_search = re.search(c.RE_POTENTIALS_HEADER, line)
+
+            # Set flags to True to indicate this was a potential job, and we are in the potential region
+            if not potential_job_run and not in_potential_output and pot_header_search:
+                potential_job_run = True
+                in_potential_output = True
                 continue
 
-            # Update flags
-            if c.RE_DAT_START in line:
-                dat_file_search = True
-            elif c.RE_DAT_END in line:
-                dat_file_search = False
-            elif c.RE_POSITIONS_START in line:
-                in_pos_section = True
-            elif c.RE_POSITIONS_END in line:
-                in_pos_section = False
+            # We are in the potential region, so record data
+            if in_potential_output:
 
-            # If flags tell us we are in dat section of AIM.sh.o*, Regex for the data we want
-            if dat_file_search and not in_pos_section:
+                # Save grid points and all potential contributions (Columns 1-6)
+                split_line = line.split()
 
-                partial_protons_search = re.search(c.RE_PARTIAL_PROTONS, line)
-
-                # Error if species with partial protons detected
-                if partial_protons_search:
-                    raise Exception(f"unphysical input in {aimpro_output_file} - unable to parse {partial_protons_search.group(2)}\
-                                        species with unphysical partial protons: {partial_protons_search.group(1)}")
-
-                species_search = re.search(c.RE_SPECIES_EXTRACT, line)
-                ghost_search = re.search(c.RE_GHOST, line)
-
-                # Extract proton number of species and add to list in order (including GHOST atoms, we will filter them out later)
-                if species_search:
-                    species_proton_num_list.append(int(species_search.group(1)))
-
-                    if verbose_output:
-                        print(f"Species of type {species_search.group(2)} detected\n")
-
-                if ghost_search:
-                    species_proton_num_list.append(int(ghost_search.group(1)))
-                    ghost_species_found = True
-
-                    if verbose_output:
-                        print(f"Species of type {ghost_search.group(2)} detected\n")
-
-            # If we are outside dat region, we want to search for the potential data
-            if not dat_file_search and not in_pos_section:
-
-                pot_header_search = re.search(c.RE_POTENTIALS_HEADER, line)
-
-                # Set flags to True to indicate this was a potential job, and we are in the potential region
-                if not potential_job_run and not in_potential_output and pot_header_search:
-                    potential_job_run = True
-                    in_potential_output = True
-                    continue
-
-                # We are in the potential region, so record data
-                if in_potential_output:
-
-                    # Save grid points and all potential contributions (Columns 1-6)
-                    split_line = line.split()
-
-                    # If we have already read in as many lines of potential as we expect, check that the next line is empty.
-                    # If it isn't there is more data than we are expecting and something has gone wrong
-                    if pot_count == expected_lines_of_pot:
-                        if split_line == []: # Line at the end of potential output is a new line char
-                            in_potential_output = False
-                            continue
-                        raise Exception(f"more potential output detected in {aimpro_output_file} than expected from {grid_vectors_input_file}\
-                                                - are you sure {grid_vectors_input_file} is the correct grid vectors input file?")
-
-                    # Check that the line isn't empty, if it is raise an error as there are too few lines in the potential output
-                    if pot_count < expected_lines_of_pot and split_line == []:
-                        raise Exception(f"less potential output detected in {aimpro_output_file} than expected from {grid_vectors_input_file}\
+                # If we have already read in as many lines of potential as we expect, check that the next line is empty.
+                # If it isn't there is more data than we are expecting and something has gone wrong
+                if pot_count == expected_lines_of_pot:
+                    if split_line == []: # Line at the end of potential output is a new line char
+                        in_potential_output = False
+                        continue
+                    raise Exception(f"more potential output detected in {aimpro_output_file} than expected from {grid_vectors_input_file}\
                                             - are you sure {grid_vectors_input_file} is the correct grid vectors input file?")
 
-                    # Map to floats
-                    split_line[1:6] = map(float, split_line[1:6])
+                # Check that the line isn't empty, if it is raise an error as there are too few lines in the potential output
+                if pot_count < expected_lines_of_pot and split_line == []:
+                    raise Exception(f"less potential output detected in {aimpro_output_file} than expected from {grid_vectors_input_file}\
+                                        - are you sure {grid_vectors_input_file} is the correct grid vectors input file?")
 
-                    # Save positions
-                    aim_grid_points[pot_count] = np.array(split_line[1:4])
+                # Map to floats
+                split_line[1:6] = map(float, split_line[1:6])
 
-                    # Save the potential value, which is the sum of the local and Hartree potentials. AIMPRO outputs this in units of Hartrees.
-                    aim_pot_values[pot_count] = np.sum(np.array(split_line[4:6]))
+                # Save positions
+                aim_grid_points[pot_count] = np.array(split_line[1:4])
 
-                    # Increment count of number of lines we have read in
-                    pot_count+=1
+                # Save the potential value, which is the sum of the local and Hartree potentials. AIMPRO outputs this in units of Hartrees.
+                aim_pot_values[pot_count] = np.sum(np.array(split_line[4:6]))
+
+                # Increment count of number of lines we have read in
+                pot_count+=1
 
     # Error if we haven't detected a potential job run, looks like AIMPRO file wasn't a potential job output
     if not potential_job_run:
@@ -485,6 +504,12 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
     Raises:
         None
     """
+
+    # If we have a bz2ed archive update file name to remove the .bz2 extension
+    if re.search(c.RE_BZIP_FILE, aimpro_output_file):
+        bz2ed_aimpro_output_file = aimpro_output_file
+        aimpro_output_file = re.sub(c.RE_BZIP_FILE, "", bz2ed_aimpro_output_file)
+
     # Strip filename out of inputted AIMPRO output file, to handle filepaths
     aimpro_output_file_root_name = PurePosixPath(aimpro_output_file).name
 

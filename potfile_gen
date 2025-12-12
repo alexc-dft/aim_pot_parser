@@ -94,8 +94,8 @@ import numpy as np
 import common_io as cio
 
 # Module development info
-VERSION_NUMBER = "0.2"
-VERSION_DATE = "11/08/2025"
+VERSION_NUMBER = "0.3"
+VERSION_DATE = "12/12/2025"
 AUTHORS = "Alex Christison"
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 

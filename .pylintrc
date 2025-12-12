@@ -11,4 +11,4 @@ max-branches=30
 
 [MESSAGES CONTROL]
 # The messages here are disabled as they are acceptable warnings
-disable=broad-exception-raised, global-variable-undefined
+disable=broad-exception-raised, global-variable-undefined, too-many-nested-blocks
