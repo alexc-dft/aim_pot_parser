@@ -62,7 +62,7 @@ Repeats_C(int)  C_x(float)  C_y(float)  C_z(float)
 All vectors are in atomic units (i.e. Bohr).  
 Origin must be specified even if all values are zero.  
 
-Repeats values must be >= 1.  
+Repeats values must be integers >= 1.  
 Vector components an have any valid float value.  
 Origin components can have any valid float value.  
 

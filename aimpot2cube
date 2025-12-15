@@ -69,8 +69,8 @@ import common_io as cio
 
 
 # Module development info
-VERSION_NUMBER = "0.12"
-VERSION_DATE = "12/12/2025"
+VERSION_NUMBER = "0.13"
+VERSION_DATE = "15/12/2025"
 AUTHORS = "Alex Christison, fixes by James Ramsey"
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
@@ -96,7 +96,7 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
         Errors & exits with message if incorrect number of args detected.
         Errors & exits with message if provided input file does not exist.
     """
-    global verbose_output, debug, use_hartree, use_ev, use_rydberg, print_average_v
+    global verbose_output, debug, use_hartree, use_ev, use_rydberg, print_average_v, use_legacy_input_format
 
     parser = argparse.ArgumentParser(
                     prog = "aimpot2cube",
@@ -106,14 +106,15 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
                         \ncubefile format: https://paulbourke.net/dataformats/cube/",
                     epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.") #pylint: disable=duplicate-code
 
-    parser.add_argument("-v", "--verbose",                                                                  #pylint: disable=duplicate-code
-                        action = "store_true",                                                              #pylint: disable=duplicate-code
-                        help = "turn on verbose output mode, this prints useful status info to screen")     #pylint: disable=duplicate-code
+    parser.add_argument("-v", "--verbose",                                                                      #pylint: disable=duplicate-code
+                        action = "store_true",                                                                  #pylint: disable=duplicate-code
+                        default = False,                                                                        #pylint: disable=duplicate-code
+                        help = "turn on verbose output mode, this prints useful status info to screen")         #pylint: disable=duplicate-code
 
-    parser.add_argument("-d", "--debug",                                                                    #pylint: disable=duplicate-code
-                        action = "store_true",                                                              #pylint: disable=duplicate-code
-                        default = False,                                                                    #pylint: disable=duplicate-code
-                        help = "turn on debug mode (for developers only)")                                  #pylint: disable=duplicate-code
+    parser.add_argument("-d", "--debug",                                                                        #pylint: disable=duplicate-code
+                        action = "store_true",                                                                  #pylint: disable=duplicate-code
+                        default = False,                                                                        #pylint: disable=duplicate-code
+                        help = "turn on debug mode (for developers only)")                                      #pylint: disable=duplicate-code
 
     parser.add_argument("-pav", "--print-average-V",
                         action = "store_true",
@@ -121,6 +122,13 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
                         default = False,
                         help = "prints a volume averaged (V_unit/bohr^3) value for the electrostaic potential, \
                                 useful for convergence testing sampling grid densities (of grid with constant volume) for the potfile_gen input file")
+
+    parser.add_argument("-li", "--legacy-input-file",                                                           #pylint: disable=duplicate-code
+                        action = "store_true",                                                                  #pylint: disable=duplicate-code
+                        default = False,                                                                        #pylint: disable=duplicate-code
+                        dest = "legacy_input_file",
+                        help = "use the legacy grid vectors input file format (orign, repeats & grid vectors) \
+                                rather than the current one (grid density & real space lattice vectors)")       #pylint: disable=duplicate-code
 
     group = parser.add_mutually_exclusive_group(required=False)
 
@@ -152,6 +160,7 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
     verbose_output = args.verbose
     debug = args.debug
     print_average_v = args.print_average_v
+    use_legacy_input_format = args.legacy_input_file
     use_hartree = args.Hartree
     use_ev = args.electron_volts
     use_rydberg = args.Rydberg
@@ -399,12 +408,10 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
         aim_pot_values *= c.HA2RY
         if verbose_output:
             print("Potential values converted to Rydberg\n")
-
     elif use_ev:
         aim_pot_values *= c.HA2EV
         if verbose_output:
             print("Potential values converted to eV\n")
-
     else:
         if verbose_output:
             print("Potential values left in Hartree\n")
@@ -596,7 +603,10 @@ def main() -> None:
     gv_infile, aim_infile = read_commmand_line()
 
     # Get repeats, vectors and generate grid points array from grid vectors input file
-    rep, vec, orig = cio.read_grid_vectors(gv_infile, verbose_output)
+    if use_legacy_input_format:
+        rep, vec, orig = cio.read_grid_vectors_legacy_input(gv_infile, verbose_output)
+    else:
+        rep, vec, orig = cio.read_grid_vectors(gv_infile, verbose_output)
 
     # Generate grid points from grid vectors, used later to validate grid in AIMPRO input file
     pts, num_pts = cio.generate_grid_points(rep, vec, orig, verbose_output)

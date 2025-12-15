@@ -30,8 +30,8 @@ from numba import jit
 import const as c   #pylint: disable=import-error
 
 # Module development info
-VERSION_NUMBER = "0.4"
-VERSION_DATE = "12/12/2025"
+VERSION_NUMBER = "0.5"
+VERSION_DATE = "15/12/2025"
 AUTHORS = "Alex Christison"
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
 
@@ -46,10 +46,83 @@ CUBE_OUTPUT_FILENAME = ".cube"
 # AIMPRO parser shared I/O routines
 
 def read_grid_vectors(grid_vectors_input_file: str, verbose_output: Optional[bool] = False) -> tuple[object, object, object]:
-    """Reads grid vectors an repeats from input file
+    """Reads grid vectors and repeats from input file using the current input file format (grid density and real space lattice vectors)
 
     The grid of points is regenerated to validate the points in the AIMPRO output.
 
+    Args:
+        grid_vectors_input_file: Grid vectors input filename/path
+        verbose_output (Optional, default False): turns on verbose output mode
+
+    Returns:
+        repeats: number of repeats of each vector
+        vectors: grid vectors
+        origin: parallelepiped grid origin (hardcoded to (0.0 0.0 0.0) in this imput file format)
+
+    Raises:
+        Errors & exits with message if incorrect input file format detected.
+        Errors & exits with message if incorrect input values are detected.
+    """
+
+    # Define lists to store real space lattice vectors & grid_density
+    grid_density = np.zeros((3), dtype=int)
+    lattice_vectors = np.zeros((3, 3))
+    # Origin hard coded to (0.0, 0.0, 0.0) in this input file format
+    origin = np.zeros((3))
+
+    # Read in input file, handling bzip2 archives if detected
+    if re.search(c.RE_BZIP_FILE, grid_vectors_input_file):
+        with bz2.open(grid_vectors_input_file, "rt") as infile:
+            raw_input = infile.readlines()
+    else:
+        with open(grid_vectors_input_file, "r", encoding="UTF-8") as infile:
+            raw_input = infile.readlines()
+
+    if len(raw_input) != 3:
+        raise Exception(f"incorrect input file format - {grid_vectors_input_file} must have only 3 rows")
+
+    index = 0
+    for row in raw_input:
+
+        # Split in individual items
+        split_row = row.split()
+
+        if len(split_row) != 4:
+            raise Exception(f"incorrect input file format - {grid_vectors_input_file} origin row must have only 4 columns")
+
+        # Cast grid_density to integer and add to numpy array
+        split_row[0] = int(split_row[0])
+        grid_density[index] = np.array(split_row[0])
+
+        # Map vectors to floats and add to numpy array
+        split_row[1:4] = map(float,split_row[1:4])
+        lattice_vectors[index, :] = np.array(split_row[1:4])
+
+        # Increment index
+        index+=1
+
+    # Error checking to ensure input values are valid
+    if any(grid_density < 1):
+        raise ValueError(f"grid density values in {grid_vectors_input_file} must be integers >= 1")
+
+    # Calculate grid vectors from real space lattice vectors and grid density
+    lattice_vectors /= grid_density[:, None]
+
+    # Write out grid vectors input if verbose_output enabled
+    if verbose_output:
+        print("Input grid vector data:\n")
+        print(f"{origin[0]:12.6f} {origin[1]:12.6f} {origin[2]:12.6f}")
+        for i, value in enumerate(grid_density):
+            print(f"{value:5d} {lattice_vectors[i, 0]:12.6f} {lattice_vectors[i, 1]:12.6f} {lattice_vectors[i, 2]:12.6f}")
+        print("\n")
+
+    return grid_density, lattice_vectors, origin
+
+
+def read_grid_vectors_legacy_input(grid_vectors_input_file: str, verbose_output: Optional[bool] = False) -> tuple[object, object, object]:
+    """Reads grid vectors and repeats from input file using the legacy input file format (origin, grid vectors and repeats)
+
+    The grid of points is regenerated to validate the points in the AIMPRO output.
 
     Args:
         grid_vectors_input_file: Grid vectors input filename/path
@@ -79,7 +152,7 @@ def read_grid_vectors(grid_vectors_input_file: str, verbose_output: Optional[boo
             raw_input = infile.readlines()
 
     if len(raw_input) != 4:
-        raise Exception(f"incorrect input file format - {grid_vectors_input_file} must have only 4 rows")
+        raise Exception(f"incorrect input file format - legacy {grid_vectors_input_file} must have only 4 rows")
 
     index = 0
     for row in raw_input:
@@ -88,9 +161,9 @@ def read_grid_vectors(grid_vectors_input_file: str, verbose_output: Optional[boo
         split_row = row.split()
 
         if index == 0 and len(split_row) != 3:
-            raise Exception(f"incorrect input file format - {grid_vectors_input_file} origin row must have only 3 columns")
+            raise Exception(f"incorrect input file format - legacy {grid_vectors_input_file} origin row must have only 3 columns")
         if index > 0 and len(split_row) != 4:
-            raise Exception(f"incorrect input file format - {grid_vectors_input_file} grid vectors row must have only 4 columns")
+            raise Exception(f"incorrect input file format - legacy {grid_vectors_input_file} grid vectors row must have only 4 columns")
 
         if index == 0:
             # Map origin components to float and add to numpy array
@@ -111,7 +184,7 @@ def read_grid_vectors(grid_vectors_input_file: str, verbose_output: Optional[boo
 
     # Error checking to ensure input values are valid
     if any(repeats < 1):
-        raise ValueError(f"repeats values in {grid_vectors_input_file} must be >= 1")
+        raise ValueError(f"repeats values in {grid_vectors_input_file} must be integers >= 1")
 
     # Write out grid vectors input if verbose_output enabled
     if verbose_output:

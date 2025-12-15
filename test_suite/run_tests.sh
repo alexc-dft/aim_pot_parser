@@ -21,6 +21,22 @@ cd $test_dir
 
 test=${test_dir%/}
 
+test_legacy_input="${test}-legacy-input"
+
+# Run potfile_gen
+python ../../potfile_gen -li test_legacy.in.benchmark || { echo "Error: potfile_gen failed to run">&2; exit 2; }
+
+mv "pot_file" "pot_file_legacy_input"
+
+# Diff for result
+diff_str=$(diff "pot_file.benchmark" "pot_file_legacy_input"); [ $? -gt 1 ] && exit 4
+
+# Check diff
+if [ "$diff_str" != "" ]; then
+    failed_test_array+=($test_dir)
+    echo "$diff_str" > ${test}.diff
+fi
+
 # Run potfile_gen
 python ../../potfile_gen test.in.benchmark || { echo "Error: potfile_gen failed to run">&2; exit 2; }
 
@@ -32,7 +48,6 @@ if [ "$diff_str" != "" ]; then
     failed_test_array+=($test_dir)
     echo "$diff_str" > ${test}.diff
 fi
-
 
 cd ../
 
@@ -66,7 +81,7 @@ fi
 cp "AIM.sh.o_hartree.benchmark" "AIM.sh.o_hartree.test"
 
 # Run aimpot2cube
-python ../../aimpot2cube -Ha AIM.sh.o_hartree.test test_hartree.in.benchmark || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
+python ../../aimpot2cube -Ha AIM.sh.o_hartree.test test.in.benchmark || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
 
 # Diff for result
 diff_str=$(diff "AIM.sh.o_hartree.test_Ha.cube.benchmark" "AIM.sh.o_hartree.test_Ha.cube"); [ $? -gt 1 ] && exit 4
@@ -84,7 +99,7 @@ fi
 cp "AIM.sh.o_rydberg.benchmark" "AIM.sh.o_rydberg.test"
 
 # Run aimpot2cube
-python ../../aimpot2cube AIM.sh.o_rydberg.test test_rydberg.in.benchmark || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
+python ../../aimpot2cube AIM.sh.o_rydberg.test test.in.benchmark || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
 
 # Diff for result
 diff_str=$(diff "AIM.sh.o_rydberg.test_Ry.cube.benchmark" "AIM.sh.o_rydberg.test_Ry.cube"); [ $? -gt 1 ] && exit 4

@@ -1,5 +1,5 @@
 Cubefile created from AIMPRO output using aimpot2cube parser: Copyright (c) A Christison 2025 All Rights Reserved
-Contains the total potential from AIM.sh.o_hartree.test on the grid specified in test_hartree.in.benchmark in Hartree, positional data in Bohr
+Contains the total potential from AIM.sh.o_hartree.test on the grid specified in test.in.benchmark in Hartree, positional data in Bohr
     8    0.000000    0.000000    0.000000
     5    1.000000    0.000000    0.000000
     5    0.000000    1.000000    0.000000
