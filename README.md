@@ -30,7 +30,7 @@ Scripts can be made executable all locations in file system via chmod u+x and ad
 3. Use aimpot2cube to pass AIMPRO results into the .cube format
 
 ## potfile_gen usage
-regGridPlot [options] [grid_vectors_input_file]
+potfile_gen [options] grid_vectors_input_file
 
 This script plots a regular grid in the required format for the potential job in the AIMPRO code that is valid for cubefile plotting.
 
@@ -49,7 +49,7 @@ The output pot_file is written to the current working directory
 -v, --verbose: turn on verbose output mode, this prints useful status info to screen  
 -d, --debug: turn on debug mode (for developers only)  
 
-[grid_vectors_input_file]  
+grid_vectors_input_file  
 Specifies the vectors & the number of their repeats defining the grid of points centered on each voxel of the parallelepiped plotting volume, as well as the origin of the parallelepiped plotting volume, this can also be a filepath and/or bzip2 archive to/of the file.  
 The file is delimited by whitespace and has the format:  
 
