@@ -158,6 +158,8 @@ See potfile_gen documentation.
 ### Known issues
 None  
 
+# Legacy info
+
 #### Legacy grid_vectors_input_file file format
 
 This is the legacy input file format, the `-li` or `--legacy-input-file` flag must be used for both scripts in order to read this file format.
