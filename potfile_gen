@@ -85,10 +85,10 @@ import numpy as np
 import common_io as cio
 
 # Module development info
-VERSION_NUMBER = "0.5"
-VERSION_DATE = "15/12/2025"
-AUTHORS = "Alex Christison"
-COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"
+VERSION_NUMBER = "1.0"                                              #pylint: disable=duplicate-code
+VERSION_DATE = "16/12/2025"                                         #pylint: disable=duplicate-code
+AUTHORS = "Alex Christison"                                         #pylint: disable=duplicate-code
+COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"   #pylint: disable=duplicate-code
 
 def read_commmand_line() -> Optional[IO[str]]:
     """Gets input filename
