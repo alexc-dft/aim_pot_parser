@@ -25,7 +25,9 @@ https://paulbourke.net/dataformats/cube/
 -d,  --debug: turn on debug mode (for developers only)
 -pav, --print-average-v: prints a volume averaged (V_unit/bohr^3) value for the electrostaic potential, useful for convergence testing
                         sampling grid densities (of grid with constant volume) for the potfile_gen input file
--Ha, --Hartree: output potential in Hartee (default is Rydberg if none provided)
+-li, --legacy-input-file: use the legacy grid vectors input file format (orign, repeats & grid vectors) rather than the current one
+                          (grid density & real space lattice vectors) (see end of README for details)
+-Ha, --Hartree: output potential in Hartree (default is Rydberg if none provided)
 -eV, --electron-volts: output potential in electron volts (default is Rydberg if none provided)
 -Ry, --Rydberg: output potential in Rydberg (default is Rydberg if none provided)
 
@@ -135,7 +137,7 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
     group.add_argument("-Ha", "--Hartree",
                         action = "store_true",
                         default = False,
-                        help = "output potential in Hartee (default is Rydberg if none provided)")
+                        help = "output potential in Hartree (default is Rydberg if none provided)")
 
     group.add_argument("-eV", "--electron-volts",
                         action = "store_true",
