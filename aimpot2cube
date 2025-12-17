@@ -541,11 +541,13 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
         else:
             v_unit = "Ha"
 
+        # Calculate volume averaged potential
         full_grid_vectors = repeats * vectors
-        grid_vol = np.linalg.det(full_grid_vectors)
-        average_v = np.sum(potential_values) / grid_vol
+        grid_volume = np.linalg.det(full_grid_vectors)
+        num_points_averaged_v = np.sum(potential_values) / np.prod(repeats)
+        volume_averaged_v = num_points_averaged_v / grid_volume
 
-        print(f"Volume averaged potental: {average_v} {v_unit}/bohr^3\n")
+        print(f"Volume averaged potental: {volume_averaged_v} {v_unit}/bohr^3\n")
 
     outpath = Path.cwd() / cube_output_file
 
