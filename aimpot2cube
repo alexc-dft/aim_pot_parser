@@ -553,7 +553,7 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
         else:
             v_max_diff = np.max(potential_values) - np.min(potential_values)
 
-        print(f"Volume averaged potential: {volume_averaged_v} {v_unit}/bohr^3; Max potential difference: {v_max_diff} {v_unit}\n")
+        print(f"Volume averaged potential: {volume_averaged_v:.10f} {v_unit}/bohr^3; Max potential difference: {v_max_diff:.10f} {v_unit}\n")
 
     outpath = Path.cwd() / cube_output_file
 
