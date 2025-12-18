@@ -71,8 +71,8 @@ import common_io as cio
 
 
 # Module development info
-VERSION_NUMBER = "1.0"                                              #pylint: disable=duplicate-code
-VERSION_DATE = "16/12/2025"                                         #pylint: disable=duplicate-code
+VERSION_NUMBER = "1.1"                                              #pylint: disable=duplicate-code
+VERSION_DATE = "18/12/2025"                                         #pylint: disable=duplicate-code
 AUTHORS = "Alex Christison, fixes by James Ramsey"                  #pylint: disable=duplicate-code
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"   #pylint: disable=duplicate-code
 
@@ -98,7 +98,7 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
         Errors & exits with message if incorrect number of args detected.
         Errors & exits with message if provided input file does not exist.
     """
-    global verbose_output, debug, use_hartree, use_ev, use_rydberg, print_average_v, use_legacy_input_format
+    global verbose_output, debug, use_hartree, use_ev, use_rydberg, print_v_info, use_legacy_input_format
 
     parser = argparse.ArgumentParser(
                     prog = "aimpot2cube",
@@ -118,11 +118,11 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
                         default = False,                                                                                #pylint: disable=duplicate-code
                         help = "turn on debug mode (for developers only)")                                              #pylint: disable=duplicate-code
 
-    parser.add_argument("-pav", "--print-average-V",
+    parser.add_argument("-pvi", "--print-V-info",
                         action = "store_true",
-                        dest = "print_average_v",
+                        dest = "print_v_info",
                         default = False,
-                        help = "prints a volume averaged (V_unit/bohr^3) value for the electrostaic potential, \
+                        help = "prints a volume averaged (V_unit/bohr^3) value and maximum variation of the electrostaic potential, \
                                 useful for convergence testing sampling grid densities (of grid with constant volume) for the potfile_gen input file")
 
     parser.add_argument("-li", "--legacy-input-file",                                                                   #pylint: disable=duplicate-code
@@ -161,7 +161,7 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
     args = parser.parse_args()
     verbose_output = args.verbose
     debug = args.debug
-    print_average_v = args.print_average_v
+    print_v_info = args.print_v_info
     use_legacy_input_format = args.legacy_input_file
     use_hartree = args.Hartree
     use_ev = args.electron_volts
@@ -533,7 +533,7 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
         cube_output_file = aimpro_output_file_root_name + "_Ha" + cio.CUBE_OUTPUT_FILENAME
 
     # Print volume averaged potential value to screen if required
-    if print_average_v:
+    if print_v_info:
         if use_rydberg:
             v_unit = "Ry"
         elif use_ev:
@@ -544,10 +544,16 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
         # Calculate volume averaged potential
         full_grid_vectors = repeats * vectors
         grid_volume = np.linalg.det(full_grid_vectors)
-        num_points_averaged_v = np.sum(potential_values) / np.prod(repeats)
+        num_grid_points = np.prod(repeats)
+        num_points_averaged_v = np.sum(potential_values) / num_grid_points
         volume_averaged_v = num_points_averaged_v / grid_volume
 
-        print(f"Volume averaged potental: {volume_averaged_v} {v_unit}/bohr^3\n")
+        if num_grid_points == 1:
+            v_max_diff = None
+        else:
+            v_max_diff = np.max(potential_values) - np.min(potential_values)
+
+        print(f"Volume averaged potential: {volume_averaged_v} {v_unit}/bohr^3; Max potential difference: {v_max_diff} {v_unit}\n")
 
     outpath = Path.cwd() / cube_output_file
 
