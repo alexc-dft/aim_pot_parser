@@ -19,7 +19,7 @@ The output pot_file is written to the current working directory
 -h, --help: display help dialogue
 -v, --verbose: turn on verbose output mode, this prints useful status info to screen
 -d, --debug: turn on debug mode (for developers only)
--li, --legacy-input-file: use the legacy grid vectors input file format (orign, repeats & grid vectors) rather than the current one
+-li, --legacy-input-file: use the legacy grid vectors input file format (origin, repeats & grid vectors) rather than the current one
                         (grid density & (supercell) real space lattice vectors) (see end of README for details)
 
 grid_vectors_input_file

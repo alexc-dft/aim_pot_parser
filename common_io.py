@@ -18,6 +18,7 @@ import re
 import sys
 
 # Wrangle submodule path
+# !!!Note __file__ isn't always safe, e.g. in non-local imported modules!!!
 SUBMODULE_PATH = Path(__file__).resolve().parent  / "aim_utils"     #pylint: disable=wrong-import-position
 SUBM_PATH_STR = SUBMODULE_PATH.absolute().as_posix()                #pylint: disable=wrong-import-position
 

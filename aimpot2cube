@@ -23,9 +23,9 @@ https://paulbourke.net/dataformats/cube/
 -h,  --help: display help dialogue
 -v,  --verbose: turn on verbose output mode, this prints useful status info to screen
 -d,  --debug: turn on debug mode (for developers only)
--pav, --print-average-v: prints a volume averaged (V_unit/bohr^3) value for the electrostaic potential, useful for convergence testing
+-pav, --print-average-v: prints a volume averaged (V_unit/bohr^3) value and maximum variation of the electrostatic potential, useful for convergence testing
                         sampling grid densities (of grid with constant volume) for the potfile_gen input file
--li, --legacy-input-file: use the legacy grid vectors input file format (orign, repeats & grid vectors) rather than the current one
+-li, --legacy-input-file: use the legacy grid vectors input file format (origin, repeats & grid vectors) rather than the current one
                           (grid density & (supercell) real space lattice vectors) (see end of README for details)
 -Ha, --Hartree: output potential in Hartree (default is Rydberg if none provided)
 -eV, --electron-volts: output potential in electron volts (default is Rydberg if none provided)
@@ -55,6 +55,7 @@ from io import StringIO
 import bz2
 
 # Wrangle submodule path
+# !!!Note __file__ isn't always safe, e.g. in non-local imported modules!!!
 SUBMODULE_PATH = Path(__file__).resolve().parent  / "aim_utils"     #pylint: disable=wrong-import-position
 SUBM_PATH_STR = SUBMODULE_PATH.absolute().as_posix()                #pylint: disable=wrong-import-position
 
@@ -122,7 +123,7 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
                         action = "store_true",
                         dest = "print_v_info",
                         default = False,
-                        help = "prints a volume averaged (V_unit/bohr^3) value and maximum variation of the electrostaic potential, \
+                        help = "prints a volume averaged (V_unit/bohr^3) value and maximum variation of the electrostatic potential, \
                                 useful for convergence testing sampling grid densities (of grid with constant volume) for the potfile_gen input file")
 
     parser.add_argument("-li", "--legacy-input-file",                                                                   #pylint: disable=duplicate-code
@@ -541,18 +542,17 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
         else:
             v_unit = "Ha"
 
-        # Calculate volume averaged potential
+        # Calculate volume averaged and max diff in potential
         full_grid_vectors = repeats * vectors
         grid_volume = np.linalg.det(full_grid_vectors)
         num_grid_points = np.prod(repeats)
+
         num_points_averaged_v = np.sum(potential_values) / num_grid_points
         volume_averaged_v = num_points_averaged_v / grid_volume
 
-        if num_grid_points == 1:
-            v_max_diff = None
-        else:
-            v_max_diff = np.max(potential_values) - np.min(potential_values)
+        v_max_diff = np.max(potential_values) - np.min(potential_values)
 
+        # print out potential info in format matching the precision in the AIMPRO output file
         print(f"Volume averaged potential: {volume_averaged_v:.10f} {v_unit}/bohr^3; Max potential difference: {v_max_diff:.10f} {v_unit}\n")
 
     outpath = Path.cwd() / cube_output_file
