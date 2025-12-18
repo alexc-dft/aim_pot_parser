@@ -26,7 +26,7 @@ https://paulbourke.net/dataformats/cube/
 -pav, --print-average-v: prints a volume averaged (V_unit/bohr^3) value for the electrostaic potential, useful for convergence testing
                         sampling grid densities (of grid with constant volume) for the potfile_gen input file
 -li, --legacy-input-file: use the legacy grid vectors input file format (orign, repeats & grid vectors) rather than the current one
-                          (grid density & real space lattice vectors) (see end of README for details)
+                          (grid density & (supercell) real space lattice vectors) (see end of README for details)
 -Ha, --Hartree: output potential in Hartree (default is Rydberg if none provided)
 -eV, --electron-volts: output potential in electron volts (default is Rydberg if none provided)
 -Ry, --Rydberg: output potential in Rydberg (default is Rydberg if none provided)
@@ -73,7 +73,7 @@ import common_io as cio
 # Module development info
 VERSION_NUMBER = "1.0"                                              #pylint: disable=duplicate-code
 VERSION_DATE = "16/12/2025"                                         #pylint: disable=duplicate-code
-AUTHORS = "Alex Christison, fixes by James Ramsey"                   #pylint: disable=duplicate-code
+AUTHORS = "Alex Christison, fixes by James Ramsey"                  #pylint: disable=duplicate-code
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"   #pylint: disable=duplicate-code
 
 # Perl script path details
@@ -108,15 +108,15 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
                         \ncubefile format: https://paulbourke.net/dataformats/cube/",
                     epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.") #pylint: disable=duplicate-code
 
-    parser.add_argument("-v", "--verbose",                                                                      #pylint: disable=duplicate-code
-                        action = "store_true",                                                                  #pylint: disable=duplicate-code
-                        default = False,                                                                        #pylint: disable=duplicate-code
-                        help = "turn on verbose output mode, this prints useful status info to screen")         #pylint: disable=duplicate-code
+    parser.add_argument("-v", "--verbose",                                                                              #pylint: disable=duplicate-code
+                        action = "store_true",                                                                          #pylint: disable=duplicate-code
+                        default = False,                                                                                #pylint: disable=duplicate-code
+                        help = "turn on verbose output mode, this prints useful status info to screen")                 #pylint: disable=duplicate-code
 
-    parser.add_argument("-d", "--debug",                                                                        #pylint: disable=duplicate-code
-                        action = "store_true",                                                                  #pylint: disable=duplicate-code
-                        default = False,                                                                        #pylint: disable=duplicate-code
-                        help = "turn on debug mode (for developers only)")                                      #pylint: disable=duplicate-code
+    parser.add_argument("-d", "--debug",                                                                                #pylint: disable=duplicate-code
+                        action = "store_true",                                                                          #pylint: disable=duplicate-code
+                        default = False,                                                                                #pylint: disable=duplicate-code
+                        help = "turn on debug mode (for developers only)")                                              #pylint: disable=duplicate-code
 
     parser.add_argument("-pav", "--print-average-V",
                         action = "store_true",
@@ -125,12 +125,12 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
                         help = "prints a volume averaged (V_unit/bohr^3) value for the electrostaic potential, \
                                 useful for convergence testing sampling grid densities (of grid with constant volume) for the potfile_gen input file")
 
-    parser.add_argument("-li", "--legacy-input-file",                                                           #pylint: disable=duplicate-code
-                        action = "store_true",                                                                  #pylint: disable=duplicate-code
-                        default = False,                                                                        #pylint: disable=duplicate-code
+    parser.add_argument("-li", "--legacy-input-file",                                                                   #pylint: disable=duplicate-code
+                        action = "store_true",                                                                          #pylint: disable=duplicate-code
+                        default = False,                                                                                #pylint: disable=duplicate-code
                         dest = "legacy_input_file",
                         help = "use the legacy grid vectors input file format (orign, repeats & grid vectors) \
-                                rather than the current one (grid density & real space lattice vectors)")       #pylint: disable=duplicate-code
+                                rather than the current one (grid density & (supercell) real space lattice vectors)")   #pylint: disable=duplicate-code
 
     group = parser.add_mutually_exclusive_group(required=False)
 

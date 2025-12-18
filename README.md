@@ -60,7 +60,7 @@ The output pot_file is written to the current working directory
 `-v, --verbose`: turn on verbose output mode, this prints useful status info to screen  
 `-d, --debug`: turn on debug mode (for developers only)  
 `-li, --legacy-input-file`: use the legacy grid vectors input file format (orign, repeats & grid vectors) rather than the current one   
-                        (grid density & real space lattice vectors) (see end of README for details)  
+                        (grid density & (supercell) real space lattice vectors) (see end of README for details)  
 
 #### grid_vectors_input_file  
 Specifies the vectors & the number of their repeats defining the grid of points centered on each voxel of the parallelepiped plotting volume, as well as the origin of the parallelepiped plotting volume, this can also be a filepath and/or bzip2 archive to/of the file.  
@@ -90,7 +90,7 @@ The AIMPRO FFT grid density is often significantly more dense than required the 
 
 For the case of example_input.in, it is designed around a 1x1x1 simple cubic diamond system with a lattice constant of 6.74 Bohr and a sampling density of 20 data points in all dimensions of the unit cell.  
 
-The real space lattice vectors for a given cell geometry can be found by searching a corresponding AIMPRO output/ PAIM output for ` unit vectors : real space`, i.e.:
+The (supercell) real space lattice vectors for a given cell geometry can be found by searching a corresponding AIMPRO output/ PAIM output for ` unit vectors : real space`, i.e.:
 
 ```
  unit vectors : real space, reciprocal space
@@ -141,7 +141,7 @@ https://paulbourke.net/dataformats/cube/
 `-pav, --print-average-v`: prints a volume averaged (V_unit/bohr^3) value for the electrostatic potential, useful for convergence testing  
                         sampling grid densities (of grid with constant volume) for the potfile_gen input file  
 `-li, --legacy-input-file`: use the legacy grid vectors input file format (orign, repeats & grid vectors) rather than the current one   
-                        (grid density & real space lattice vectors) (see end of README for details)  
+                        (grid density & (supercell) real space lattice vectors) (see end of README for details)  
 `-Ha, --Hartree`: output potential in Hartree (default is Rydberg if none provided)  
 `-eV, --electron-volts`: output potential in electron volts (default is Rydberg if none provided)  
 `-Ry, --Rydberg`: output potential in Rydberg (default is Rydberg if none provided)  
