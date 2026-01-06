@@ -570,13 +570,13 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
         outfile.write("Cubefile created from AIMPRO output using aimpot2cube parser: Copyright (c) A Christison 2025 All Rights Reserved\n")
 
         if use_rydberg:
-            outfile.write(f"Contains the total potential from {aimpro_output_file} on the grid specified in {gv_file_name} in Rydberg, positional data in Bohr\n")
+            outfile.write(f"Contains the sum of the V_har + V_loc potentials from {aimpro_output_file} on the grid specified in {gv_file_name} in Rydberg, positional data in Bohr\n") #pylint:disable=line-too-long
 
         elif use_ev:
-            outfile.write(f"Contains the total potential from {aimpro_output_file} on the grid specified in {gv_file_name} in eV, positional data in Bohr\n")
+            outfile.write(f"Contains the sum of the V_har + V_loc potentials from {aimpro_output_file} on the grid specified in {gv_file_name} in eV, positional data in Bohr\n") #pylint:disable=line-too-long
 
         else:
-            outfile.write(f"Contains the total potential from {aimpro_output_file} on the grid specified in {gv_file_name} in Hartree, positional data in Bohr\n")
+            outfile.write(f"Contains the sum of the V_har + V_loc potentials from {aimpro_output_file} on the grid specified in {gv_file_name} in Hartree, positional data in Bohr\n") #pylint:disable=line-too-long
 
         # Write number of atoms & position of origin
         outfile.write(f"{num_atoms:5d}{origin[0]:12.6f}{origin[1]:12.6f}{origin[2]:12.6f}\n")
