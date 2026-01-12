@@ -19,14 +19,14 @@ test=${test_dir%/}
 
 # Remove files if they exist
 
-test_legacy_input="${test}-legacy-input"
+test_advanced_input="${test}-advanced-input"
 
-if [ -f pot_file_legacy_input ]; then
-    rm "pot_file_legacy_input"
+if [ -f pot_file_advanced_input ]; then
+    rm "pot_file_advanced_input"
 fi
 
-if [ -f ${test_legacy_input}.diff ]; then
-    rm "${test_legacy_input}.diff"
+if [ -f ${test_advanced_input}.diff ]; then
+    rm "${test_advanced_input}.diff"
 fi
 
 if [ -f pot_file ]; then

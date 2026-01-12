@@ -120,8 +120,8 @@ def read_grid_vectors(grid_vectors_input_file: str, verbose_output: Optional[boo
     return grid_density, lattice_vectors, origin
 
 
-def read_grid_vectors_legacy_input(grid_vectors_input_file: str, verbose_output: Optional[bool] = False) -> tuple[object, object, object]:
-    """Reads grid vectors and repeats from input file using the legacy input file format (origin, grid vectors and repeats)
+def read_grid_vectors_advanced_input(grid_vectors_input_file: str, verbose_output: Optional[bool] = False) -> tuple[object, object, object]:
+    """Reads grid vectors and repeats from input file using the advanced input file format (origin, grid vectors and repeats)
 
     The grid of points is regenerated to validate the points in the AIMPRO output.
 
@@ -153,7 +153,7 @@ def read_grid_vectors_legacy_input(grid_vectors_input_file: str, verbose_output:
             raw_input = infile.readlines()
 
     if len(raw_input) != 4:
-        raise Exception(f"incorrect input file format - legacy {grid_vectors_input_file} must have only 4 rows")
+        raise Exception(f"incorrect input file format - advanced {grid_vectors_input_file} must have only 4 rows")
 
     index = 0
     for row in raw_input:
@@ -162,9 +162,9 @@ def read_grid_vectors_legacy_input(grid_vectors_input_file: str, verbose_output:
         split_row = row.split()
 
         if index == 0 and len(split_row) != 3:
-            raise Exception(f"incorrect input file format - legacy {grid_vectors_input_file} origin row must have only 3 columns")
+            raise Exception(f"incorrect input file format - advanced {grid_vectors_input_file} origin row must have only 3 columns")
         if index > 0 and len(split_row) != 4:
-            raise Exception(f"incorrect input file format - legacy {grid_vectors_input_file} grid vectors row must have only 4 columns")
+            raise Exception(f"incorrect input file format - advanced {grid_vectors_input_file} grid vectors row must have only 4 columns")
 
         if index == 0:
             # Map origin components to float and add to numpy array

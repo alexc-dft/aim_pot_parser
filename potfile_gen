@@ -19,7 +19,7 @@ The output pot_file is written to the current working directory
 -h, --help: display help dialogue
 -v, --verbose: turn on verbose output mode, this prints useful status info to screen
 -d, --debug: turn on debug mode (for developers only)
--li, --legacy-input-file: use the legacy grid vectors input file format (origin, repeats & grid vectors) rather than the current one
+-aif, --advanced-input-file: use the advanced grid vectors input file format (origin, repeats & grid vectors) rather than the current one
                         (grid density & (supercell) real space lattice vectors) (see end of README for details)
 
 grid_vectors_input_file
@@ -107,7 +107,7 @@ def read_commmand_line() -> Optional[IO[str]]:
         Errors & exits with message if incorrect number of args detected.
         Errors & exits with message if provided input file does not exist.
     """
-    global verbose_output, debug, use_legacy_input_format
+    global verbose_output, debug, use_advanced_input_format
 
     parser = argparse.ArgumentParser(
                     prog = "potfile_gen",
@@ -126,11 +126,11 @@ def read_commmand_line() -> Optional[IO[str]]:
                         default = False,                                                                                #pylint: disable=duplicate-code
                         help = "turn on debug mode (for developers only)")                                              #pylint: disable=duplicate-code
 
-    parser.add_argument("-li", "--legacy-input-file",                                                                   #pylint: disable=duplicate-code
+    parser.add_argument("-aif", "--advanced-input-file",                                                                   #pylint: disable=duplicate-code
                         action = "store_true",                                                                          #pylint: disable=duplicate-code
                         default = False,                                                                                #pylint: disable=duplicate-code
-                        dest = "legacy_input_file",
-                        help = "use the legacy grid vectors input file format (orign, repeats & grid vectors) \
+                        dest = "advanced_input_file",
+                        help = "use the advanced grid vectors input file format (orign, repeats & grid vectors) \
                                 rather than the current one (grid density & (supercell) real space lattice vectors)")   #pylint: disable=duplicate-code
 
     parser.add_argument("grid_vectors_input_file",
@@ -140,7 +140,7 @@ def read_commmand_line() -> Optional[IO[str]]:
     args = parser.parse_args()
     verbose_output = args.verbose
     debug = args.debug
-    use_legacy_input_format = args.legacy_input_file
+    use_advanced_input_format = args.advanced_input_file
     input_filename = args.grid_vectors_input_file[0]
 
     # Disable traceback when not in debug mode
@@ -196,8 +196,8 @@ def main() -> None:
     filename = read_commmand_line()
 
     # Get repeats and vectors from input file
-    if use_legacy_input_format:
-        rep, vec, orig = cio.read_grid_vectors_legacy_input(filename, verbose_output)
+    if use_advanced_input_format:
+        rep, vec, orig = cio.read_grid_vectors_advanced_input(filename, verbose_output)
     else:
         rep, vec, orig = cio.read_grid_vectors(filename, verbose_output)
 

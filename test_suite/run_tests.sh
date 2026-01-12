@@ -21,15 +21,15 @@ cd $test_dir
 
 test=${test_dir%/}
 
-test_legacy_input="${test}-legacy-input"
+test_advanced_input="${test}-advanced-input"
 
 # Run potfile_gen
-python ../../potfile_gen -li test_legacy.in.benchmark || { echo "Error: potfile_gen failed to run">&2; exit 2; }
+python ../../potfile_gen -aif test_advanced.in.benchmark || { echo "Error: potfile_gen failed to run">&2; exit 2; }
 
-mv "pot_file" "pot_file_legacy_input"
+mv "pot_file" "pot_file_advanced_input"
 
 # Diff for result
-diff_str=$(diff "pot_file.benchmark" "pot_file_legacy_input"); [ $? -gt 1 ] && exit 4
+diff_str=$(diff "pot_file.benchmark" "pot_file_advanced_input"); [ $? -gt 1 ] && exit 4
 
 # Check diff
 if [ "$diff_str" != "" ]; then

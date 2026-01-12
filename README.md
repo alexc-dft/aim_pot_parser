@@ -1,4 +1,4 @@
-# aim_pot_parser - An AIMPRO potential to .cube format parser
+# aim_pot_parser - An AIMPRO potential job to .cube format parser
 Scripts for setting up a regular grid of points for AIMPRO potential calculations and parsing the results to the .cube file format 
 (potential values in Rydberg by default).
 
@@ -59,7 +59,7 @@ The output pot_file is written to the current working directory
 `-h, --help`: display help dialogue  
 `-v, --verbose`: turn on verbose output mode, this prints useful status info to screen  
 `-d, --debug`: turn on debug mode (for developers only)  
-`-li, --legacy-input-file`: use the legacy grid vectors input file format (origin, repeats & grid vectors) rather than the current one
+`-aif, --advanced-input-file`: use the advanced grid vectors input file format (origin, repeats & grid vectors) rather than the current one
                         (grid density & (supercell) real space lattice vectors) (see end of README for details)  
 
 #### grid_vectors_input_file  
@@ -85,7 +85,7 @@ Floats are in 12.6 format.
 
 Much like MP k-point sampling, a suitably dense grid must be used for sampling the potential to ensure suitable convergence.  
 
-The `-pvi` or `--print-V-info` flag for the `aimpot2cube` parser enable the printing of volume averaged potential value to screen, this value can be used to convergence test the potential sampling grid densities.  
+The `-pci` or `--print-convergence-info` flag for the `aimpot2cube` parser enables the printing of the volume averaged potential and maximum variation of the potential to screen, these values can be used to convergence test the potential sampling grid densities.  
 
 The AIMPRO FFT grid density is the absolute maximum workable grid density, by the nature of how FFT grids are used in DFT calculations densities higher than this yield no improvement to the sampling accuracy.  
 
@@ -141,9 +141,9 @@ https://paulbourke.net/dataformats/cube/
 `-h, --help`: display help dialogue  
 `-v, --verbose`: turn on verbose output mode, this prints useful status info to screen  
 `-d, --debug`: turn on debug mode (for developers only)  
-`-pvi, --print-V-info:` prints a volume averaged (V_unit/bohr^3) value and maximum variation of the electrostatic potential, 
+`-pci, --print-convergence-info:` prints a volume averaged (V_unit/bohr^3) value and maximum variation of the electrostatic potential, 
                             useful for convergence testing sampling grid densities (of grid with constant volume) for the potfile_gen input file  
-`-li, --legacy-input-file`: use the legacy grid vectors input file format (origin, repeats & grid vectors) rather than the current one
+`-aif, --advanced-input-file`: use the advanced grid vectors input file format (origin, repeats & grid vectors) rather than the current one
                         (grid density & (supercell) real space lattice vectors) (see end of README for details)  
 `-Ha, --Hartree`: output potential in Hartree (default is Rydberg if none provided)  
 `-eV, --electron-volts`: output potential in electron volts (default is Rydberg if none provided)  
@@ -161,11 +161,11 @@ See potfile_gen documentation.
 ### Known issues
 None  
 
-# Legacy info
+# Advanced input file info
 
-#### Legacy grid_vectors_input_file file format
+#### Advanced grid_vectors_input_file file format
 
-This is the legacy input file format, the `-li` or `--legacy-input-file` flag must be used for both scripts in order to read this file format.
+This is the advanced input file format, the `-aif` or `--advanced-input-file` flag must be used for both scripts in order to read this file format.
 
 Specifies the vectors & the number of their repeats defining the grid of points centered on each voxel of the parallelepiped plotting volume, as well as the origin of the parallelepiped plotting volume, this can also be a filepath and/or bzip2 archive to/of the file.  
 
@@ -186,12 +186,12 @@ Origin components can have any valid float value.
 
 Floats are in 12.6 format.  
 
-### Defining the legacy potfile_gen input
+### Defining the advanced potfile_gen input
 
 It is often helpful to define grid with a reasonably dense sampling density within your system lattice.  
 This ensures that the potential is being sampled with high enough resolution and avoids spurious data points from sampling periodic images.  
 
-For the case of example_legacy_input.in, it is designed around a 1x1x1 simple cubic diamond system with a single lattice constant of 6.74 Bohr and a sampling density of 20 data points in all dimensions of the unit cell.  
+For the case of example_advanced_input.in, it is designed around a 1x1x1 simple cubic diamond system with a single lattice constant of 6.74 Bohr and a sampling density of 20 data points in all dimensions of the unit cell.  
 The grid vectors are aligned with the lattice vectors.  
 
 The calculation of grid vectors is as given:  
@@ -200,7 +200,7 @@ The calculation of grid vectors is as given:
 (0.0 1.0 0.0) x 6.74/20 = (0.000 0.337 0.000)  
 (0.0 0.0 0.0) x 6.74/20 = (0.000 0.000 0.337)  
 
-Sampling density therefore becomes the number of repeats, and by fixing the origin at (0.0 0.0 0.0) we obtain the contents of example_potfile_gen_input/example_legacy_input.in:  
+Sampling density therefore becomes the number of repeats, and by fixing the origin at (0.0 0.0 0.0) we obtain the contents of example_potfile_gen_input/example_advanced_input.in:  
 
 ```
 0.0 0.0 0.0  
