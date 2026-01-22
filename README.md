@@ -2,9 +2,13 @@
 Scripts for setting up a regular grid of points for AIMPRO potential calculations and parsing the results to the .cube file format 
 (potential values in Rydberg by default).
 
-Please credit the code author(s) (Alex Christison, fixes by James Ramsey) in works arising from the use of this software.
+Please credit the code author(s) (Alex Christison, fixes by James Ramsey) in all works arising from the use of this software.
 
 Copyright (c) A Christison 2025 All Rights Reserved.  
+
+**NOTE:** these tools read/write entire files into memory to avoid poor performance due to I/O buffer thrashing. They will be memory intensive for particularly large files (i.e. those with ~ millions of lines).
+
+## Developer & git specific info (Regular users ignore this section)
 
 **N.B. recurse submodules must be enabled to properly clone this repo: git clone --recurse-submodules repo_address**  
 
@@ -12,27 +16,33 @@ All routines & classes must have Google style docstrings: https://google.github.
 
 All python code should be run through Pylint: https://pylint.readthedocs.io/en/stable/
 
-**NOTE:** these tools read/write entire files into memory to avoid poor performance due to I/O buffer thrashing. They will be memory intensive for particularly large files (i.e. those with ~ millions of lines).
+The `aimpot2cube` and `potfile_gen` scripts can be made executable in all locations in file system via `chmod u+x` and adding to PATH.
 
-### Requirements
+## Requirements
 Python version: python 3.11  
 Requirements: see requirements.txt
 
 A python virtual environment is generally required to install python packages on modern Debian based Linux distributions.
 
 ```
-python3 -m venv python_env
-source python_env/bin/activate
+python3 -m venv ~/python_env
+source ~/python_env/bin/activate
+```
+
+and to deactivate:
+
+```
+deactivate
 ```
 
 For more info see: https://docs.python.org/3/library/venv.html
 
+The `source ~/python_env/bin/activate` command can be added to the end of your `~/.bashrc` or `~/.bash_profile` to load your python virtual environment on startup if so desired.  
+
 To install all python package requirements in your python virtual environment do
 `pip install -r requirements.txt` in the root of the repository.
 
-Scripts can be made executable in all locations in file system via `chmod u+x` and adding to PATH.
-
-This code has only been tested for Debian 12 and Ubuntu 24.04 LTS Linux distributions, your mileage with other OS's and Linux distributions may vary. 
+This code has only been tested for Debian 12 and Ubuntu 24.04 LTS Linux distributions, your mileage with other OSs and Linux distributions may vary. 
 
 ## Top level workflow
 
@@ -198,7 +208,7 @@ The calculation of grid vectors is as given:
 
 (1.0 0.0 0.0) x 6.74/20 = (0.337 0.000 0.000)  
 (0.0 1.0 0.0) x 6.74/20 = (0.000 0.337 0.000)  
-(0.0 0.0 0.0) x 6.74/20 = (0.000 0.000 0.337)  
+(0.0 0.0 1.0) x 6.74/20 = (0.000 0.000 0.337)  
 
 Sampling density therefore becomes the number of repeats, and by fixing the origin at (0.0 0.0 0.0) we obtain the contents of example_potfile_gen_input/example_advanced_input.in:  
 
