@@ -105,7 +105,7 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
     parser = argparse.ArgumentParser(
                     prog = "aimpot2cube",
                     formatter_class=argparse.RawDescriptionHelpFormatter,
-                    description = "A parser to convert the output of an AIMPRO potential job to the cubefile format (spin density values in Rydberg_e/    bohr^3 \
+                    description = "A parser to convert the output of an AIMPRO potential job to the cubefile format (spin up charge density values in Rydberg_e/    bohr^3 \
                         by default).\n\nAIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html\
                         \ncubefile format: https://paulbourke.net/dataformats/cube/",
                     epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.") #pylint: disable=duplicate-code
@@ -124,7 +124,7 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
                         action = "store_true",
                         dest = "print_convergence_info",
                         default = False,
-                        help = "prints a volume averaged (rho_unit/bohr^6) value and maximum variation of the spin density, \
+                        help = "prints a volume averaged (rho_unit/bohr^6) value and maximum variation of the spin up charge density, \
                                 useful for convergence testing sampling grid densities (of grid with constant volume) for the potfile_gen input file")
 
     parser.add_argument("-aif", "--advanced-input-file",                                                                   #pylint: disable=duplicate-code
@@ -139,7 +139,7 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
     group.add_argument("-Ha_au", "--Hartree_bohr",
                         action = "store_true",
                         default = False,
-                        help = "output spin density in Hartree_e/bohr^3 (default is Rydberg_e/bohr^3 if none provided)")
+                        help = "output spin up charge density in Hartree_e/bohr^3 (default is Rydberg_e/bohr^3 if none provided)")
 
     # group.add_argument("-eV", "--electron-volts",
     #                     action = "store_true",
@@ -190,7 +190,7 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
     if not use_hartree and not use_ev and not use_rydberg:
         use_rydberg = True
         if verbose_output:
-            print("No spin density units specified, defaulting to Rydberg/bohr^3\n")
+            print("No spin up charge density units specified, defaulting to Rydberg/bohr^3\n")
 
     return grid_vec_infile, aimpro_infile
 
@@ -391,7 +391,7 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
                     aim_grid_points[pot_count] = np.array(split_line[1:4])
 
                     # Save the potential value, which is the sum of the local and Hartree potentials. AIMPRO outputs this in units of Hartrees.
-                    aim_pot_values[pot_count] = split_line[8] - split_line[9]
+                    aim_pot_values[pot_count] = split_line[8]
 
                 elif len(split_line) == 8:
 
@@ -401,8 +401,8 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
                     # Save positions
                     aim_grid_points[pot_count] = np.array(split_line[1:4])
 
-                    # spin averaged has no spin density polarisation
-                    aim_pot_values[pot_count] = 0.0
+                    # Save the potential value, which is the sum of the local and Hartree potentials. AIMPRO outputs this in units of Hartrees.
+                    aim_pot_values[pot_count] = split_line[7] / 2
 
                 else:
                     raise Exception("oh no - wrong number of columns in potental job output!")
@@ -427,14 +427,14 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
     if use_rydberg:
         aim_pot_values *= math.sqrt(2)
         if verbose_output:
-            print("Spin density values converted to Rydberg/bohr^3\n")
+            print("Spin up charge density values converted to Rydberg/bohr^3\n")
     # elif use_ev:
     #     aim_pot_values *= c.HA2EV
     #     if verbose_output:
     #         print("Potential values converted to eV\n")
     else:
         if verbose_output:
-            print("Spin density values left in Hartree/bohr^3\n")
+            print("Spin up charge density values left in Hartree/bohr^3\n")
 
     # Reshape potential values so they are in the order dictated by the number of repeats of our grid vectors
     potential_values = aim_pot_values.reshape((repeats[0],repeats[1],repeats[2]))
@@ -542,13 +542,13 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
     # (N.B. this is the directory aimpot2cube was called from, not were it lives)
     # Include units in filename
     if use_rydberg:
-        cube_output_file = aimpro_output_file_root_name + "_spin_den_Ry_e_a03" + cio.CUBE_OUTPUT_FILENAME
+        cube_output_file = aimpro_output_file_root_name + "_spin_up_charge_den_Ry_e_a03" + cio.CUBE_OUTPUT_FILENAME
 
     # elif use_ev:
     #     cube_output_file = aimpro_output_file_root_name + "_eV" + cio.CUBE_OUTPUT_FILENAME
 
     else:
-        cube_output_file = aimpro_output_file_root_name + "_spin_den_Ha_e_a03" + cio.CUBE_OUTPUT_FILENAME
+        cube_output_file = aimpro_output_file_root_name + "_spin_up_charge_den_Ha_e_a03" + cio.CUBE_OUTPUT_FILENAME
 
     # Print volume averaged potential value to screen if required
     if print_convergence_info:
@@ -570,7 +570,7 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
         v_max_diff = np.max(potential_values) - np.min(potential_values)
 
         # print out potential info in format matching the precision in the AIMPRO output file
-        print(f"Volume averaged spin density: {volume_averaged_v:.10f} {v_unit}/bohr^6; Max spin density difference: {v_max_diff:.10f} {v_unit}\n")
+        print(f"Volume averaged spin up charge density: {volume_averaged_v:.10f} {v_unit}/bohr^6; Max spin up charge density difference: {v_max_diff:.10f} {v_unit}\n")
 
     outpath = Path.cwd() / cube_output_file
 
@@ -587,13 +587,13 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
         outfile.write("Cubefile created from AIMPRO output using aimpot2cube parser: Copyright (c) A Christison 2025 All Rights Reserved\n")
 
         if use_rydberg:
-            outfile.write(f"Contains the spin density from {aimpro_output_file} on the grid specified in {gv_file_name} in Rydberg_e/bohr^3, positional data in Bohr\n") #pylint:disable=line-too-long
+            outfile.write(f"Contains the spin up charge density from {aimpro_output_file} on the grid specified in {gv_file_name} in Rydberg_e/bohr^3, positional data in Bohr\n") #pylint:disable=line-too-long
 
         # elif use_ev:
         #     outfile.write(f"Contains the sum of the V_har + V_loc potentials from {aimpro_output_file} on the grid specified in {gv_file_name} in eV, positional data in Bohr\n") #pylint:disable=line-too-long
 
         else:
-            outfile.write(f"Contains the spin density from {aimpro_output_file} on the grid specified in {gv_file_name} in Hartree_e/bohr^3, positional data in Bohr\n") #pylint:disable=line-too-long
+            outfile.write(f"Contains the spin up charge density from {aimpro_output_file} on the grid specified in {gv_file_name} in Hartree_e/bohr^3, positional data in Bohr\n") #pylint:disable=line-too-long
 
         # Write number of atoms & position of origin
         outfile.write(f"{num_atoms:5d}{origin[0]:12.6f}{origin[1]:12.6f}{origin[2]:12.6f}\n")
@@ -602,7 +602,7 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
         for i, value in enumerate(repeats):
             outfile.write(f"{value:5d}{vectors[i, 0]:12.6f}{vectors[i, 1]:12.6f}{vectors[i, 2]:12.6f}\n")
 
-        # Write out atom proton number, their (unscreened) ionic spin & positions (in au)
+        # Write out atom proton number, their (unscreened) ionic charge & positions (in au)
         for i, value in enumerate(indexed_species_pn_list):
             outfile.write(f"{value:5d}{float(value):12.6f}{atom_pos[i, 0]:12.6f}{atom_pos[i, 1]:12.6f}{atom_pos[i, 2]:12.6f}\n")
 
