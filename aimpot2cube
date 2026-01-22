@@ -26,7 +26,7 @@ https://paulbourke.net/dataformats/cube/
 -pci, --print-convergence-info: prints a volume averaged (V_unit/bohr^3) value and maximum variation of the electrostatic potential, useful for convergence testing
                         sampling grid densities (of grids with constant volume) for the potfile_gen input file
 -aif, --advanced-input-file: use the advanced grid vectors input file format (origin, repeats & grid vectors) rather than the current one
-                          (grid density & (supercell) real space lattice vectors) (see end of README for details)
+                          (number of points along vector & (supercell) real space lattice vectors) (see end of README for details)
 -Ha, --Hartree: output potential in Hartree (default is Rydberg if none provided)
 -eV, --electron-volts: output potential in electron volts (default is Rydberg if none provided)
 -Ry, --Rydberg: output potential in Rydberg (default is Rydberg if none provided)
@@ -131,7 +131,7 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
                         default = False,                                                                                #pylint: disable=duplicate-code
                         dest = "advanced_input_file",
                         help = "use the advanced grid vectors input file format (orign, repeats & grid vectors) \
-                                rather than the current one (grid density & (supercell) real space lattice vectors)")   #pylint: disable=duplicate-code
+                                rather than the current one (number of points along vector & (supercell) real space lattice vectors)")   #pylint: disable=duplicate-code
 
     group = parser.add_mutually_exclusive_group(required=False)
 
