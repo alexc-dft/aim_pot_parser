@@ -70,10 +70,9 @@ import const as c   #pylint: disable=import-error
 # First party modules
 import common_io as cio
 
-
 # Module development info
-VERSION_NUMBER = "1.1"                                              #pylint: disable=duplicate-code
-VERSION_DATE = "18/12/2025"                                         #pylint: disable=duplicate-code
+VERSION_NUMBER = "1.1.1"                                            #pylint: disable=duplicate-code
+VERSION_DATE = "13/03/2026"                                         #pylint: disable=duplicate-code
 AUTHORS = "Alex Christison, fixes by James Ramsey"                  #pylint: disable=duplicate-code
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"   #pylint: disable=duplicate-code
 
@@ -298,12 +297,12 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
     # Open AIMPRO file, handling bzip2 archives if detected, read line by line and extract data
 
     if re.search(c.RE_BZIP_FILE, aimpro_output_file):
-        with bz2.open(aimpro_output_file, "rt") as infile:
+        with bz2.open(aimpro_output_file, "rt", encoding="UTF-8") as infile:
             # Read whole file into memory - this is more memory costly but prevents code from being I/O bound for large files
             infile_lines = infile.read().splitlines()
 
     else:
-        with open(aimpro_output_file, "r",  encoding="UTF-8") as infile:
+        with open(aimpro_output_file, "rt", encoding="UTF-8") as infile:
             # Read whole file into memory - this is more memory costly but prevents code from being I/O bound for large files
             infile_lines = infile.read().splitlines()
 

@@ -31,8 +31,8 @@ from numba import jit
 import const as c   #pylint: disable=import-error
 
 # Module development info
-VERSION_NUMBER = "1.0"                                              #pylint: disable=duplicate-code
-VERSION_DATE = "16/12/2025"                                         #pylint: disable=duplicate-code
+VERSION_NUMBER = "1.0.1"                                            #pylint: disable=duplicate-code
+VERSION_DATE = "13/03/2026"                                         #pylint: disable=duplicate-code
 AUTHORS = "Alex Christison"                                         #pylint: disable=duplicate-code
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"   #pylint: disable=duplicate-code
 
@@ -73,10 +73,10 @@ def read_grid_vectors(grid_vectors_input_file: str, verbose_output: Optional[boo
 
     # Read in input file, handling bzip2 archives if detected
     if re.search(c.RE_BZIP_FILE, grid_vectors_input_file):
-        with bz2.open(grid_vectors_input_file, "rt") as infile:
+        with bz2.open(grid_vectors_input_file, "rt", encoding="UTF-8") as infile:
             raw_input = infile.readlines()
     else:
-        with open(grid_vectors_input_file, "r", encoding="UTF-8") as infile:
+        with open(grid_vectors_input_file, "rt", encoding="UTF-8") as infile:
             raw_input = infile.readlines()
 
     if len(raw_input) != 3:
