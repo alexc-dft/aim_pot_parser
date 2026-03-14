@@ -1,4 +1,4 @@
-# Copyright (c) A Christison 2025 All Rights Reserved.
+# Copyright (c) A Christison 2026 All Rights Reserved.
 
 """common_io: Common & I/O
 
@@ -32,7 +32,7 @@ from xopen import xopen
 VERSION_NUMBER = "1.0.2"                                            #pylint: disable=duplicate-code
 VERSION_DATE = "14/03/2026"                                         #pylint: disable=duplicate-code
 AUTHORS = "Alex Christison"                                         #pylint: disable=duplicate-code
-COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"   #pylint: disable=duplicate-code
+COPYRIGHT = "Copyright (c) A Christison 2026 All Rights Reserved"   #pylint: disable=duplicate-code
 
 # Filename constants
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (c) A Christison 2025 All Rights Reserved.
+# Copyright (c) A Christison 2026 All Rights Reserved.
 
 """AIMPRO potential 2 cube parser: aimpot2cube [options] AIMPRO_output_file grid_vectors_input_file
 
@@ -75,7 +75,7 @@ import common_io as cio
 VERSION_NUMBER = "1.1.1"                                            #pylint: disable=duplicate-code
 VERSION_DATE = "13/03/2026"                                         #pylint: disable=duplicate-code
 AUTHORS = "Alex Christison, fixes by James Ramsey"                  #pylint: disable=duplicate-code
-COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"   #pylint: disable=duplicate-code
+COPYRIGHT = "Copyright (c) A Christison 2026 All Rights Reserved"   #pylint: disable=duplicate-code
 
 # Perl script path details
 PERL_PATH = Path(__file__).resolve().parent  / "aim_utils" / "perl" # !!!Note __file__ isn't always safe, e.g. in non-local imported modules!!!

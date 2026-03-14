@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (c) A Christison 2025 All Rights Reserved.
+# Copyright (c) A Christison 2026 All Rights Reserved.
 
 """pot_file generator: potfile_gen [options] grid_vectors_input_file
 
@@ -126,7 +126,7 @@ import common_io as cio
 VERSION_NUMBER = "1.0"                                              #pylint: disable=duplicate-code
 VERSION_DATE = "16/12/2025"                                         #pylint: disable=duplicate-code
 AUTHORS = "Alex Christison"                                         #pylint: disable=duplicate-code
-COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"   #pylint: disable=duplicate-code
+COPYRIGHT = "Copyright (c) A Christison 2026 All Rights Reserved"   #pylint: disable=duplicate-code
 
 def read_commmand_line() -> Optional[IO[str]]:
     """Gets input filename

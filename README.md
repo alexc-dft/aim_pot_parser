@@ -4,7 +4,7 @@ Scripts for setting up a regular grid of points for AIMPRO potential calculation
 
 Please credit the code author(s) (Alex Christison, fixes by James Ramsey) in all works arising from the use of this software.
 
-Copyright (c) A Christison 2025 All Rights Reserved.  
+Copyright (c) A Christison 2026 All Rights Reserved.  
 
 **NOTE:** these tools read/write entire files into memory to avoid poor performance due to I/O buffer thrashing. They will be memory intensive for particularly large files (i.e. those with ~ millions of lines).
 
