@@ -32,10 +32,11 @@ https://paulbourke.net/dataformats/cube/
 -Ry, --Rydberg: output potential in Rydberg (default is Rydberg if none provided)
 
 AIMPRO_output
-The AIMRPO standard output file from a potential job, this can also be a filepath and/or bzip2 archive to/of the file
+The AIMRPO standard output file from a potential job, this can also be a filepath and/or compressed archive (.bz2, .gz, .xz & .zst formats supported) to/of the file
 
 grid_vectors_input_file
-the potfile_gen input file that was used for the AIMRPO potential job, this can also be a filepath and/or bzip2 archive to/of the file
+the potfile_gen input file that was used for the AIMRPO potential job, this can also be a filepath and/or compressed archive
+(.bz2, .gz, .xz & .zst formats supported) to/of the file
 See potfile_gen documentation.
 
 NOTE: this input file must be identical to the one used by potfile_gen to generate the input for the AIMPRO potential job
@@ -52,7 +53,6 @@ import re
 import sys
 from typing import List, IO, Optional
 from io import StringIO
-import bz2
 
 # Wrangle submodule path
 # !!!Note __file__ isn't always safe, e.g. in non-local imported modules!!!
@@ -64,6 +64,7 @@ sys.path.append(SUBM_PATH_STR)  #pylint: disable=wrong-import-position
 
 # Third party modules
 import numpy as np
+from xopen import xopen
 import methods as m #pylint: disable=import-error
 import const as c   #pylint: disable=import-error
 
@@ -152,11 +153,11 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
 
     parser.add_argument("aimpro_output_file",
                         nargs = 1,
-                        help = "the AIMRPO standard output file from a potential job, this can also be a filepath and/or bzip2 archive to/of the file")
+                        help = "the AIMRPO standard output file from a potential job, this can also be a filepath and/or compressed archive to/of the file")
 
     parser.add_argument("grid_vectors_input_file",
                         nargs = 1,
-                        help = "the potfile_gen input file that was used for the AIMRPO potential job, this can also be a filepath and/or bzip2 archive to/of the file")
+                        help = "the potfile_gen input file that was used for the AIMRPO potential job, this can also be a filepath and/or compressed archive to/of the file") #pylint: disable=line-too-long
 
     args = parser.parse_args()
     verbose_output = args.verbose
@@ -294,17 +295,10 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
     dat_file_search = False
     in_pos_section = False
 
-    # Open AIMPRO file, handling bzip2 archives if detected, read line by line and extract data
-
-    if re.search(c.RE_BZIP_FILE, aimpro_output_file):
-        with bz2.open(aimpro_output_file, "rt", encoding="UTF-8") as infile:
-            # Read whole file into memory - this is more memory costly but prevents code from being I/O bound for large files
-            infile_lines = infile.read().splitlines()
-
-    else:
-        with open(aimpro_output_file, "rt", encoding="UTF-8") as infile:
-            # Read whole file into memory - this is more memory costly but prevents code from being I/O bound for large files
-            infile_lines = infile.read().splitlines()
+    # Open AIMPRO file, uxing xopen to handle compressed archives, read line by line and extract data
+    with xopen(aimpro_output_file, "rt", encoding="UTF-8") as infile:
+        # Read whole file into memory - this is more memory costly but prevents code from being I/O bound for large files
+        infile_lines = infile.read().splitlines()
 
     for line in infile_lines:
 
@@ -563,7 +557,7 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
     gv_file_name = PurePosixPath(grid_vectors_input_file).name
 
     # Open output file
-    with open(outpath, "w", encoding="UTF-8") as outfile:
+    with xopen(outpath, "wt", encoding="UTF-8") as outfile:
 
         # Fill the required comment lines in .cube file
         outfile.write("Cubefile created from AIMPRO output using aimpot2cube parser: Copyright (c) A Christison 2025 All Rights Reserved\n")

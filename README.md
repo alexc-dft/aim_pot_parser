@@ -73,7 +73,7 @@ The output pot_file is written to the current working directory
                         (number of points along vector & (supercell) real space lattice vectors) (see end of README for details)  
 
 #### grid_vectors_input_file  
-Specifies the vectors & the number of their repeats defining the grid of sampling points placed on the corner of each voxel of the parallelepiped plotting volume, as well as the origin of the parallelepiped plotting volume, this can also be a filepath and/or bzip2 archive to/of the file.  
+Specifies the vectors & the number of their repeats defining the grid of sampling points placed on the corner of each voxel of the parallelepiped plotting volume, as well as the origin of the parallelepiped plotting volume, this can also be a filepath and/or compressed archive (.bz2, .gz, .xz & .zst formats supported) to/of the file.  
 
 The file is delimited by whitespace and has the format:  
 
@@ -172,10 +172,10 @@ https://paulbourke.net/dataformats/cube/
 `-Ry, --Rydberg`: output potential in Rydberg (default is Rydberg if none provided)  
 
 #### AIMPRO_output  
-The AIMRPO standard output file from a potential job, this can also be a filepath and/or bzip2 archive to/of the file.  
+The AIMRPO standard output file from a potential job, this can also be a filepath and/or compressed archive (.bz2, .gz, .xz & .zst formats supported) to/of the file.  
 
 #### grid_vectors_input_file  
-the potfile_gen input file that was used for the AIMRPO potential job, this can also be a filepath and/or bzip2 archive to/of the file.  
+the potfile_gen input file that was used for the AIMRPO potential job, this can also be a filepath and/or compressed archive (.bz2, .gz, .xz & .zst formats supported) to/of the file.  
 See potfile_gen documentation.
 
 **NOTE: this input file must be identical to the one used by potfile_gen to generate the input for the AIMPRO potential job**
@@ -189,7 +189,7 @@ None
 
 This is the advanced input file format, the `-aif` or `--advanced-input-file` flag must be used for both scripts in order to read this file format.
 
-Specifies the vectors & the number of their repeats defining the grid of sampling points placed on the corner of each voxel of the parallelepiped plotting volume, as well as the origin of the parallelepiped plotting volume, this can also be a filepath and/or bzip2 archive to/of the file.  
+Specifies the vectors & the number of their repeats defining the grid of sampling points placed on the corner of each voxel of the parallelepiped plotting volume, as well as the origin of the parallelepiped plotting volume, this can also be a filepath and/or compressed archive (.bz2, .gz, .xz & .zst formats supported) to/of the file.  
 
 The file is delimited by whitespace and has the format:  
 

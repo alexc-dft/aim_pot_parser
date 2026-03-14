@@ -24,7 +24,8 @@ The output pot_file is written to the current working directory
 
 grid_vectors_input_file
 Specifies the vectors & the number of their repeats defining the grid of sampling points placed on the corner of each voxel of the parallelepiped plotting volume,
-as well as the origin of the parallelepiped plotting volume, this can also be a filepath and/or bzip2 archive to/of the file.
+as well as the origin of the parallelepiped plotting volume, this can also be a filepath and/or compressed archive
+(.bz2, .gz, .xz & .zst formats supported) to/of the file.
 
 The file is delimited by whitespace and has the format:
 
@@ -172,7 +173,7 @@ def read_commmand_line() -> Optional[IO[str]]:
 
     parser.add_argument("grid_vectors_input_file",
                         nargs = 1,
-                        help = "grid vectors input file, this can also be a filepath and/or bzip2 archive to/of the file")
+                        help = "grid vectors input file, this can also be a filepath and/or compressed archive to/of the file")
 
     args = parser.parse_args()
     verbose_output = args.verbose

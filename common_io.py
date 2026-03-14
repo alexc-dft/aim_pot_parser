@@ -13,8 +13,6 @@ None
 # System modules
 from pathlib import Path
 from typing import Optional
-import bz2
-import re
 import sys
 
 # Wrangle submodule path
@@ -28,11 +26,11 @@ sys.path.append(SUBM_PATH_STR)  #pylint: disable=wrong-import-position
 # Third party modules
 import numpy as np
 from numba import jit
-import const as c   #pylint: disable=import-error
+from xopen import xopen
 
 # Module development info
-VERSION_NUMBER = "1.0.1"                                            #pylint: disable=duplicate-code
-VERSION_DATE = "13/03/2026"                                         #pylint: disable=duplicate-code
+VERSION_NUMBER = "1.0.2"                                            #pylint: disable=duplicate-code
+VERSION_DATE = "14/03/2026"                                         #pylint: disable=duplicate-code
 AUTHORS = "Alex Christison"                                         #pylint: disable=duplicate-code
 COPYRIGHT = "Copyright (c) A Christison 2025 All Rights Reserved"   #pylint: disable=duplicate-code
 
@@ -71,13 +69,9 @@ def read_grid_vectors(grid_vectors_input_file: str, verbose_output: Optional[boo
     # Origin hard coded to (0.0, 0.0, 0.0) in this input file format
     origin = np.zeros((3))
 
-    # Read in input file, handling bzip2 archives if detected
-    if re.search(c.RE_BZIP_FILE, grid_vectors_input_file):
-        with bz2.open(grid_vectors_input_file, "rt", encoding="UTF-8") as infile:
-            raw_input = infile.readlines()
-    else:
-        with open(grid_vectors_input_file, "rt", encoding="UTF-8") as infile:
-            raw_input = infile.readlines()
+    # Read in input file, using xopen to handle compressed archives
+    with xopen(grid_vectors_input_file, "rt", encoding="UTF-8") as infile:
+        raw_input = infile.readlines()
 
     if len(raw_input) != 3:
         raise Exception(f"incorrect input file format - {grid_vectors_input_file} must have only 3 rows")
@@ -144,13 +138,9 @@ def read_grid_vectors_advanced_input(grid_vectors_input_file: str, verbose_outpu
     vectors = np.zeros((3, 3))
     origin = np.zeros((3))
 
-    # Read in input file, handling bzip2 archives if detected
-    if re.search(c.RE_BZIP_FILE, grid_vectors_input_file):
-        with bz2.open(grid_vectors_input_file, "rt") as infile:
-            raw_input = infile.readlines()
-    else:
-        with open(grid_vectors_input_file, "r", encoding="UTF-8") as infile:
-            raw_input = infile.readlines()
+    # Read in input file, using xopen to handle compressed archives
+    with xopen(grid_vectors_input_file, "rt", encoding="UTF-8") as infile:
+        raw_input = infile.readlines()
 
     if len(raw_input) != 4:
         raise Exception(f"incorrect input file format - advanced {grid_vectors_input_file} must have only 4 rows")
