@@ -32,11 +32,10 @@ https://paulbourke.net/dataformats/cube/
 -Ry, --Rydberg: output potential in Rydberg (default is Rydberg if none provided)
 
 AIMPRO_output
-The AIMRPO standard output file from a potential job, this can also be a filepath and/or compressed archive (.bz2, .gz, .xz & .zst formats supported) to/of the file
+The AIMRPO standard output file from a potential job, this can also be a filepath and/or compressed .bz2 archive to/of the file
 
 grid_vectors_input_file
-the potfile_gen input file that was used for the AIMRPO potential job, this can also be a filepath and/or compressed archive
-(.bz2, .gz, .xz & .zst formats supported) to/of the file
+the potfile_gen input file that was used for the AIMRPO potential job, this can also be a filepath and/or compressed .bz2 archive to/of the file
 See potfile_gen documentation.
 
 NOTE: this input file must be identical to the one used by potfile_gen to generate the input for the AIMPRO potential job
@@ -72,8 +71,8 @@ import const as c   #pylint: disable=import-error
 import common_io as cio
 
 # Module development info
-VERSION_NUMBER = "1.1.1"                                            #pylint: disable=duplicate-code
-VERSION_DATE = "13/03/2026"                                         #pylint: disable=duplicate-code
+VERSION_NUMBER = "1.2"                                            #pylint: disable=duplicate-code
+VERSION_DATE = "08/04/2026"                                         #pylint: disable=duplicate-code
 AUTHORS = "Alex Christison, fixes by James Ramsey"                  #pylint: disable=duplicate-code
 COPYRIGHT = "Copyright (c) A Christison 2026 All Rights Reserved"   #pylint: disable=duplicate-code
 
@@ -208,7 +207,6 @@ def get_atom_positions(aim_file: IO[str]) -> tuple[object, object]:
     Raises:
         Warns if the files it needs to create already exist & backs up the existing ones
     """
-
     # Flag that we have a bzip2ed archive if detected, unzip and update file name to remove the .bz2 extension
     bz2ed_file = False
     if re.search(c.RE_BZIP_FILE, aim_file):
@@ -220,25 +218,28 @@ def get_atom_positions(aim_file: IO[str]) -> tuple[object, object]:
     # Strip filename out of inputted AIMPRO output file, to handle filepaths
     aim_file_root_name = PurePosixPath(aim_file).name
 
-    # Ensure we are able to create the xyz & otb files we temporarily need, backup existing ones and inform user
-    if Path(f"xyz.{aim_file}.init").is_file():
-        subprocess.run(f"mv xyz.{aim_file}.init xyz.{aim_file}.init.bak", shell=True, check=True)
-        print(f"Warning: existing xyz.{aim_file}.init moved to xyz.{aim_file}.init.bak\n")
+    # Strip out res. / rest. prefix if present
+    stripped_aim_file = m.strip_rest(aim_file_root_name)
 
-    if Path(f"otb.xyz.{aim_file}.init").is_file():
-        subprocess.run(f"mv otb.xyz.{aim_file}.init otb.xyz.{aim_file}.init.bak", shell=True, check=True)
-        print(f"Warning: existing otb.xyz.{aim_file}.init moved to otb.xyz.{aim_file}.init.bak\n")
+    # Ensure we are able to create the xyz & otb files we temporarily need, backup existing ones and inform user
+    if Path(f"xyz.{stripped_aim_file}.init").is_file():
+        subprocess.run(f"mv xyz.{stripped_aim_file}.init xyz.{stripped_aim_file}.init.bak", shell=True, check=True)
+        print(f"Warning: existing xyz.{stripped_aim_file}.init moved to xyz.{stripped_aim_file}.init.bak\n")
+
+    if Path(f"otb.xyz.{stripped_aim_file}.init").is_file():
+        subprocess.run(f"mv otb.xyz.{stripped_aim_file}.init otb.xyz.{stripped_aim_file}.init.bak", shell=True, check=True)
+        print(f"Warning: existing otb.xyz.{stripped_aim_file}.init moved to otb.xyz.{stripped_aim_file}.init.bak\n")
 
     # Convert dat file to xyz
     # cgres strips filepaths down to to just the filename in this case
     subprocess.run(f"{CGRES_PATH} -einit {aim_file} 1> /dev/null", shell=True, check=True)
 
     # Convert xyz to otb, positions are now in atomic
-    # Using the stripped down filename going forward, in case cgres has stripped out a path
-    subprocess.run(f"{CGRES_PATH} -x2o xyz.{aim_file_root_name}.init 1> /dev/null", shell=True, check=True)
+    # Using the stripped down filename going forward, in case cgres has stripped out a path or a res. / rest. prefix
+    subprocess.run(f"{CGRES_PATH} -x2o xyz.{stripped_aim_file}.init 1> /dev/null", shell=True, check=True)
 
     # Read in otb values, they will be in the atomic reference frame
-    result = m.read_otb(f"otb.xyz.{aim_file_root_name}.init")
+    result = m.read_otb(f"otb.xyz.{stripped_aim_file}.init")
 
     # Rezip bz2ed file if required
     if bz2ed_file:
@@ -249,7 +250,7 @@ def get_atom_positions(aim_file: IO[str]) -> tuple[object, object]:
     atom_pos = result[2]
 
     # Remove temporary xyz & otb files
-    subprocess.run(f"rm xyz.{aim_file_root_name}.init  otb.xyz.{aim_file_root_name}.init", shell=True, check=True)
+    subprocess.run(f"rm xyz.{stripped_aim_file}.init  otb.xyz.{stripped_aim_file}.init", shell=True, check=True)
 
     return species_ind, atom_pos
 
