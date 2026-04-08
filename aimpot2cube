@@ -220,14 +220,14 @@ def get_atom_positions(aim_file: IO[str]) -> tuple[object, object]:
     # Strip filename out of inputted AIMPRO output file, to handle filepaths
     aim_file_root_name = PurePosixPath(aim_file).name
 
-    # Ensure we are able to create the xyz & otb files we temporarily need, backup exisiting ones and inform user
+    # Ensure we are able to create the xyz & otb files we temporarily need, backup existing ones and inform user
     if Path(f"xyz.{aim_file}.init").is_file():
         subprocess.run(f"mv xyz.{aim_file}.init xyz.{aim_file}.init.bak", shell=True, check=True)
-        print(f"Warning: exisiting xyz.{aim_file}.init moved to xyz.{aim_file}.init.bak\n")
+        print(f"Warning: existing xyz.{aim_file}.init moved to xyz.{aim_file}.init.bak\n")
 
     if Path(f"otb.xyz.{aim_file}.init").is_file():
         subprocess.run(f"mv otb.xyz.{aim_file}.init otb.xyz.{aim_file}.init.bak", shell=True, check=True)
-        print(f"Warning: exisiting otb.xyz.{aim_file}.init moved to otb.xyz.{aim_file}.init.bak\n")
+        print(f"Warning: existing otb.xyz.{aim_file}.init moved to otb.xyz.{aim_file}.init.bak\n")
 
     # Convert dat file to xyz
     # cgres strips filepaths down to to just the filename in this case
