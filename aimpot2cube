@@ -561,7 +561,7 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
     with xopen(outpath, "wt", encoding="UTF-8") as outfile:
 
         # Fill the required comment lines in .cube file
-        outfile.write("Cubefile created from AIMPRO output using aimpot2cube parser: Copyright (c) A Christison 2025 All Rights Reserved\n")
+        outfile.write("Cubefile created from AIMPRO output using aimpot2cube parser: Copyright (c) A Christison 2026 All Rights Reserved\n")
 
         if use_rydberg:
             outfile.write(f"Contains the sum of the V_har + V_loc potentials from {aimpro_output_file} on the grid specified in {gv_file_name} in Rydberg, positional data in Bohr\n") #pylint:disable=line-too-long
