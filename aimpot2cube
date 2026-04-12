@@ -71,7 +71,7 @@ import const as c   #pylint: disable=import-error
 import common_io as cio
 
 # Module development info
-VERSION_NUMBER = "1.3"                                            #pylint: disable=duplicate-code
+VERSION_NUMBER = "1.3.1"                                            #pylint: disable=duplicate-code
 VERSION_DATE = "12/04/2026"                                         #pylint: disable=duplicate-code
 AUTHORS = "Alex Christison, fixes by James Ramsey"                  #pylint: disable=duplicate-code
 COPYRIGHT = "Copyright (c) A Christison 2026 All Rights Reserved"   #pylint: disable=duplicate-code
@@ -181,7 +181,8 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
 
     if verbose_output:
         print("Verbose output mode enabled\n")
-        print(f"Input file: {grid_vec_infile}\n")
+        print(f"AIMPRO potential job output file: {aimpro_infile}")
+        print(f"grid vectors input file: {grid_vec_infile}\n")
 
     # Set to use Rydberg if no units specified
     if not use_hartree and not use_ev and not use_rydberg:
