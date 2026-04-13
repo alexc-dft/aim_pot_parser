@@ -24,7 +24,7 @@ test=${test_dir%/}
 test_advanced_input="${test}-advanced-input"
 
 # Run potfile_gen
-python ../../potfile_gen -aif test_advanced.in.benchmark || { echo "Error: potfile_gen failed to run">&2; exit 2; }
+python ../../potfile_gen --quiet --advanced-input-file test_advanced.in.benchmark || { echo "Error: potfile_gen failed to run">&2; exit 2; }
 
 mv "pot_file" "pot_file_advanced_input"
 
@@ -38,7 +38,7 @@ if [ "$diff_str" != "" ]; then
 fi
 
 # Run potfile_gen
-python ../../potfile_gen test.in.benchmark || { echo "Error: potfile_gen failed to run">&2; exit 2; }
+python ../../potfile_gen --quiet test.in.benchmark || { echo "Error: potfile_gen failed to run">&2; exit 2; }
 
 # Diff for result
 diff_str=$(diff "pot_file.benchmark" "pot_file"); [ $? -gt 1 ] && exit 4
@@ -65,7 +65,7 @@ test=${test_dir%/}
 cp "AIM.sh.o.benchmark" "AIM.sh.o.test"
 
 # Run aimpot2cube
-python ../../aimpot2cube -eV AIM.sh.o.test test.in.benchmark || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
+python ../../aimpot2cube --quiet --electron-volt AIM.sh.o.test test.in.benchmark || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
 
 # Diff for result
 diff_str=$(diff "AIM.sh.o.test_eV.cube.benchmark" "AIM.sh.o.test_eV.cube"); [ $? -gt 1 ] && exit 4
@@ -81,7 +81,7 @@ fi
 cp "AIM.sh.o_hartree.benchmark" "AIM.sh.o_hartree.test"
 
 # Run aimpot2cube
-python ../../aimpot2cube -Ha AIM.sh.o_hartree.test test.in.benchmark || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
+python ../../aimpot2cube --quiet --Hartree AIM.sh.o_hartree.test test.in.benchmark || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
 
 # Diff for result
 diff_str=$(diff "AIM.sh.o_hartree.test_Ha.cube.benchmark" "AIM.sh.o_hartree.test_Ha.cube"); [ $? -gt 1 ] && exit 4
@@ -99,7 +99,7 @@ fi
 cp "AIM.sh.o_rydberg.benchmark" "AIM.sh.o_rydberg.test"
 
 # Run aimpot2cube
-python ../../aimpot2cube AIM.sh.o_rydberg.test test.in.benchmark || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
+python ../../aimpot2cube --quiet AIM.sh.o_rydberg.test test.in.benchmark || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
 
 # Diff for result
 diff_str=$(diff "AIM.sh.o_rydberg.test_Ry.cube.benchmark" "AIM.sh.o_rydberg.test_Ry.cube"); [ $? -gt 1 ] && exit 4

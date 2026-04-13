@@ -1,4 +1,4 @@
-# aim_pot_parser v1.3 - An AIMPRO potential job to .cube format parser
+# aim_pot_parser v1.3.2 - An AIMPRO potential job to .cube format parser
 Scripts for setting up a regular grid of points for AIMPRO potential calculations and parsing the results to the .cube file format 
 (potential values in Rydberg by default).
 
@@ -19,8 +19,8 @@ All python code should be run through Pylint: https://pylint.readthedocs.io/en/s
 The `aimpot2cube` and `potfile_gen` scripts can be made executable in all locations in file system via `chmod u+x` and adding to PATH.
 
 ## Version info
-Version: 1.3
-Version date: 12/04/26
+Version: 1.3.2
+Version date: 13/04/26
 
 ## Requirements
 Python version: python 3.11  
@@ -72,6 +72,7 @@ The output pot_file is written to the current working directory
 #### [options]  
 `-h, --help`: display help dialogue  
 `-v, --verbose`: turn on verbose output mode, this prints useful status info to screen  
+`-q, --quiet` : silence all all non-error messages  
 `-d, --debug`: turn on debug mode (for developers only)  
 `-aif, --advanced-input-file`: use the advanced grid vectors input file format (origin, repeats & grid vectors) rather than the current one
                         (number of points along vector & (supercell) real space lattice vectors) (see end of README for details)  
@@ -166,14 +167,15 @@ https://paulbourke.net/dataformats/cube/
 #### [options]  
 `-h, --help`: display help dialogue  
 `-v, --verbose`: turn on verbose output mode, this prints useful status info to screen  
+`-q, --quiet` : silence all all non-error messages  
 `-d, --debug`: turn on debug mode (for developers only)  
 `-pci, --print-convergence-info:` prints a volume averaged (V_unit/bohr^3) value and maximum variation of the electrostatic potential, 
                             useful for convergence testing sampling grid densities (of grid with constant volume) for the potfile_gen input file  
 `-aif, --advanced-input-file`: use the advanced grid vectors input file format (origin, repeats & grid vectors) rather than the current one
                         (number of points along vector & (supercell) real space lattice vectors) (see end of README for details)  
-`-Ha, --Hartree`: output potential in Hartree (default is Rydberg if none provided)  
-`-eV, --electron-volts`: output potential in electron volts (default is Rydberg if none provided)  
-`-Ry, --Rydberg`: output potential in Rydberg (default is Rydberg if none provided)  
+`-Ha, --Hartree`: output potential in Hartrees (default is Rydbergs if none provided)  
+`-eV, --electron-volt`: output potential in electron volts (default is Rydbergs if none provided)  
+`-Ry, --Rydberg`: output potential in Rydbergs (default is Rydbergs if none provided)  
 
 #### AIMPRO_output  
 The AIMRPO standard output file from a potential job, this can also be a filepath and/or compressed .bz2 archive to/of the file.  

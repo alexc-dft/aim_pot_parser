@@ -22,14 +22,15 @@ https://paulbourke.net/dataformats/cube/
 [options]
 -h,  --help: display help dialogue
 -v,  --verbose: turn on verbose output mode, this prints useful status info to screen
+-q, --quiet: silence all all non-error messages
 -d,  --debug: turn on debug mode (for developers only)
--pci, --print-convergence-info: prints a volume averaged (V_unit/bohr^3) value and maximum variation of the electrostatic potential, useful for convergence testing
-                        sampling grid densities (of grids with constant volume) for the potfile_gen input file
 -aif, --advanced-input-file: use the advanced grid vectors input file format (origin, repeats & grid vectors) rather than the current one
                           (number of points along vector & (supercell) real space lattice vectors) (see end of README for details)
--Ha, --Hartree: output potential in Hartree (default is Rydberg if none provided)
--eV, --electron-volts: output potential in electron volts (default is Rydberg if none provided)
--Ry, --Rydberg: output potential in Rydberg (default is Rydberg if none provided)
+-pci, --print-convergence-info: prints a volume averaged (V_unit/bohr^3) value and maximum variation of the electrostatic potential, useful for convergence testing
+                        sampling grid densities (of grids with constant volume) for the potfile_gen input file
+-Ha, --Hartree: output potential in Hartrees (default is Rydbergs if none provided)
+-eV, --electron-volt: output potential in electron volts (default is Rydbergs if none provided)
+-Ry, --Rydberg: output potential in Rydbergs (default is Rydbergs if none provided)
 
 AIMPRO_output
 The AIMRPO standard output file from a potential job, this can also be a filepath and/or compressed .bz2 archive to/of the file
@@ -71,7 +72,7 @@ import const as c   #pylint: disable=import-error
 import common_io as cio
 
 # Module development info
-VERSION_NUMBER = "1.3.1"                                            #pylint: disable=duplicate-code
+VERSION_NUMBER = "1.3.2"                                            #pylint: disable=duplicate-code
 VERSION_DATE = "12/04/2026"                                         #pylint: disable=duplicate-code
 AUTHORS = "Alex Christison, fixes by James Ramsey"                  #pylint: disable=duplicate-code
 COPYRIGHT = "Copyright (c) A Christison 2026 All Rights Reserved"   #pylint: disable=duplicate-code
@@ -98,7 +99,7 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
         Errors & exits with message if incorrect number of args detected.
         Errors & exits with message if provided input file does not exist.
     """
-    global verbose_output, debug, use_hartree, use_ev, use_rydberg, print_convergence_info, use_advanced_input_format
+    global verbose_output, quiet_output,  debug, use_hartree, use_ev, use_rydberg, print_convergence_info, use_advanced_input_format
 
     parser = argparse.ArgumentParser(
                     prog = "aimpot2cube",
@@ -106,17 +107,31 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
                     description = "A parser to convert the output of an AIMPRO potential job to the cubefile format (potential values in Rydberg by default). \
                         \n\nAIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html\
                         \ncubefile format: https://paulbourke.net/dataformats/cube/",
-                    epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.") #pylint: disable=duplicate-code
+                    epilog = f"Version info:\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.") #pylint: disable=duplicate-code
 
-    parser.add_argument("-v", "--verbose",                                                                              #pylint: disable=duplicate-code
+    verbosity_group = parser.add_mutually_exclusive_group(required=False)
+
+    verbosity_group.add_argument("-v", "--verbose",                                                                     #pylint: disable=duplicate-code
                         action = "store_true",                                                                          #pylint: disable=duplicate-code
                         default = False,                                                                                #pylint: disable=duplicate-code
                         help = "turn on verbose output mode, this prints useful status info to screen")                 #pylint: disable=duplicate-code
 
+    verbosity_group.add_argument("-q", "--quiet",                                                                       #pylint: disable=duplicate-code
+                        action = "store_true",                                                                          #pylint: disable=duplicate-code
+                        default = False,                                                                                #pylint: disable=duplicate-code
+                        help = "silence all all non-error messages")                                                    #pylint: disable=duplicate-code
+
     parser.add_argument("-d", "--debug",                                                                                #pylint: disable=duplicate-code
                         action = "store_true",                                                                          #pylint: disable=duplicate-code
                         default = False,                                                                                #pylint: disable=duplicate-code
-                        help = "turn on debug mode (for developers only)")                                              #pylint: disable=duplicate-code
+                        help = "turn on debug mode (for developers only)")                                             #pylint: disable=duplicate-code
+
+    parser.add_argument("-aif", "--advanced-input-file",                                                                   #pylint: disable=duplicate-code
+                        action = "store_true",                                                                          #pylint: disable=duplicate-code
+                        default = False,                                                                                #pylint: disable=duplicate-code
+                        dest = "advanced_input_file",
+                        help = "use the advanced grid vectors input file format (origin, repeats & grid vectors) \
+                                rather than the current one (number of points along vector & (supercell) real space lattice vectors)")   #pylint: disable=duplicate-code
 
     parser.add_argument("-pci", "--print-convergence-info",
                         action = "store_true",
@@ -125,30 +140,23 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
                         help = "prints a volume averaged (V_unit/bohr^3) value and maximum variation of the electrostatic potential, \
                                 useful for convergence testing sampling grid densities (of grids with constant volume) for the potfile_gen input file")
 
-    parser.add_argument("-aif", "--advanced-input-file",                                                                   #pylint: disable=duplicate-code
-                        action = "store_true",                                                                          #pylint: disable=duplicate-code
-                        default = False,                                                                                #pylint: disable=duplicate-code
-                        dest = "advanced_input_file",
-                        help = "use the advanced grid vectors input file format (orign, repeats & grid vectors) \
-                                rather than the current one (number of points along vector & (supercell) real space lattice vectors)")   #pylint: disable=duplicate-code
+    units_group = parser.add_mutually_exclusive_group(required=False)
 
-    group = parser.add_mutually_exclusive_group(required=False)
-
-    group.add_argument("-Ha", "--Hartree",
+    units_group.add_argument("-Ha", "--Hartree",
                         action = "store_true",
                         default = False,
-                        help = "output potential in Hartree (default is Rydberg if none provided)")
+                        help = "output potential in Hartrees (default is Rydbergs if none provided)")
 
-    group.add_argument("-eV", "--electron-volts",
+    units_group.add_argument("-eV", "--electron-volt",
                         action = "store_true",
-                        dest = "electron_volts",
+                        dest = "electron_volt",
                         default = False,
-                        help = "output potential in electron volts (default is Rydberg if none provided)")
+                        help = "output potential in electron volts (default is Rydbergs if none provided)")
 
-    group.add_argument("-Ry", "--Rydberg",
+    units_group.add_argument("-Ry", "--Rydberg",
                         action = "store_true",
                         default = False,
-                        help = "output potential in Rydberg (default is Rydberg if none provided)")
+                        help = "output potential in Rydbergs (default is Rydbergs if none provided)")
 
     parser.add_argument("aimpro_output_file",
                         nargs = 1,
@@ -160,11 +168,12 @@ def read_commmand_line() -> tuple[IO[str], Optional[IO[str]]]:
 
     args = parser.parse_args()
     verbose_output = args.verbose
+    quiet_output = args.quiet
     debug = args.debug
     print_convergence_info = args.print_convergence_info
     use_advanced_input_format = args.advanced_input_file
     use_hartree = args.Hartree
-    use_ev = args.electron_volts
+    use_ev = args.electron_volt
     use_rydberg = args.Rydberg
     aimpro_infile = args.aimpro_output_file[0]
     grid_vec_infile = args.grid_vectors_input_file[0]
@@ -592,8 +601,8 @@ def write_cube_file(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str
         if verbose_output:
             print("Written cubefile volumetric potential data\n")
 
-        if verbose_output:
-            print(f"Finished writing to: {outpath}\n")
+        if not quiet_output:
+            print(f"Finished writing to: {outpath}")
 
 def main() -> None:
     """Main method

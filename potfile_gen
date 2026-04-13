@@ -18,6 +18,7 @@ The output pot_file is written to the current working directory
 [options]
 -h, --help: display help dialogue
 -v, --verbose: turn on verbose output mode, this prints useful status info to screen
+-q, --quiet: silence all all non-error messages
 -d, --debug: turn on debug mode (for developers only)
 -aif, --advanced-input-file: use the advanced grid vectors input file format (origin, repeats & grid vectors) rather than the current one
                         (number of points along vector & (supercell) real space lattice vectors) (see end of README for details)
@@ -123,8 +124,8 @@ import numpy as np
 import common_io as cio
 
 # Module development info
-VERSION_NUMBER = "1.0"                                              #pylint: disable=duplicate-code
-VERSION_DATE = "16/12/2025"                                         #pylint: disable=duplicate-code
+VERSION_NUMBER = "1.0.1"                                            #pylint: disable=duplicate-code
+VERSION_DATE = "13/04/2026"                                         #pylint: disable=duplicate-code
 AUTHORS = "Alex Christison"                                         #pylint: disable=duplicate-code
 COPYRIGHT = "Copyright (c) A Christison 2026 All Rights Reserved"   #pylint: disable=duplicate-code
 
@@ -145,19 +146,25 @@ def read_commmand_line() -> Optional[IO[str]]:
         Errors & exits with message if incorrect number of args detected.
         Errors & exits with message if provided input file does not exist.
     """
-    global verbose_output, debug, use_advanced_input_format
+    global verbose_output, quiet_output, debug, use_advanced_input_format
 
     parser = argparse.ArgumentParser(
                     prog = "potfile_gen",
                     formatter_class=argparse.RawDescriptionHelpFormatter,
                     description = "Plot a regular grid for the AIMPRO potential job. \
                                     \n\nAIMPRO potential job documentation: https://www.staff.ncl.ac.uk/j.p.goss/AIMPRO/restricted/docs/analysis/potential.html",
-                    epilog = f"Version info\n\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.") #pylint: disable=duplicate-code
+                    epilog = f"Version info:\nAuthor(s): {AUTHORS} \nVersion: {VERSION_NUMBER} \nDate: {VERSION_DATE} \n\n{COPYRIGHT}.") #pylint: disable=duplicate-code
+    verbosity_group = parser.add_mutually_exclusive_group(required=False)
 
-    parser.add_argument("-v", "--verbose",                                                                              #pylint: disable=duplicate-code
+    verbosity_group.add_argument("-v", "--verbose",                                                                     #pylint: disable=duplicate-code
                         action = "store_true",                                                                          #pylint: disable=duplicate-code
                         default = False,                                                                                #pylint: disable=duplicate-code
                         help = "turn on verbose output mode, this prints useful status info to screen")                 #pylint: disable=duplicate-code
+
+    verbosity_group.add_argument("-q", "--quiet",                                                                       #pylint: disable=duplicate-code
+                        action = "store_true",                                                                          #pylint: disable=duplicate-code
+                        default = False,                                                                                #pylint: disable=duplicate-code
+                        help = "silence all all non-error messages")                                                    #pylint: disable=duplicate-code
 
     parser.add_argument("-d", "--debug",                                                                                #pylint: disable=duplicate-code
                         action = "store_true",                                                                          #pylint: disable=duplicate-code
@@ -168,7 +175,7 @@ def read_commmand_line() -> Optional[IO[str]]:
                         action = "store_true",                                                                          #pylint: disable=duplicate-code
                         default = False,                                                                                #pylint: disable=duplicate-code
                         dest = "advanced_input_file",
-                        help = "use the advanced grid vectors input file format (orign, repeats & grid vectors) \
+                        help = "use the advanced grid vectors input file format (origin, repeats & grid vectors) \
                                 rather than the current one (number of points along vector & (supercell) real space lattice vectors)")   #pylint: disable=duplicate-code
 
     parser.add_argument("grid_vectors_input_file",
@@ -177,6 +184,7 @@ def read_commmand_line() -> Optional[IO[str]]:
 
     args = parser.parse_args()
     verbose_output = args.verbose
+    quiet_output = args.quiet
     debug = args.debug
     use_advanced_input_format = args.advanced_input_file
     input_filename = args.grid_vectors_input_file[0]
@@ -219,7 +227,7 @@ def write_pot_file(grid_points: object, num_grid_points: int) -> None:
 
     np.savetxt(outpath, grid_points, fmt="%12.6f", header= str(num_grid_points), comments='')
 
-    if verbose_output:
+    if not quiet_output:
         print(f"Finished writing to: {outpath}")
 
 def main() -> None:
