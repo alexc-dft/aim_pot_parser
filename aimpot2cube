@@ -72,8 +72,8 @@ import const as c   #pylint: disable=import-error
 import common_io as cio
 
 # Module development info
-VERSION_NUMBER = "1.3.2"                                            #pylint: disable=duplicate-code
-VERSION_DATE = "12/04/2026"                                         #pylint: disable=duplicate-code
+VERSION_NUMBER = "1.4"                                            #pylint: disable=duplicate-code
+VERSION_DATE = "14/04/2026"                                         #pylint: disable=duplicate-code
 AUTHORS = "Alex Christison, fixes by James Ramsey"                  #pylint: disable=duplicate-code
 COPYRIGHT = "Copyright (c) A Christison 2026 All Rights Reserved"   #pylint: disable=duplicate-code
 
@@ -213,6 +213,7 @@ def get_atom_positions(aim_file: IO[str]) -> tuple[object, object]:
     Returns:
         species_ind: array of species indexes (column 2 of OTB)
         atom_pos: atom positions in au (columns 5-9 of OTB)
+        species_str: species string header line of OTB
 
     Raises:
         Warns if the files it needs to create already exist & backs up the existing ones
@@ -255,14 +256,15 @@ def get_atom_positions(aim_file: IO[str]) -> tuple[object, object]:
     if bz2ed_file:
         subprocess.run(f"bzip2 {aim_file}", shell=True, check=True)
 
-    # Only need species_index and atom positions
+    # Don't need nearest neighbour map
     species_ind = result[0]
     atom_pos = result[2]
+    species_str = result[3]
 
     # Remove temporary xyz & otb files
     subprocess.run(f"rm xyz.{stripped_aim_file}.init  otb.xyz.{stripped_aim_file}.init", shell=True, check=True)
 
-    return species_ind, atom_pos
+    return species_ind, atom_pos, species_str
 
 def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[str],         #pylint: disable=too-many-statements,too-many-locals,too-many-branches
                        repeats: object, validation_grid_points: object,                       #pylint: disable=too-many-statements,too-many-locals,too-many-branches
@@ -290,6 +292,7 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
 
     # Initialise proton num array
     species_proton_num_list = []
+    species_chars_list = []
 
     # Initialise flags and values for the potential job
     potential_job_run = False
@@ -343,6 +346,7 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
             # Extract proton number of species and add to list in order (including GHOST atoms, we will filter them out later)
             if species_search:
                 species_proton_num_list.append(int(species_search.group(1)))
+                species_chars_list.append(species_search.group(2))
 
                 if verbose_output:
                     print(f"Species of type {species_search.group(2)} detected\n")
@@ -427,7 +431,23 @@ def read_aimpro_infile(aimpro_output_file: IO[str], grid_vectors_input_file: IO[
     potential_values = aim_pot_values.reshape((repeats[0],repeats[1],repeats[2]))
 
     # Get species index list and atom positions in atomic units
-    species_index, atom_positions = get_atom_positions(aimpro_output_file)
+    species_index, atom_positions, species_header_string = get_atom_positions(aimpro_output_file)
+
+    # Get list of species from header of OTB file, removing leading comment character
+    species_header_chars_list = species_header_string.split()[1:]
+
+    # Check if the order in the species in the OTB and dat files match, if they don't we much re-map their indexes
+    if species_chars_list != species_header_chars_list:
+
+        if verbose_output:
+            print("Inconsistency in species order detected, re-mapping to fix\n")
+
+        # Map indexes via the element characters, accounting for OBO error of OTB index
+        species_map = [species_header_chars_list.index(i)+1 for i in species_chars_list]
+
+        # Re-map species index list
+        for i in species_index:
+            i[0] = species_map.index(i.item())+1
 
     # If we have ghost atoms, remove them from atomic positions
     if ghost_species_found:

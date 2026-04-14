@@ -1,4 +1,4 @@
-# aim_pot_parser v1.3.2 - An AIMPRO potential job to .cube format parser
+# aim_pot_parser v1.4 - An AIMPRO potential job to .cube format parser
 Scripts for setting up a regular grid of points for AIMPRO potential calculations and parsing the results to the .cube file format 
 (potential values in Rydberg by default).
 
@@ -19,8 +19,8 @@ All python code should be run through Pylint: https://pylint.readthedocs.io/en/s
 The `aimpot2cube` and `potfile_gen` scripts can be made executable in all locations in file system via `chmod u+x` and adding to PATH.
 
 ## Version info
-Version: 1.3.2
-Version date: 13/04/26
+Version: 1.4
+Version date: 14/04/26
 
 ## Requirements
 Python version: python 3.11  

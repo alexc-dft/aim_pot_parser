@@ -96,6 +96,22 @@ if [ -f ${test_rydberg}.diff ]; then
     rm "${test_rydberg}.diff"
 fi
 
+# Species order
+
+if [ -f AIM.sh.o_species_order.test ]; then
+    rm "AIM.sh.o_species_order.test"
+fi
+
+if [ -f AIM.sh.o_species_order.test_Ry.cube ]; then
+    rm "AIM.sh.o_species_order.test_Ry.cube"
+fi
+
+test_species_order="${test}-species-order"
+
+if [ -f ${test_species_order}.diff ]; then
+    rm "${test_species_order}.diff"
+fi
+
 cd ../
 
 { echo "Success: test suite cleanup finished" >&2; exit 0; }

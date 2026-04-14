@@ -112,6 +112,24 @@ if [ "$diff_str" != "" ]; then
     echo "$diff_str" > ${test_rydberg}.diff
 fi
 
+# Species order
+
+cp "AIM.sh.o_species_order.benchmark" "AIM.sh.o_species_order.test"
+
+# Run aimpot2cube
+python ../../aimpot2cube --quiet AIM.sh.o_species_order.test test.in.benchmark || { echo "Error: aimpot2cube failed to run">&2; exit 3; }
+
+# Diff for result
+diff_str=$(diff "AIM.sh.o_species_order.test_Ry.cube.benchmark" "AIM.sh.o_species_order.test_Ry.cube"); [ $? -gt 1 ] && exit 4
+
+test_rydberg="${test}-species-order"
+
+# Check diff
+if [ "$diff_str" != "" ]; then
+    failed_test_array+=($test_rydberg)
+    echo "$diff_str" > ${test_rydberg}.diff
+fi
+
 cd ../
 
 
