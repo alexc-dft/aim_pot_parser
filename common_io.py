@@ -2,6 +2,7 @@
 
 """common_io: Common & I/O
 
+
 This module stores the shared routines and I/O parameters for the aim_pot_parser repo.
 
 The I/O parameters can be user reconfigured - recommended only for advanced users.
@@ -11,17 +12,7 @@ None
 """
 
 # System modules
-from pathlib import Path
 from typing import Optional
-import sys
-
-# Wrangle submodule path
-# !!!Note __file__ isn't always safe, e.g. in non-local imported modules!!!
-SUBMODULE_PATH = Path(__file__).resolve().parent  / "aim_utils"     #pylint: disable=wrong-import-position
-SUBM_PATH_STR = SUBMODULE_PATH.absolute().as_posix()                #pylint: disable=wrong-import-position
-
-# Add path to aim_utils directory root
-sys.path.append(SUBM_PATH_STR)  #pylint: disable=wrong-import-position
 
 # Third party modules
 import numpy as np

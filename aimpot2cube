@@ -54,21 +54,13 @@ import sys
 from typing import List, IO, Optional
 from io import StringIO
 
-# Wrangle submodule path
-# !!!Note __file__ isn't always safe, e.g. in non-local imported modules!!!
-SUBMODULE_PATH = Path(__file__).resolve().parent  / "aim_utils"     #pylint: disable=wrong-import-position
-SUBM_PATH_STR = SUBMODULE_PATH.absolute().as_posix()                #pylint: disable=wrong-import-position
-
-# Add path to aim_utils directory root
-sys.path.append(SUBM_PATH_STR)  #pylint: disable=wrong-import-position
-
 # Third party modules
 import numpy as np
 from xopen import xopen
-import methods as m #pylint: disable=import-error
-import const as c   #pylint: disable=import-error
 
 # First party modules
+from aim_utils import methods as m
+from aim_utils import const as c
 import common_io as cio
 
 # Module development info
